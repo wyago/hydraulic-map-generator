@@ -183,13 +183,13 @@ export function generateMap(size: number) {
     const context = canvas.getContext("2d")!;
     context.fillStyle = "#000";
     context.fillRect(0,0, size, size);
-    const radius = 8;
+    const radius = 2;
 
     function filter(x, y) {
         return x*x + y*y < Math.pow(size/2, 2);
     }
 
-    const plateRadius = radius * 80;
+    const plateRadius = radius * 160;
     const {step: plateStep, points: plates} = createDiscSampler(plateRadius, () => {
     }, [{x:Math.random() * plateRadius - plateRadius/2,y: Math.random() * plateRadius - plateRadius/2}]);
     while (plateStep((x,y) => {

@@ -1,4 +1,5 @@
 import RBush from "rbush";
+import { SimplexNoise } from "ts-perlin-simplex";
 
 export type Point = {
     x: number,
@@ -17,6 +18,8 @@ function point({x,y, type}: Point): Point {
         maxY: y,
     } as Point;
 }
+
+const noise = new SimplexNoise();
 
 export function createDiscSampler(radius: number, onadd: (point: Point) => void, seeds?: {x:number,y:number}[]) {
     const points = new RBush<Point>();
@@ -50,10 +53,8 @@ export function createDiscSampler(radius: number, onadd: (point: Point) => void,
         mountainStep(rx: number, ry: number) {
             const rootAngle = Math.random() * 2 * Math.PI;
 
-            function iteration(angle: number) {
-                let x = rx;
-                let y = ry;
-                const length = 10 + Math.random() * 15;
+            function iteration(angle: number, x: number, y: number) {
+                const length = (30 + Math.random() * 240)/radius;
                 for (let i = 0; i < length; ++i) {
                     const l = Math.random() * radius + radius;
                     const dx = Math.cos(angle) * l;
@@ -76,10 +77,13 @@ export function createDiscSampler(radius: number, onadd: (point: Point) => void,
 
                     angle += Math.random() * 0.5 - 0.25;
                 }
+
+                return { x, y };
             }
 
-            iteration(rootAngle);
-            iteration(rootAngle + Math.PI);
+            iteration(rootAngle, rx, ry);
+            iteration(rootAngle + Math.PI/2 + Math.random(), rx, ry);
+            iteration(rootAngle + Math.PI, rx, ry);
 
             return true;
         },
@@ -93,17 +97,18 @@ export function createDiscSampler(radius: number, onadd: (point: Point) => void,
 
             for (let i = 0; i < 10; ++i) {
                 const angle = Math.random() * 2 * Math.PI;
-                const l = Math.random() * radius + radius;
+                let l = Math.random() * radius + radius;
                 const dx = Math.cos(angle) * l;
                 const dy = Math.sin(angle) * l;
 
+                l *= 3 * (noise.noise((rx + dx)*0.001, (ry + dy)*0.001) + 1);
                 if (filter(rx + dx, ry + dy) && !near(rx + dx, ry + dy)) {
                     let nextType = type;
-                    if (type === "land" && Math.random() < l*0.006) {
-                        nextType = "ocean";
-                    }
-                    if (type === "land" && Math.random() < l*0.0006) {
+                    if (type === "land" && Math.random() < l*0.004) {
                         nextType = "hills";
+                    }
+                    if (type === "land" && Math.random() < l*0.007) {
+                        nextType = "ocean";
                     }
                     if (type === "ocean" && Math.random() < l*0.0005) {
                         nextType = "land";
