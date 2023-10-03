@@ -1,8 +1,9 @@
 import { SimplexNoise } from "ts-perlin-simplex";
-import { Point, createDiscSampler } from "../disc";
+import { createDiscSampler } from "../disc";
 
 import Delaunator from "delaunator";
 import RBush from "rbush";
+import { GenPoint } from "../map/GenPoint";
 
 function hex(n: number) {
     let h = (~~(n * 255)).toString(16);
@@ -26,21 +27,14 @@ function pix(context: CanvasRenderingContext2D, x: number, y: number, style: str
 }
 
 
-function distance(a: Point, b: Point) {
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-    return dx * dx + dy * dy;
-}
-
-
-function graph(context: CanvasRenderingContext2D, points: RBush<Point>, radius: number, size: number) {
+function graph(context: CanvasRenderingContext2D, points: RBush<GenPoint>, radius: number, size: number) {
     const all = points.all();
 
     const source = all.map(a => ([a.x, a.y]));
 
     function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
     const delaunay = Delaunator.from(source);
-    function forEachTriangleEdge(callback: (p: Point, q: Point) => void) {
+    function forEachTriangleEdge(callback: (p: GenPoint, q: GenPoint) => void) {
         for (let e = 0; e < delaunay.triangles.length; e++) {
             if (e > delaunay.halfedges[e]) {
                 const p = delaunay.triangles[e];
@@ -52,9 +46,9 @@ function graph(context: CanvasRenderingContext2D, points: RBush<Point>, radius: 
 
     context.fillStyle = "#000";
     forEachTriangleEdge((p,q) => {
-        if (p.type === "land") {
+        if (p.type() === "land") {
             context.strokeStyle = "#373";
-        } else if (p.type === "mountain") {
+        } else if (p.type() === "mountain") {
             context.strokeStyle = "#753";
         } else {
             context.strokeStyle = "#338";
@@ -104,7 +98,7 @@ const noiseA = new SimplexNoise();
 const noiseB = new SimplexNoise();
 const noiseC = new SimplexNoise();
 
-function render(context: CanvasRenderingContext2D, cx: number, cy: number, renderRadius: number, radius: number, points: RBush<Point>, size: number) {
+function render(context: CanvasRenderingContext2D, cx: number, cy: number, renderRadius: number, radius: number, points: RBush<GenPoint>, size: number) {
     /*const all = points.all();
     const source = all.map(a => ([a.x, a.y]));
 
@@ -156,13 +150,13 @@ function render(context: CanvasRenderingContext2D, cx: number, cy: number, rende
             maxX: ax + radius*2,
             maxY: ay + radius*2
         });
-        region.forEach(({x: px,y: py, type}) => {
-            const dx = px - ax;
-            const dy = py - ay;
+        region.forEach(point => {
+            const dx = point.x - ax;
+            const dy = point.y - ay;
             const d = dx*dx + dy*dy ;
             if (d < nearest) {
                 nearest = d;
-                finalType = type;
+                finalType = point.type();
                 any = true;
             }
         })
@@ -183,13 +177,13 @@ export function generateMap(size: number) {
     const context = canvas.getContext("2d")!;
     context.fillStyle = "#000";
     context.fillRect(0,0, size, size);
-    const radius = 2;
+    const radius = 8;
 
     function filter(x, y) {
         return x*x + y*y < Math.pow(size/2, 2);
     }
 
-    const plateRadius = radius * 160;
+    const plateRadius = radius * 50;
     const {step: plateStep, points: plates} = createDiscSampler(plateRadius, () => {
     }, [{x:Math.random() * plateRadius - plateRadius/2,y: Math.random() * plateRadius - plateRadius/2}]);
     while (plateStep((x,y) => {
@@ -213,12 +207,12 @@ export function generateMap(size: number) {
                 const mountain = document.getElementById("mountain") as HTMLCanvasElement;
                 const hills = document.getElementById("hills") as HTMLCanvasElement;
                 points.all().forEach(p => {
-                    const factor = Math.random() * 0.4 + 1;
-                    if (p.type === "mountain") 
+                    const factor = p.relativeElevation()*0.7 + 0.7;
+                    if (p.type() === "mountain") 
                         context.drawImage(mountain, p.x + size/2 - radius/2*factor, p.y + size/2 - radius/2*factor, radius*factor, radius*factor);
-                    if (p.type === "hills") 
+                    if (p.type() === "hills") 
                         context.drawImage(hills, p.x + size/2 - radius/2*factor, p.y + size/2 - radius/2*factor, radius*factor, radius*factor);
-                })
+                });
                 //graph(context, points, radius, size);
                 return;
             }
