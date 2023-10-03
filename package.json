@@ -1,0 +1,30 @@
+{
+    "name": "qwer.cafe",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "esbuild src/index.ts --bundle --outdir=public --target=es6",
+        "build-min": "esbuild src/index.ts  --minify --bundle --outfile=public/a.js",
+        "start": "esbuild src/index.ts --bundle --outdir=public  --target=es6 --watch --servedir=public --loader:.glsl=text --sourcemap"
+    },
+    "author": "",
+    "license": "UNLICENSED",
+    "devDependencies": {
+        "@types/delaunator": "^5.0.0",
+        "@types/rbush": "^3.0.0",
+        "@types/three": "^0.154.0",
+        "@types/uuid": "9.0.4",
+        "esbuild": "0.19.3",
+        "typescript": "5.2.2"
+    },
+    "dependencies": {
+        "delaunator": "^5.0.0",
+        "maquette": "3.6.0",
+        "rbush": "^3.0.1",
+        "three": "^0.154.0",
+        "ts-perlin-simplex": "^0.0.3",
+        "uuid": "9.0.1"
+    }
+}
