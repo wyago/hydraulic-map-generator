@@ -2,6 +2,7 @@ import { createDiscSampler } from "../disc";
 
 import Delaunator from "delaunator";
 import RBush from "rbush";
+import { SimplexNoise } from "ts-perlin-simplex";
 import { GenPoint } from "../map/GenPoint";
 import { Map } from "./Map";
 import { Tile } from "./Tile";
@@ -109,7 +110,14 @@ function forEachVoronoiCell(points, delaunay, callback: (p: number, vertices: nu
         tiles[t].points.push(...points.reverse());
     });
 
-    const map = new Map(tiles);
+    const map = new Map(all.map(x => {
+        return new Tile(
+            x.x,
+            x.y,
+            x.type,
+            x.elevation
+        );
+    }));
     delaunay.halfedges
     /*forEachTriangleEdge((p, q) => {
         tiles[p].adjacents.push(q);
@@ -126,46 +134,52 @@ function forEachVoronoiCell(points, delaunay, callback: (p: number, vertices: nu
     return map;
 }
 
+function makePlates(size: number, plateRadius: number) {
+    const {step: plateStep, points: plates} = createDiscSampler((x,y) => {
+        return plateRadius + (x*x + y*y*10)*0.0001;
+    }, () => {
+    }, [new GenPoint(
+        Math.random() * plateRadius - plateRadius/2,
+        Math.random() * plateRadius - plateRadius/2,
+        "mountain",
+        1
+    )]);
+    while (plateStep((x,y) => {
+        return x*x + y*y*2 < Math.pow(size*2, 2);
+    }));
+
+    return plates.all();
+}
+
+
+const noiseX = new SimplexNoise();
+const noiseY = new SimplexNoise();
 export function generateMap(size: number) {
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const context = canvas.getContext("2d")!;
-    context.fillStyle = "#000";
-    context.fillRect(0,0, size, size);
     const radius = 8;
 
     function filter(x, y) {
-        return x*x*0.1 + y*y*0.6 < Math.pow(size*2, 2);
+        return x*x*0.1 + y*y*0.5 < Math.pow(size*2, 2);
     }
 
-    const plateRadius = radius *20; 
-    const {step: plateStep, points: plates} = createDiscSampler(plateRadius, () => {
-    }, [{x:Math.random() * plateRadius - plateRadius/2,y: Math.random() * plateRadius - plateRadius/2}]);
-    while (plateStep((x,y) => {
-        return x*x + y*y*30 < Math.pow(size, 2);
-    }));
+    const plates = makePlates(size, radius*50);
 
-    context.translate(size/2, size/2);
-    context.scale(0.25,0.25);
-    context.fillStyle = "#fff";
-    const {step, mountainStep, points} = createDiscSampler(radius, (point) => {
+    const {step, mountainStep, points} = createDiscSampler(() => radius, (point) => {
         //render(context, point.x, point.y, radius*2, radius, points, size);
     });
 
-    plates.all().forEach(p => {
-        mountainStep(p.x, p.y);
-    })
-
-    window.addEventListener("wheel", e => {
-        if (e.deltaY > 0) {
-            context.scale(0.9, 0.9);
-        } else {
-            context.scale(1.1, 1.1);
-        }
+    plates.forEach(p => {
+        mountainStep(
+            p.x +  noiseX.noise(p.x * 0.0005, p.y * 0.0005)*250, 
+            p.y + noiseY.noise(p.x * 0.0005, p.y * 0.0005) *250
+        );
     });
 
-    while (step(filter));
-
-    return graph(points);
+    return {
+        step() {
+            return step(filter);
+        },
+        graph() {
+            return graph(points);
+        }
+    }
 }

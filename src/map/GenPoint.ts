@@ -16,8 +16,8 @@ const noiseX = new SimplexNoise();
 const noiseY = new SimplexNoise();
 
 export class GenPoint {
-    readonly x: number;
-    readonly y: number;
+    x: number;
+    y: number;
     readonly type: PointType;
     readonly elevation: number
 
@@ -44,6 +44,13 @@ export class GenPoint {
         this.maxY = this.y;
     }
 
+    noise() {
+        return noise.noise(
+            (this.x + noiseX.noise(this.x * 0.01, this.y * 0.01) * 40) * 0.0005,
+            (this.y + noiseY.noise(this.x * 0.01, this.y * 0.01) * 40) * 0.0005,
+        ) * 0.5 + 0.5;
+    }
+
     sample(radius: number) {
         const angle = Math.random() * 2 * Math.PI;
         let l = Math.random() * radius + radius;
@@ -53,14 +60,8 @@ export class GenPoint {
         const type = this.nextType();
 
         let shift = (
-            (naturalElevation[type] - this.elevation)*0.02 + Math.random() * 0.1 - 0.05
-        )
-        if ( noise.noise(
-            (this.x + noiseX.noise(this.x * 0.02, this.y * 0.02) * 200) * 0.001,
-            (this.y + noiseY.noise(this.x * 0.02, this.y * 0.02) * 200) * 0.001,
-        ) > 0.5) {
-            //shift *= 1.5;
-        }
+            (this.noise() - this.elevation)*0.01 + Math.random() * 0.08 - 0.04
+        );
 
         return new GenPoint(
             this.x + dx,
@@ -72,24 +73,21 @@ export class GenPoint {
 
     nextType() {
         let result = this.type;
-        let shift = 1;
-        if ( noise.noise(
-            (this.x + noiseX.noise(this.x * 0.02, this.y * 0.02) * 200) * 0.001,
-            (this.y + noiseY.noise(this.x * 0.02, this.y * 0.02) * 200) * 0.001,
-        ) > 0.2) {
-            shift = 0.5;
+        let shift = 0.8;
+        if (this.noise() > 0.2) {
+            shift = 0.2;
         }
         if (this.type === "flat") {
             const r = Math.random();
-             if (r < 0.05 * shift) {
+             if (r < 0.2 * shift) {
                 result = "hills";
             }
         } else if (this.type === "hills") {
-            if (Math.random() < 0.2 * shift) {
+            if (Math.random() < 0.4 * shift) {
                 result = "flat";
             }
         } else if (this.type === "mountain") {
-            if (Math.random() < 0.6 * shift) {
+            if (Math.random() < 0.4) {
                 result = "hills";
             }
         }

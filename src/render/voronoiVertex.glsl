@@ -1,7 +1,10 @@
-attribute float size;
+attribute vec3 color;
 
+varying vec3 vColor;
 
 void main() {
+
+    vColor = color;
     vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
 
     float scaling = sqrt(
@@ -9,7 +12,7 @@ void main() {
         modelViewMatrix[0][1] * modelViewMatrix[0][1] +
         modelViewMatrix[0][2] * modelViewMatrix[0][2]
     );
-    gl_PointSize = 5500.0 * scaling;
+    gl_PointSize = 10000.0 * scaling;
 
     gl_Position = projectionMatrix * mvPosition;
 }

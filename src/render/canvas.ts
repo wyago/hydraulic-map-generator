@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PointLike } from '../map/PointLike';
 
 export function createCanvas() {
     const scene = new THREE.Scene();
@@ -12,13 +13,36 @@ export function createCanvas() {
     };
     sizeWatcher();
 
+    let zoom = 20;
+    camera!.scale.setScalar(Math.pow(zoom, 2));
+
     window.addEventListener("wheel", e => {
         if (e.deltaY > 0) {
-            camera.scale.multiplyScalar(1.5);
+            zoom *= 1.1;
         } else {
-            camera.scale.multiplyScalar(0.5);
+            zoom *= 0.9;
+        }
+        camera.scale.setScalar(Math.pow(zoom, 2));
+    });
+
+    let down: PointLike | undefined;
+    window.addEventListener("mousedown", e => {
+        down = { x: e.x, y: e.y };
+    });
+
+    window.addEventListener("mousemove", e => {
+        if (down) {
+            const dx = e.x - down.x;
+            const dy = e.y - down.y;
+            down = { x: e.x, y: e.y };
+            camera.translateX(-dx*zoom*0.1);
+            camera.translateY(dy*zoom*0.1);
         }
     })
+
+    window.addEventListener("mouseup", e => { down = undefined});
+    window.addEventListener("mouseleave", e => { down = undefined});
+    window.addEventListener("mouseout", e => { down = undefined});
 
     window.addEventListener("resize", sizeWatcher);
 

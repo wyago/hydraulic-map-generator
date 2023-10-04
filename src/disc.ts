@@ -4,22 +4,17 @@ import { GenPoint } from "./map/GenPoint";
 
 const noise = new SimplexNoise();
 
-export function createDiscSampler(radius: number, onadd: (point: GenPoint) => void, seeds?: {x:number,y:number}[]) {
+export function createDiscSampler(radius: (x: number, y: number) => number, onadd: (point: GenPoint) => void, seeds?: GenPoint[]) {
     const points = new RBush<GenPoint>();
 
     const actives = new Set<GenPoint>();
 
-    const firsts = seeds?.map((s, i) => new GenPoint(
-        s.x,
-        s.y,
-         "mountain",
-        1
-    )) || [];
+    const firsts = seeds || [];
     points.load(firsts);
     firsts.forEach(f => actives.add(f));
 
     function near(nx: number, ny: number) {
-        const r = radius;
+        const r = radius(nx, ny);
         const region = points.search({
             minX: nx - r,
             minY: ny - r,
@@ -38,9 +33,10 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
             const rootAngle = Math.random() * 1 - 0.5;
 
             function iteration(angle: number, x: number, y: number) {
-                const length = (170 + Math.random() * 880)/radius;
+                const r = radius(x, y);
+                const length = (10 + Math.random() * 780)/r;
                 for (let i = 0; i < length; ++i) {
-                    const l = Math.random() * radius + radius;
+                    const l = Math.random() * r*1 + r*1;
                     const dx = Math.cos(angle) * l;
                     const dy = Math.sin(angle) * l;
                     x += dx;
@@ -60,7 +56,7 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
                         break;
                     }
 
-                    angle += Math.random() * 0.1 - 0.05;
+                    angle += Math.random() * 0.2 - 0.1;
                 }
 
                 return { x, y };
@@ -78,9 +74,10 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
             }
 
             const active = Array.from(actives)[~~(Math.random() * actives.size)];
+            const r = radius(active.x,active.y);
 
             for (let i = 0; i < 10; ++i) {
-                const sample = active.sample(radius);
+                const sample = active.sample(r);
                 if (filter(sample.x, sample.y) && !near(sample.x, sample.y)) {
                     points.insert(sample);
                     actives.add(sample);
