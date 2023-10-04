@@ -1,13 +1,13 @@
 import * as THREE from "three";
-import { Map } from "../map/Map";
 
 import fragmentGlsl from "./fragment.glsl";
 import vertexGlsl from "./vertex.glsl";
 
+import { Tile } from "../map/Tile";
 import voronoiFragment from "./voronoiFragment.glsl";
 import voronoiVertex from "./voronoiVertex.glsl";
 
-export function meshify(map: Map) {
+export function meshify(tiles: Tile[]) {
     /*const positions = new Array<number>(0);
     const colors = new Array<number>(0);
     map.allTiles.forEach(t => {
@@ -75,23 +75,26 @@ export function meshify(map: Map) {
     result.add(makePoints("hills", new THREE.TextureLoader().load( '/hills.png' )))*/
     const positions = new Array<number>(0);
     const colors = new Array<number>(0);
-    map.allTiles.forEach(t => {
-        const height = (1 - t.elevation * 0.4);
-        let r = 0.43 * height;
+    tiles.forEach(t => {
+        const height = (0.1 + t.elevation * 0.7);
+        let r = 0.46 * height;
         let g = 0.44 * height;
         let b = 0.2 * height;
         if (t.elevation < 0.2) {
-            r = 0.02;
-            g = 0.2;
-            b = 0.3;
-        } else if (t.elevation < 0.4) {
-            r = 0.1;
-            g = 0.2;
-            b = 0.3;
+            r = 0.05;
+            g = 0.1;
+            b = 0.13;
+        } else if (t.elevation < 0.3) {
+            r = 0.05;
+            g = 0.13;
+            b = 0.18;
         }
 
-        positions.push(t.x, t.y, 0);
-        colors.push(r,g,b);
+        if (t.x === t.x && t.y === t.y)
+        {
+            positions.push(t.x, t.y, 0);
+            colors.push(r,g,b);
+        }
         //t.points.forEach(p => {
             //positions.push(p.x, p.y, 0);
             //colors.push(r,g,b);
@@ -115,12 +118,12 @@ export function meshify(map: Map) {
     
     function makePoints(type: string, texture: THREE.Texture) {
         const pointPositions = new Array<number>();
-        for ( let i = 0; i < map.allTiles.length; i ++ ) {
-            const tile = map.allTiles[i];
+        for ( let i = 0; i < tiles.length; i ++ ) {
+            const tile = tiles[i];
             if (tile.roughness === type && tile.elevation > 0.4) {
                 pointPositions.push(
-                    map.allTiles[i].x,
-                    map.allTiles[i].y,
+                    tiles[i].x,
+                    tiles[i].y,
                     0
                 );
             }
@@ -146,7 +149,7 @@ export function meshify(map: Map) {
 
     const result= new THREE.Object3D();
     result.add(new THREE.Points( geometry, material ))
-    result.add(new THREE.LineSegments( new THREE.WireframeGeometry(geometry), new THREE.LineBasicMaterial( {color: new THREE.Color("rgba(0,0,0)"), opacity: 0.2, transparent: true } ) ))
+    //result.add(new THREE.LineSegments( new THREE.WireframeGeometry(geometry), new THREE.LineBasicMaterial( {color: new THREE.Color("rgba(0,0,0)"), opacity: 0.2, transparent: true } ) ))
     result.add(makePoints("mountain", new THREE.TextureLoader().load( '/mountain.png' )))
     result.add(makePoints("hills", new THREE.TextureLoader().load( '/hills.png' )))
     return result;

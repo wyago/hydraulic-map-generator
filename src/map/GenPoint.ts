@@ -60,8 +60,8 @@ export class GenPoint {
         const type = this.nextType();
 
         let shift = (
-            (this.noise() - this.elevation)*0.01 + Math.random() * 0.08 - 0.04
-        );
+            (this.noise()*0.4 - this.elevation)*0.02 + Math.random() * 0.06 - 0.03
+        ) * this.noise();
 
         return new GenPoint(
             this.x + dx,
