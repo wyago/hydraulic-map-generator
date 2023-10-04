@@ -1,7 +1,6 @@
 import RBush from "rbush";
 import { SimplexNoise } from "ts-perlin-simplex";
 import { GenPoint } from "./map/GenPoint";
-import { clamp } from "./math";
 
 const noise = new SimplexNoise();
 
@@ -13,7 +12,8 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
     const firsts = seeds?.map((s, i) => new GenPoint(
         s.x,
         s.y,
-        i % 3 === 0 ? 1 : 0
+        i % 3 === 0 ? "mountain" : "ocean",
+        1
     )) || [];
     points.load(firsts);
     firsts.forEach(f => actives.add(f));
@@ -38,7 +38,7 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
             const rootAngle = Math.random() * 2 * Math.PI;
 
             function iteration(angle: number, x: number, y: number) {
-                const length = (30 + Math.random() * 140)/radius;
+                const length = (270 + Math.random() * 380)/radius;
                 for (let i = 0; i < length; ++i) {
                     const l = Math.random() * radius + radius;
                     const dx = Math.cos(angle) * l;
@@ -50,6 +50,7 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
                         const create = new GenPoint(
                             x,
                             y, 
+                            "mountain",
                             1
                         );
                         points.insert(create);
@@ -76,30 +77,18 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
                 return false;
             }
 
-            const next = Array.from(actives)[~~(Math.random() * actives.size)];
-            const { x: rx, y: ry, elevation } = next;
+            const active = Array.from(actives)[~~(Math.random() * actives.size)];
 
             for (let i = 0; i < 10; ++i) {
-                const angle = Math.random() * 2 * Math.PI;
-                let l = Math.random() * radius + radius;
-                const dx = Math.cos(angle) * l;
-                const dy = Math.sin(angle) * l;
-
-                const factor = (Math.random() - 0.41)*elevation * (noise.noise(rx*0.002,ry*0.002)*0.5 + 1);
-                if (filter(rx + dx, ry + dy) && !near(rx + dx, ry + dy)) {
-
-                    const create = new GenPoint(
-                        rx + dx,
-                        ry + dy, 
-                        clamp(elevation - factor, 0, 1)
-                    );
-                    points.insert(create);
-                    actives.add(create);
-                    onadd(create);
+                const sample = active.sample(radius);
+                if (filter(sample.x, sample.y) && !near(sample.x, sample.y)) {
+                    points.insert(sample);
+                    actives.add(sample);
+                    onadd(sample);
                 }
             }
 
-            actives.delete(next);
+            actives.delete(active);
             return true;
         },
         points

@@ -10,3 +10,19 @@ export function gaussianRandom(mean=0, stdev=1) {
 export function clamp(x: number, a: number, b: number) {
     return Math.max(a, Math.min(x, b));
 }
+
+export function byMin<T>(array: ArrayLike<T>, f: (t: T) => number) {
+    let min = Number.MAX_VALUE;
+    let value: T = array[0];
+
+    for (let i = 0; i < array.length; ++i) {
+        const v = array[i];
+        const d = f(v);
+        if (d < min) {
+            min = d;
+            value = v;
+        }
+    }
+
+    return value;
+}
