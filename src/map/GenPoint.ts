@@ -1,21 +1,19 @@
 import { SimplexNoise } from "ts-perlin-simplex";
 
 export type PointType =
-    "ocean" |
-    "coast" |
     "land" |
     "hills" |
     "mountain";
 
 const naturalElevation = {
-    "ocean": 0,
-    "coast": 0.1,
-    "land": 0.5,
+    "land": 0.0,
     "hills": 0.7,
     "mountain": 1,
 }
 
 const noise = new SimplexNoise();
+const noiseX = new SimplexNoise();
+const noiseY = new SimplexNoise();
 
 export class GenPoint {
     readonly x: number;
@@ -50,7 +48,15 @@ export class GenPoint {
 
         const type = this.nextType();
 
-        const shift = (naturalElevation[type] - this.elevation)*0.07 + Math.random() * 0.1 - 0.05;
+        let shift = (
+            (naturalElevation[type] - this.elevation)*0.02 + Math.random() * 0.1 - 0.05
+        )
+        if ( noise.noise(
+            (this.x + noiseX.noise(this.x * 0.02, this.y * 0.02) * 200) * 0.001,
+            (this.y + noiseY.noise(this.x * 0.02, this.y * 0.02) * 200) * 0.001,
+        ) > 0.5) {
+            //shift *= 1.5;
+        }
 
         return new GenPoint(
             this.x + dx,
@@ -62,30 +68,24 @@ export class GenPoint {
 
     nextType() {
         let result = this.type;
+        let shift = 1;
+        if ( noise.noise(
+            (this.x + noiseX.noise(this.x * 0.02, this.y * 0.02) * 200) * 0.001,
+            (this.y + noiseY.noise(this.x * 0.02, this.y * 0.02) * 200) * 0.001,
+        ) > 0.2) {
+            shift = 0.5;
+        }
         if (this.type === "land") {
             const r = Math.random();
-            if (r < 0.02 * (noise.noise(this.x * 0.01, this.y * 0.01) + 1)) {
-                result = "coast";
-            } else if (r < 0.09) {
+             if (r < 0.05 * shift) {
                 result = "hills";
             }
-        } else if (this.type === "ocean") {
-            if (Math.random() < 0.1) {
-                result = "coast";
-            }
-        } else if (this.type === "coast") {
-            const r = Math.random();
-            if (r < 0.05) {
-                result = "land";
-            } else if (r < 0.2) {
-                result = "ocean";
-            }
         } else if (this.type === "hills") {
-            if (Math.random() < 0.2) {
+            if (Math.random() < 0.2 * shift) {
                 result = "land";
             }
         } else if (this.type === "mountain") {
-            if (Math.random() < 0.6) {
+            if (Math.random() < 0.6 * shift) {
                 result = "hills";
             }
         }

@@ -12,7 +12,7 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
     const firsts = seeds?.map((s, i) => new GenPoint(
         s.x,
         s.y,
-        i % 3 === 0 ? "mountain" : "ocean",
+         "mountain",
         1
     )) || [];
     points.load(firsts);
@@ -35,10 +35,10 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
 
     return {
         mountainStep(rx: number, ry: number) {
-            const rootAngle = Math.random() * 2 * Math.PI;
+            const rootAngle = Math.random() * 1 - 0.5;
 
             function iteration(angle: number, x: number, y: number) {
-                const length = (270 + Math.random() * 380)/radius;
+                const length = (170 + Math.random() * 880)/radius;
                 for (let i = 0; i < length; ++i) {
                     const l = Math.random() * radius + radius;
                     const dx = Math.cos(angle) * l;
@@ -60,15 +60,15 @@ export function createDiscSampler(radius: number, onadd: (point: GenPoint) => vo
                         break;
                     }
 
-                    angle += Math.random() * 0.5 - 0.25;
+                    angle += Math.random() * 0.1 - 0.05;
                 }
 
                 return { x, y };
             }
 
             iteration(rootAngle, rx, ry);
-            iteration(rootAngle + Math.PI/2 + Math.random(), rx, ry);
             iteration(rootAngle + Math.PI, rx, ry);
+            iteration(rootAngle + Math.PI/5, rx, ry);
 
             return true;
         },

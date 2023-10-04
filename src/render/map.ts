@@ -134,12 +134,12 @@ function forEachVoronoiCell(points, delaunay, callback) {
             context.lineTo(vs[j][0], vs[j][1]);
         }
         
-        const type = all[p].type;
-        context.fillStyle = "#333444" + hex(1.5 -all[p].elevation);
-        if (type === "coast") {
-            context.fillStyle = "#334450" + hex(1.5 -all[p].elevation);
-        } else if (type !== "ocean") {
-            context.fillStyle = "#aba055" + hex(1.5 -all[p].elevation);
+        const height = (1 -all[p].elevation * 0.4);
+        context.fillStyle = "#" + hex(64/255 * height) + hex(70/255 * height) + hex(43/255 * height);
+        if (all[p].elevation < 0.4) {
+            context.fillStyle = "#334450" ;
+        } else if (all[p].elevation < 0.2) {
+            context.fillStyle = "#aba055" ;
         }
         context.stroke(); 
         context.fill(); 
@@ -346,17 +346,18 @@ export function generateMap(size: number) {
     const radius = 8;
 
     function filter(x, y) {
-        return x*x + y*y < Math.pow(size, 2);
+        return x*x*0.1 + y*y < Math.pow(size*2, 2);
     }
 
-    const plateRadius = radius *80; 
+    const plateRadius = radius *20; 
     const {step: plateStep, points: plates} = createDiscSampler(plateRadius, () => {
     }, [{x:Math.random() * plateRadius - plateRadius/2,y: Math.random() * plateRadius - plateRadius/2}]);
     while (plateStep((x,y) => {
-        return x*x + y*y < Math.pow(size, 2);
+        return x*x + y*y*30 < Math.pow(size, 2);
     }));
 
     context.translate(size/2, size/2);
+    context.scale(0.25,0.25);
     context.fillStyle = "#fff";
     const {step, mountainStep, points} = createDiscSampler(radius, (point) => {
         //render(context, point.x, point.y, radius*2, radius, points, size);
@@ -366,18 +367,32 @@ export function generateMap(size: number) {
         mountainStep(p.x, p.y);
     })
 
+    window.addEventListener("wheel", e => {
+        if (e.deltaY > 0) {
+            context.scale(0.9, 0.9);
+        } else {
+            context.scale(1.1, 1.1);
+        }
+    });
+
+    let done = false;
     let current = 0;
     function frame() {
         current += 1;
-        for(let i = 0; i < 450; ++i) {
+        if (!done)
+        for(let i = 0; i < 850; ++i) {
             if (!step(filter)) {
-                graph(context, points, radius, size);
-                fullRender(context, radius, size, points);
-                return;
+                done = true;
+                break;
             }
         }
-        context.clearRect(-size,-size, size*2, size*2);
-        fullRender(context, radius, size, points);
+        if (done) {
+            graph(context, points, radius, size);
+            fullRender(context, radius, size, points);
+        } 
+        //context.clearRect(-size*2,-size*2, size*4, size*4);
+        //fullRender(context, radius, size, points);
+        console.log("frame")
         requestAnimationFrame(frame);
     }
 
