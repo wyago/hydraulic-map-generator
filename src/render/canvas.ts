@@ -12,7 +12,17 @@ export function createCanvas() {
     };
     sizeWatcher();
 
+    window.addEventListener("wheel", e => {
+        if (e.deltaY > 0) {
+            camera.scale.multiplyScalar(1.5);
+        } else {
+            camera.scale.multiplyScalar(0.5);
+        }
+    })
+
     window.addEventListener("resize", sizeWatcher);
 
-    return { scene, renderer, element: renderer.domElement, destroy: () => {window.removeEventListener("resize", sizeWatcher); } };
+    return { scene, renderer, element: renderer.domElement, render() {
+        renderer.render(scene, camera);
+    }, destroy: () => {window.removeEventListener("resize", sizeWatcher); } };
 }

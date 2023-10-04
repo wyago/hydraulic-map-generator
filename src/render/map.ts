@@ -134,7 +134,7 @@ function forEachVoronoiCell(points, delaunay, callback) {
             context.lineTo(vs[j][0], vs[j][1]);
         }
         
-        const height = (1 -all[p].elevation * 0.4);
+        const height = (1 - all[p].elevation * 0.4);
         context.fillStyle = "#" + hex(64/255 * height) + hex(70/255 * height) + hex(43/255 * height);
         if (all[p].elevation < 0.4) {
             context.fillStyle = "#334450" ;
@@ -309,7 +309,7 @@ function render(context: CanvasRenderingContext2D, cx: number, cy: number, rende
             context.drawImage(mountain, ix - radius/2*factor, iy - radius/2*factor, radius*factor, radius*factor);
         if (p.type === "hills") 
             context.drawImage(hills, ix - radius/2*factor, iy - radius/2*factor, radius*factor, radius*factor);
-        if (p.type === "land" && Math.random() < 0.7)  {
+        if (p.type === "flat" && Math.random() < 0.7)  {
             const factor = Math.random() * 0.2 + 0.6;
             const i = ~~(Math.random() * 3) + 1;
             context.drawImage(document.getElementById("field" + i) as any, ix - radius/2*factor, iy - radius/2*factor, radius*factor, radius*factor);
@@ -328,7 +328,7 @@ function fullRender(context: CanvasRenderingContext2D, radius: number, size: num
             context.drawImage(mountain, ix - radius/2*factor, iy - radius/2*factor, radius*factor, radius*factor);
         if (p.type === "hills") 
             context.drawImage(hills, ix - radius/2*factor, iy - radius/2*factor, radius*factor, radius*factor);
-        if (p.type === "land" && Math.random() < 0.7)  {
+        if (p.type === "flat" && Math.random() < 0.7)  {
             const factor = Math.random() * 0.2 + 0.6;
             const i = ~~(Math.random() * 3) + 1;
             context.drawImage(document.getElementById("field" + i) as any, ix - radius/2*factor, iy - radius/2*factor, radius*factor, radius*factor);
@@ -336,7 +336,7 @@ function fullRender(context: CanvasRenderingContext2D, radius: number, size: num
     }); 
 }
 
-export function generateMap(size: number) {
+export function liveGenerateMap(size: number) {
     const canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;

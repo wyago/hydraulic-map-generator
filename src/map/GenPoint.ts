@@ -1,15 +1,15 @@
 import { SimplexNoise } from "ts-perlin-simplex";
 
 export type PointType =
-    "land" |
+    "flat" |
     "hills" |
     "mountain";
 
 const naturalElevation = {
-    "land": 0.0,
+    "flat": 0.0,
     "hills": 0.7,
     "mountain": 1,
-}
+} as const;
 
 const noise = new SimplexNoise();
 const noiseX = new SimplexNoise();
@@ -33,6 +33,10 @@ export class GenPoint {
         this.y = y;
         this.type = type;
         this.elevation = elevation;
+
+        if (this.elevation !== this.elevation) {
+            debugger;
+        }
 
         this.minX = this.x;
         this.maxX = this.x;
@@ -75,14 +79,14 @@ export class GenPoint {
         ) > 0.2) {
             shift = 0.5;
         }
-        if (this.type === "land") {
+        if (this.type === "flat") {
             const r = Math.random();
              if (r < 0.05 * shift) {
                 result = "hills";
             }
         } else if (this.type === "hills") {
             if (Math.random() < 0.2 * shift) {
-                result = "land";
+                result = "flat";
             }
         } else if (this.type === "mountain") {
             if (Math.random() < 0.6 * shift) {
