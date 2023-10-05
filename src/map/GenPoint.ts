@@ -45,9 +45,10 @@ export class GenPoint {
     }
 
     noise() {
+
         return noise.noise(
-            (this.x + noiseX.noise(this.x * 0.01, this.y * 0.01) * 40) * 0.0005,
-            (this.y + noiseY.noise(this.x * 0.01, this.y * 0.01) * 40) * 0.0005,
+            (this.x + noiseX.noise(this.x * 0.0001, this.y * 0.0001) * 940) * 0.000015,
+            (this.y + noiseY.noise(this.x * 0.0001, this.y * 0.0001) * 940) * 0.000015,
         ) * 0.5 + 0.5;
     }
 
@@ -60,7 +61,7 @@ export class GenPoint {
         const type = this.nextType();
 
         let shift = (
-            (this.noise()*0.4 - this.elevation)*0.02 + Math.random() * 0.06 - 0.03
+            (0 - this.elevation)*0.01 + Math.random() * 0.02 - 0.01
         ) * this.noise();
 
         return new GenPoint(
@@ -74,7 +75,7 @@ export class GenPoint {
     nextType() {
         let result = this.type;
         let shift = 0.8;
-        if (this.noise() > 0.2) {
+        if (this.noise() > 0.0) {
             shift = 0.2;
         }
         if (this.type === "flat") {

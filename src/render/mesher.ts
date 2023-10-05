@@ -7,7 +7,10 @@ import { Tile } from "../map/Tile";
 import voronoiFragment from "./voronoiFragment.glsl";
 import voronoiVertex from "./voronoiVertex.glsl";
 
-export function meshify(tiles: Tile[]) {
+const mountain = new THREE.TextureLoader().load( '/mountain.png' );
+const hills = new THREE.TextureLoader().load( '/hills.png' );
+
+export function pointsMesh(tiles: Tile[]) {
     /*const positions = new Array<number>(0);
     const colors = new Array<number>(0);
     map.allTiles.forEach(t => {
@@ -80,15 +83,14 @@ export function meshify(tiles: Tile[]) {
         let r = 0.46 * height;
         let g = 0.44 * height;
         let b = 0.2 * height;
-        if (t.elevation < 0.2) {
-            r = 0.05;
-            g = 0.1;
-            b = 0.13;
-        } else if (t.elevation < 0.3) {
-            r = 0.05;
-            g = 0.13;
-            b = 0.18;
+        if (t.water > 0.25) {
+            const factor = t.water*3;
+            r -= 0.18 * factor;
+            g -= 0.13 * factor;
+            b -= 0.05 * factor;
         }
+
+        //b += t.riverAmount;
 
         if (t.x === t.x && t.y === t.y)
         {
@@ -150,7 +152,40 @@ export function meshify(tiles: Tile[]) {
     const result= new THREE.Object3D();
     result.add(new THREE.Points( geometry, material ))
     //result.add(new THREE.LineSegments( new THREE.WireframeGeometry(geometry), new THREE.LineBasicMaterial( {color: new THREE.Color("rgba(0,0,0)"), opacity: 0.2, transparent: true } ) ))
-    result.add(makePoints("mountain", new THREE.TextureLoader().load( '/mountain.png' )))
-    result.add(makePoints("hills", new THREE.TextureLoader().load( '/hills.png' )))
+    result.add(makePoints("mountain", mountain))
+    result.add(makePoints("hills", hills))
+    return result;
+}
+
+
+export function riverMesh(tiles: Tile[]) {
+    const positions = new Array<number>(0);
+    const colors = new Array<number>(0);
+    tiles.forEach(t => {
+        const amount = t.water;
+        let r = 0.01;
+        let g = 0.04;
+        let b = 0.1;
+
+        if (t.x === t.x && t.y === t.y && t.water < 0.15)
+        {
+            const target = tiles[t.riverDirection];
+            positions.push(t.x, t.y, 0);
+            positions.push(target.x, target.y, 0);
+            colors.push(r,g,b, amount*9);
+            if (target.water > 0.15) {
+                colors.push(r,g,b, 0);
+            } else {
+                colors.push(r,g,b, target.water*9);
+            }
+        }
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(positions), 3 ) );
+    geometry.setAttribute( 'color', new THREE.BufferAttribute( new Float32Array(colors), 4 ) );
+
+    const result= new THREE.Object3D();
+    result.add(new THREE.LineSegments( geometry, new THREE.LineBasicMaterial({ vertexColors: true, depthTest: false, transparent: true }) ))
     return result;
 }

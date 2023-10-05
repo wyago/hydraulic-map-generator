@@ -1,15 +1,14 @@
 import { createDiscSampler } from "../disc";
 
-import Delaunator from "delaunator";
 import RBush from "rbush";
 import { SimplexNoise } from "ts-perlin-simplex";
 import { GenPoint } from "../map/GenPoint";
-import { Map } from "./Map";
 import { Tile } from "./Tile";
 
 function graph(points: RBush<GenPoint>) {
     const all = points.all();
 
+    /*
     const source = all.map(a => ([a.x, a.y]));
 
     function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
@@ -49,14 +48,6 @@ function trianglesAdjacentToTriangle(delaunay, t) {
     return adjacentTriangles;
 }
 function circumcenter(a, b, c) {
-    /*const ad = a[0] * a[0] + a[1] * a[1];
-    const bd = b[0] * b[0] + b[1] * b[1];
-    const cd = c[0] * c[0] + c[1] * c[1];
-    const D = 2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
-    return [
-        1 / D * (ad * (b[1] - c[1]) + bd * (c[1] - a[1]) + cd * (a[1] - b[1])),
-        1 / D * (ad * (c[0] - b[0]) + bd * (a[0] - c[0]) + cd * (b[0] - a[0])),
-    ];*/
     return [
         (a[0] + b[0] + c[0])/3,
         (a[1] + b[1] + c[1])/3
@@ -108,17 +99,8 @@ function forEachVoronoiCell(points, delaunay, callback: (p: number, vertices: nu
             points.map(p => p.elevation).reduce((x,y) => x + y) / points.length,
         )
         tiles[t].points.push(...points.reverse());
-    });
+    });*/
 
-    const map = new Map(all.map(x => {
-        return new Tile(
-            x.x,
-            x.y,
-            x.type,
-            x.elevation
-        );
-    }));
-    delaunay.halfedges
     /*forEachTriangleEdge((p, q) => {
         tiles[p].adjacents.push(q);
         tiles[q].adjacents.push(p);
@@ -131,12 +113,22 @@ function forEachVoronoiCell(points, delaunay, callback: (p: number, vertices: nu
         ));
     });*/
 
-    return map;
+    return all.map(x => {
+        return new Tile(
+            x.x,
+            x.y,
+            x.type,
+            x.elevation
+        );
+    });
 }
 
+const noiseC = new SimplexNoise();
 function makePlates(size: number, plateRadius: number) {
     const {step: plateStep, points: plates} = createDiscSampler((x,y) => {
-        return plateRadius + (x*x + y*y*10)*0.0001;
+        x += noiseX.noise(x * 0.001, y * 0.001)*250;
+        y += noiseY.noise(x * 0.001, y * 0.001)*250;
+        return plateRadius + noiseC.noise(x * 0.0001, y * 0.0001) * 2000 + 2000;
     }, () => {
     }, [new GenPoint(
         Math.random() * plateRadius - plateRadius/2,
@@ -151,6 +143,24 @@ function makePlates(size: number, plateRadius: number) {
     return plates.all();
 }
 
+function makeSeeds(size: number, plateRadius: number) {
+    const {step: plateStep, points: plates} = createDiscSampler((x,y) => {
+        return plateRadius;
+    }, () => {
+    }, [new GenPoint(
+        Math.random() * plateRadius - plateRadius/2,
+        Math.random() * plateRadius - plateRadius/2,
+        "mountain",
+        1
+    )]);
+
+    while (plateStep((x,y) => {
+        return x*x + y*y*2 < Math.pow(size*2, 2);
+    }));
+
+    return plates.all();
+}
+
 
 const noiseX = new SimplexNoise();
 const noiseY = new SimplexNoise();
@@ -158,21 +168,23 @@ export function generateMap(size: number) {
     const radius = 8;
 
     function filter(x, y) {
-        return x*x*0.1 + y*y*0.5 < Math.pow(size*2, 2);
+        return true;
+        //return x*x*0.1 + y*y*0.5 < Math.pow(size*4, 2);
     }
 
-    const plates = makePlates(size, radius*50);
+    const plates = makePlates(size*3, radius*60);
 
     const {step, mountainStep, points} = createDiscSampler(() => radius, (point) => {
         //render(context, point.x, point.y, radius*2, radius, points, size);
-    });
+    }, plates.map(p => {
+        const ocean = Math.random() > 0.5;
+        return new GenPoint(
+            p.x,
+            p.y,
+            ocean ? "flat" : "mountain",
+            ocean ? 0 : 1
+        ) }));
 
-    plates.forEach(p => {
-        mountainStep(
-            p.x +  noiseX.noise(p.x * 0.0005, p.y * 0.0005)*250, 
-            p.y + noiseY.noise(p.x * 0.0005, p.y * 0.0005) *250
-        );
-    });
 
     return {
         step() {

@@ -12,7 +12,7 @@ void main() {
         modelViewMatrix[0][1] * modelViewMatrix[0][1] +
         modelViewMatrix[0][2] * modelViewMatrix[0][2]
     );
-    gl_PointSize = 10000.0 * scaling;
+    gl_PointSize = 15000.0 * scaling;
 
     gl_Position = projectionMatrix * mvPosition;
 }
