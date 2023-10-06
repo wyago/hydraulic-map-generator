@@ -40,7 +40,7 @@ export class Map {
         });
         
         this.allTiles.forEach(source => {
-            source.downhill = byMin(source.adjacents, i => source.elevation - this.allTiles[i].elevation);
+            source.downhill = byMin(source.adjacents, i =>  this.allTiles[i].elevation);
         });
     }
 
@@ -49,26 +49,22 @@ export class Map {
 
         for (let i = 0; i < this.allTiles.length; ++i) {
             this.allTiles[i].riverAmount = 0;
-            this.allTiles[i].lake *= 0.99;
+            if (this.allTiles[i].lake > 0.44) {
+                this.allTiles[i].lake -= 0.04;
+            }
         }
         for (let i = 0; i < this.allTiles.length; ++i) {
             let current = this.allTiles[i];
-            let charge = current.lake * 0.01;
-            current.lake *= 0.99;
-            for (let j = 0; j < 1000; ++j) {
+            for (let j = 0; j < 40; ++j) {
                 let target = this.allTiles[current.downhill];
-                if (target.totalElevation() > current.totalElevation()) {
-                    if (current.elevation > 0.4) {
-                        current.lake += 0.001;
-                    }
+                const delta = target.totalElevation() - current.totalElevation();
+                if (delta > 0) {
                     break;
                 }
-                current.riverAmount += 0.001;
+                current.riverAmount += 0.01;
                 current = target;
-                charge += current.lake * 0.01;
-                current.lake *= 0.99;
             }
-            current.lake += charge;
+            current.lake += 0.00001;
         }
     }
 
@@ -77,35 +73,71 @@ export class Map {
             const source = this.allTiles[i]
             let lowest = Number.MAX_VALUE;
             for (let j = 0; j < source.adjacents.length; ++j) {
-                const dx = this.allTiles[source.adjacents[j]].totalElevation();
-                if (dx < lowest) {
+                const target = this.allTiles[source.adjacents[j]];
+                const dx = target.x - source.x;
+                const dy = target.y - source.y;
+                const factor = target.totalElevation() - (source.vx * dx + source.vy * dy);
+                if (factor < lowest) {
                     source.downhill = source.adjacents[j];
-                    lowest = dx;
+                    lowest = factor;
                 }
             }
+        }
+        for (let i = 0; i < this.allTiles.length; ++i) {
+            const source = this.allTiles[i]
+            const target = this.allTiles[source.downhill];
+            const dx = target.x - source.x;
+            const dy = target.y - source.y;
+            const de = source.totalElevation() - target.totalElevation();
+            source.vx += dx * de * 1;
+            source.vy += dy * de * 1;
+            source.vx *= 0.9;
+            source.vy *= 0.9;
+            if (source.vx < 0) {
+                source.vx = 0;
+            }
+            if (source.vy < 0) {
+                source.vy = 0;
+            }
+        }
+        for (let i = 0; i < this.allTiles.length; ++i) {
+            const source = this.allTiles[i]
+            const target = this.allTiles[source.downhill];
+            const de = source.totalElevation() - target.totalElevation();
+            const transferx = source.vx * de;
+            const transfery = source.vy * de;
+
+            source.vx -= transferx;
+            source.vy -= transfery;
+            target.vx += transferx;
+            target.vy += transfery;
         }
     }
 
     iterateRivers() {
         for (let i = 0; i < this.allTiles.length; ++i) {
             const source = this.allTiles[i];
-            let target = this.allTiles[source.downhill];
+            const target = this.allTiles[source.downhill];
             const delta = (source.totalElevation() - target.totalElevation());
             if (delta < 0) {
                 continue;
             }
 
-            let pressure = source.riverAmount*source.riverAmount;
+            let pressure = source.speed2();
 
             if (source.elevation < 0.4) {
                 pressure *= 1;
             } else if (target.lake > 0.05) {
                 pressure *= 1;
             }
-            pressure *= 0.1;
-            pressure  = Math.min(pressure, (source.elevation - target.elevation)*0.5);
+            pressure *= 0.5;
+            pressure  = Math.min(pressure, (source.elevation - target.elevation)*0.1);
             source.elevation -= pressure;
             target.elevation += pressure;
+
+            const silt = Math.min(source.silt*0.1, pressure);
+            source.silt -= silt;
+            target.silt += silt;
         }
     }
 
@@ -118,14 +150,29 @@ export class Map {
 
                 const delta = source.totalElevation() - target.totalElevation();
                 let transfer = Math.min(delta / source.adjacents.length, source.lake);
-                if (target.elevation < 0.4) {
-                    transfer = source.lake;
-                }
                 source.lake -= transfer;
+                target.lake += transfer;
 
-                const erosion = Math.min(transfer*transfer*0.001, (source.elevation - target.elevation)*0.1);
-                source.elevation -= erosion;
-                target.elevation += erosion;
+                if (transfer > 0.01) {
+                    const erosion = Math.min(transfer*transfer*0.001, (source.elevation - target.elevation)*0.1);
+                    source.elevation -= erosion;
+                    target.elevation += erosion;
+                }
+            }
+        }
+        
+        for (let i = 0; i < this.allTiles.length; ++i) {
+            const source = this.allTiles[i]
+            if (source.lake > 0.1)
+            for (let j = 0; j < source.adjacents.length; ++j) {
+                const target = this.allTiles[source.adjacents[j]];
+                const factor = (source.elevation - target.elevation)*source.lake;
+                target.elevation += factor*0.3;
+                source.elevation -= factor*0.3;
+
+                const silt = (source.silt - target.silt)*source.lake;
+                source.silt -= silt;
+                target.silt += silt;
             }
         }
     }

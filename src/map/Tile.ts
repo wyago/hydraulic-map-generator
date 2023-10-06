@@ -20,6 +20,9 @@ export class Tile {
     downhill: number = 0;
     riverAmount: number = 0;
     lake: number = 0;
+    vx = 0;
+    vy = 0;
+    silt = 0.1;
 
     readonly minX: number;
     readonly minY: number;
@@ -31,6 +34,7 @@ export class Tile {
         this.y = y;
         this.roughness = roughness;
         this.elevation = elevation;
+        this.lake = Math.max(0.4 - this.elevation, 0);
 
         this.minX = this.x;
         this.maxX = this.x;
@@ -40,5 +44,8 @@ export class Tile {
 
     totalElevation() {
         return this.elevation + this.lake;
+    }
+    speed2() {
+        return this.vx * this.vx + this.vy * this.vy;
     }
 }
