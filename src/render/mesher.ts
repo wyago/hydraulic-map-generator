@@ -238,8 +238,6 @@ export function pointsMesh(tiles: Tile[]) {
                 let r = 0.46 * height;
                 let g = 0.44 * height;
                 let b = 0.3 * height;
-                r += t.softRock * 0.3 * height;
-                g += t.softRock * 0.2 * height;
 
                 let lightFactor = (vx + vy) * 0.06/Math.SQRT2;
                 if (t.elevation < 0.4) {
@@ -257,8 +255,8 @@ export function pointsMesh(tiles: Tile[]) {
                     r += 0.01;
                     g += 0.01;
                     b +=  0.02;
-                } else if (t.lake + t.riverAmount*0.05 > 0.04) {
-                    const depth = (t.lake + t.riverAmount*0.05)*2.5 + 0.5;
+                } else if (t.lake > 0.04) {
+                    const depth = (t.lake)*2.5 + 0.5;
                     r -= 0.18 * depth;
                     g -= 0.15 * depth;
                     b -= 0.10 * depth;

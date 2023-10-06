@@ -19,7 +19,7 @@ window.addEventListener("load", () => {
             x.x,
             x.y,
             x.type,
-            x.elevation
+            x.elevation + Math.random()*0.1
         ));
         const map = new Map(tiles);
 
@@ -36,8 +36,10 @@ window.addEventListener("load", () => {
         function frame() {
             j += 1;
             if (eroding) {
-                map.setRivers();
-                map.iterateRivers();
+                if (j % 5 === 0) {
+                    map.setRivers();
+                    map.iterateRivers();
+                }
                 map.iterateSpread();
                 mesh.update();
                 rivers.update();

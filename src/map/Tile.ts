@@ -20,7 +20,6 @@ export class Tile {
     downhill: number = 0;
     riverAmount: number = 0;
     lake: number = 0;
-    hardness: number;
 
     readonly minX: number;
     readonly minY: number;
@@ -32,10 +31,6 @@ export class Tile {
         this.y = y;
         this.roughness = roughness;
         this.elevation = elevation;
-        this.hardness = Math.pow(noise.noise(
-            x * 0.001 + noiseX.noise(x * 0.05, y * 0.05)*0.1,
-            y * 0.001 + noiseY.noise(x * 0.05, y * 0.05)*0.1
-        ) * 0.5 + 0.5, 2);
 
         this.minX = this.x;
         this.maxX = this.x;

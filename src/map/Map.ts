@@ -49,11 +49,12 @@ export class Map {
 
         for (let i = 0; i < this.allTiles.length; ++i) {
             this.allTiles[i].riverAmount = 0;
+            this.allTiles[i].lake *= 0.99;
         }
         for (let i = 0; i < this.allTiles.length; ++i) {
             let current = this.allTiles[i];
-            const charge = current.lake * 0.1;
-            current.lake *= 0.9;
+            let charge = current.lake * 0.01;
+            current.lake *= 0.99;
             for (let j = 0; j < 1000; ++j) {
                 let target = this.allTiles[current.downhill];
                 if (target.totalElevation() > current.totalElevation()) {
@@ -64,6 +65,8 @@ export class Map {
                 }
                 current.riverAmount += 0.001;
                 current = target;
+                charge += current.lake * 0.01;
+                current.lake *= 0.99;
             }
             current.lake += charge;
         }
@@ -86,14 +89,13 @@ export class Map {
     iterateRivers() {
         for (let i = 0; i < this.allTiles.length; ++i) {
             const source = this.allTiles[i];
-            source.lake *= 0.99;
             let target = this.allTiles[source.downhill];
             const delta = (source.totalElevation() - target.totalElevation());
             if (delta < 0) {
                 continue;
             }
 
-            let pressure = Math.min(source.elevation - target.elevation, source.riverAmount)  * source.softRock;
+            let pressure = source.riverAmount*source.riverAmount;
 
             if (source.elevation < 0.4) {
                 pressure *= 1;
@@ -121,9 +123,9 @@ export class Map {
                 }
                 source.lake -= transfer;
 
-                const erosion = Math.min(transfer*transfer*0.3, (source.elevation - target.elevation)*0.1);
-                source.elevation -= erosion * source.softRock;
-                target.elevation += erosion * source.softRock;
+                const erosion = Math.min(transfer*transfer*0.001, (source.elevation - target.elevation)*0.1);
+                source.elevation -= erosion;
+                target.elevation += erosion;
             }
         }
     }
