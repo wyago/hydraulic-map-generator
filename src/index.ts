@@ -36,12 +36,11 @@ window.addEventListener("load", () => {
         function frame() {
             j += 1;
             if (eroding) {
+                map.setRivers();
                 map.iterateRivers();
+                map.iterateSpread();
                 mesh.update();
-                if (j % 20) {
-                    map.setRivers();
-                    rivers.update();
-                }
+                rivers.update();
             }
             render();
             requestAnimationFrame(frame);

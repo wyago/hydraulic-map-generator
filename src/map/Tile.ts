@@ -1,3 +1,4 @@
+import { SimplexNoise } from "ts-perlin-simplex";
 import { PointLike } from "./PointLike";
 
 export type Roughness =
@@ -5,6 +6,9 @@ export type Roughness =
     "hills" |
     "mountain";
 
+const noise = new SimplexNoise();
+const noiseX = new SimplexNoise();
+const noiseY = new SimplexNoise();
 export class Tile {
     readonly x: number;
     readonly y: number;
@@ -16,6 +20,7 @@ export class Tile {
     downhill: number = 0;
     riverAmount: number = 0;
     lake: number = 0;
+    hardness: number;
 
     readonly minX: number;
     readonly minY: number;
@@ -27,6 +32,10 @@ export class Tile {
         this.y = y;
         this.roughness = roughness;
         this.elevation = elevation;
+        this.hardness = Math.pow(noise.noise(
+            x * 0.001 + noiseX.noise(x * 0.05, y * 0.05)*0.1,
+            y * 0.001 + noiseY.noise(x * 0.05, y * 0.05)*0.1
+        ) * 0.5 + 0.5, 2);
 
         this.minX = this.x;
         this.maxX = this.x;

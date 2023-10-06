@@ -6,7 +6,7 @@ export function createUi() {
 
   return {
       realize()  {
-          return h("div#ui", [
+          return h("div");h("div#ui", [
             h("div.modal", [
               h("label", ["Material"]),
             ])

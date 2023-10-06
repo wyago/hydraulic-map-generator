@@ -98,20 +98,27 @@ export function pointsMesh(tiles: Tile[]) {
         let g = 0.44 * height;
         let b = 0.3 * height;
 
+        let waterFactor = 0;
+        if (t.elevation < 0.4) {
+            waterFactor = 0.5 - t.elevation;
+        } else if (t.lake + t.riverAmount*0.5 > 0.04) {
+            waterFactor = (t.lake + t.riverAmount*0.5)*1.5 + 0.2;
+        }
+
         let lightFactor = (vx + vy) * 0.06/Math.SQRT2;
         if (t.elevation < 0.4) {
-            lightFactor *= Math.max(0, t.elevation - 0.3)*10;
+            lightFactor *= Math.max(0, waterFactor)*1;
         }
         r += lightFactor*0.5;
         g += lightFactor*0.4;
         b += lightFactor*0.1;
         if (t.elevation < 0.4) {
-            const depth = 0.9 - t.elevation*1.5;
+            const depth = 0.9 - t.elevation*3.5;
             r -= 0.18 * depth;
             g -= 0.1 * depth;
             b -= 0.05 * depth;
-        } else if (t.lake > 0.04) {
-            const depth = t.lake*1.5 + 0.3;
+        } else if (t.lake + t.riverAmount*0.5 > 0.04) {
+            const depth = (t.lake + t.riverAmount*0.5)*3.5 + 0.3;
             r -= 0.18 * depth;
             g -= 0.15 * depth;
             b -= 0.09 * depth;
@@ -200,7 +207,7 @@ export function pointsMesh(tiles: Tile[]) {
     result.add(m.object);
     result.add(h.object);
     let updateI = 0;
-    const chunk = ~~(tiles.length / 30);
+    const chunk = ~~(tiles.length / 1);
     return {
         object: result,
         update() {
@@ -209,8 +216,8 @@ export function pointsMesh(tiles: Tile[]) {
             if (updateI > tiles.length + chunk) {
                 updateI = 0;
             }
-            for (let i = 0; i < tiles.length; ++i) {
-                let t = tiles[(i)%tiles.length];
+            for (let i = 0; i < chunk; ++i) {
+                let t = tiles[(i+portion)%tiles.length];
 
                 let vx = 0;
                 let vy = 0;
@@ -231,6 +238,8 @@ export function pointsMesh(tiles: Tile[]) {
                 let r = 0.46 * height;
                 let g = 0.44 * height;
                 let b = 0.3 * height;
+                r += t.softRock * 0.3 * height;
+                g += t.softRock * 0.2 * height;
 
                 let lightFactor = (vx + vy) * 0.06/Math.SQRT2;
                 if (t.elevation < 0.4) {
@@ -240,20 +249,28 @@ export function pointsMesh(tiles: Tile[]) {
                 g += lightFactor*0.4;
                 b += lightFactor*0.1;
                 if (t.elevation < 0.4) {
-                    const depth = 0.9 - t.elevation*1.5;
-                    r -= 0.18 * depth;
-                    g -= 0.1 * depth;
-                    b -= 0.05 * depth;
-                } else if (t.lake > 0.04) {
-                    const depth = t.lake*1.5 + 0.3;
+                    const depth = 0.8 - t.elevation*0.5;
                     r -= 0.18 * depth;
                     g -= 0.15 * depth;
-                    b -= 0.09 * depth;
+                    b -= 0.12 * depth;
+
+                    r += 0.01;
+                    g += 0.01;
+                    b +=  0.02;
+                } else if (t.lake + t.riverAmount*0.05 > 0.04) {
+                    const depth = (t.lake + t.riverAmount*0.05)*2.5 + 0.5;
+                    r -= 0.18 * depth;
+                    g -= 0.15 * depth;
+                    b -= 0.10 * depth;
+
+                    r += 0.01;
+                    g += 0.01;
+                    b += 0.02;
                 }
 
                 if (t.x === t.x && t.y === t.y)
                 {
-                    geometry.attributes.color.setXYZ((i)%tiles.length, r, g, b);
+                    geometry.attributes.color.setXYZ((i+portion)%tiles.length, r, g, b);
                 }
             }
 
@@ -296,15 +313,15 @@ export function riverMesh(tiles: Tile[]) {
             const colors = new Array<number>(0);
             for (let i = 0; i < tiles.length; ++i) {
                 const t = tiles[i];
-                const amount = t.riverAmount*4;
-                let r = 0.1;
-                let g = 0.04;
-                let b = 0.01;
+                const amount = Math.min(t.riverAmount*1,2);
+                let r = 0.18;
+                let g = 0.15;
+                let b = 0.09;
 
-                if (t.x === t.x && t.y === t.y && t.riverAmount > 0.04 && t.elevation > 0.4 && t.lake < 0.04)
+                if (t.x === t.x && t.y === t.y && t.riverAmount > 0.01 && t.elevation > 0.4 && t.lake < 0.04)
                 {
                     const target = tiles[t.downhill];
-                    const targetAmount = target.riverAmount*4;
+                    const targetAmount = Math.min(target.riverAmount*1,2);
                     positions.push(t.x, t.y, 0);
                     positions.push(target.x, target.y, 0);
                     colors.push(r*amount,g*amount,b*amount);

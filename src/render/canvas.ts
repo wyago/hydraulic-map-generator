@@ -13,7 +13,7 @@ export function createCanvas() {
     };
     sizeWatcher();
 
-    let zoom = 25;
+    let zoom = 65;
     camera!.scale.setScalar(Math.pow(zoom, 2));
 
     window.addEventListener("wheel", e => {

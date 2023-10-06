@@ -1,5 +1,4 @@
 import Delaunator from "delaunator";
-import { SimplexNoise } from "ts-perlin-simplex";
 import { byMin } from "../math";
 import { Tile } from "./Tile";
 
@@ -10,7 +9,6 @@ const hardness = {
     "flat": 1
 } as const;
 
-const noise = new SimplexNoise();
 
 export class Map {
     readonly allTiles: Tile[];
@@ -54,14 +52,20 @@ export class Map {
         }
         for (let i = 0; i < this.allTiles.length; ++i) {
             let current = this.allTiles[i];
-            for (let j = 0; j < 100; ++j) {
+            const charge = current.lake * 0.1;
+            current.lake *= 0.9;
+            for (let j = 0; j < 1000; ++j) {
                 let target = this.allTiles[current.downhill];
-                if (target.elevation < 0.4 || target.totalElevation() > current.totalElevation()) {
+                if (target.totalElevation() > current.totalElevation()) {
+                    if (current.elevation > 0.4) {
+                        current.lake += 0.001;
+                    }
                     break;
                 }
-                current.riverAmount += 0.005;
+                current.riverAmount += 0.001;
                 current = target;
             }
+            current.lake += charge;
         }
     }
 
@@ -80,30 +84,47 @@ export class Map {
     }
 
     iterateRivers() {
-        this.deriveDownhills();
         for (let i = 0; i < this.allTiles.length; ++i) {
             const source = this.allTiles[i];
-            if (source.lake > 0.4) {
-                source.lake -= 0.01;
-            }
+            source.lake *= 0.99;
             let target = this.allTiles[source.downhill];
             const delta = (source.totalElevation() - target.totalElevation());
             if (delta < 0) {
-                if (source.elevation > 0.4) {
-                    source.lake += 0.002;
-                }
                 continue;
             }
 
-            let pressure = (source.elevation - target.elevation) * hardness[source.roughness];
+            let pressure = Math.min(source.elevation - target.elevation, source.riverAmount)  * source.softRock;
 
             if (source.elevation < 0.4) {
-                pressure *= 10;
+                pressure *= 1;
             } else if (target.lake > 0.05) {
-                pressure *= 5;
+                pressure *= 1;
             }
-            source.elevation -= pressure * 0.01;
-            target.elevation += pressure * 0.01;
+            pressure *= 0.1;
+            pressure  = Math.min(pressure, (source.elevation - target.elevation)*0.5);
+            source.elevation -= pressure;
+            target.elevation += pressure;
+        }
+    }
+
+    iterateSpread() {
+        for (let i = 0; i < this.allTiles.length; ++i) {
+            const source = this.allTiles[i];
+
+            for (let j = 0; j < source.adjacents.length; ++j) {
+                const target = this.allTiles[source.adjacents[j]];
+
+                const delta = source.totalElevation() - target.totalElevation();
+                let transfer = Math.min(delta / source.adjacents.length, source.lake);
+                if (target.elevation < 0.4) {
+                    transfer = source.lake;
+                }
+                source.lake -= transfer;
+
+                const erosion = Math.min(transfer*transfer*0.3, (source.elevation - target.elevation)*0.1);
+                source.elevation -= erosion * source.softRock;
+                target.elevation += erosion * source.softRock;
+            }
         }
     }
 }
