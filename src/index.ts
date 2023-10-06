@@ -22,46 +22,26 @@ window.addEventListener("load", () => {
             x.elevation
         ));
         const map = new Map(tiles);
-        map.setRivers();
 
         let mesh = pointsMesh(tiles);
         let rivers = riverMesh(tiles);
         const {scene, render, element} = createCanvas();
-        scene.add(mesh);
-        scene.add(rivers);
+        scene.add(mesh.object);
+        scene.add(rivers.object);
 
-        let ongoing = false;
-        let riversOngoing = true;
+        let eroding = true;
         let j = 0;
 
         console.log("starting");
         function frame() {
-            if (riversOngoing) {
-                map.setRivers();
-                if (j % 20 === 0) {
-                    scene.remove(rivers);
-                    scene.remove(mesh);
-                    mesh = pointsMesh(tiles);
-                    rivers = riverMesh(tiles);
-                    scene.add(mesh);
-                    scene.add(rivers);
+            j += 1;
+            if (eroding) {
+                map.iterateRivers();
+                mesh.update();
+                if (j % 20) {
+                    map.setRivers();
+                    rivers.update();
                 }
-            }
-            if (ongoing) {
-                j += 1;
-                for (let i = 0; i < 5000; ++i) {
-                    ongoing = generator.step();
-                    if (!ongoing) break;
-                }
-                if (j % 20 === 0) {
-                    scene.remove(rivers);
-                    scene.remove(mesh);
-                    mesh = pointsMesh(tiles);
-                    rivers = riverMesh(tiles);
-                    scene.add(mesh);
-                    scene.add(rivers);
-                }
-                console.log("generationg...");
             }
             render();
             requestAnimationFrame(frame);

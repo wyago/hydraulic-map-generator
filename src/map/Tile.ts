@@ -13,10 +13,9 @@ export class Tile {
 
     readonly adjacents: number[] = [];
     readonly points: PointLike[] = [];
-    riverDirection: number = 0;
-    water: number = 0.4;
-    velocity: number = 0.2;
-    softening: number = 0;
+    downhill: number = 0;
+    riverAmount: number = 0;
+    lake: number = 0;
 
     readonly minX: number;
     readonly minY: number;
@@ -36,6 +35,6 @@ export class Tile {
     }
 
     totalElevation() {
-        return this.elevation + this.water;
+        return this.elevation + this.lake;
     }
 }
