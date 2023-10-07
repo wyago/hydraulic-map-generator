@@ -1,4 +1,5 @@
 import { SimplexNoise } from "ts-perlin-simplex";
+import { clamp } from "../math";
 import { PointLike } from "./PointLike";
 
 export type Roughness =
@@ -6,9 +7,26 @@ export type Roughness =
     "hills" |
     "mountain";
 
+const hardHeight = {
+    "mountain": 0.95,
+    "hills": 0.9,
+    "flat": 0.5
+} as const;
+
 const noise = new SimplexNoise();
 const noiseX = new SimplexNoise();
 const noiseY = new SimplexNoise();
+function fbm(x: number, y: number) {
+    let result = 0;
+    x = x + noiseX.noise(x * 0.001, x * 0.001) * 2000;
+    y = y + noiseY.noise(y * 0.001, y * 0.001) * 2000;
+    for (let i = 0; i < 4; ++i) {
+        const factor = Math.pow(2, i+1);
+        result = noise.noise(x / factor * 0.001, y / factor * 0.001) / factor;
+    }
+    return result * 0.5 + 0.5;
+}
+    
 export class Tile {
     readonly x: number;
     readonly y: number;
@@ -20,9 +38,9 @@ export class Tile {
     downhill: number = 0;
     riverAmount: number = 0;
     lake: number = 0;
-    vx = 0;
-    vy = 0;
-    silt = 0.1;
+    silt = 0.;
+    snow: number = 0;
+    vegetation: number = 0;
 
     readonly minX: number;
     readonly minY: number;
@@ -45,7 +63,12 @@ export class Tile {
     totalElevation() {
         return this.elevation + this.lake;
     }
-    speed2() {
-        return this.vx * this.vx + this.vy * this.vy;
+
+    hardHeight() {
+        return hardHeight[this.roughness];
+    }
+
+    hardness() {
+        return clamp(0.2 + this.silt*0.7 + Math.max(0, this.elevation - hardHeight[this.roughness])*0.75 - this.elevation*0.5, 0.01, 1) * fbm(this.x*0.01, this.y*0.01);
     }
 }

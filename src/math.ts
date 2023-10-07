@@ -50,5 +50,6 @@ export function shuffle<T>(array: T[]) {
   }
   
 export function lerp(a: number, b: number, factor: number) {
+    factor = clamp(factor, 0, 1);
     return (1 - factor)*a + (factor)*b;
 }

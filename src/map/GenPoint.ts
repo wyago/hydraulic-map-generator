@@ -34,7 +34,7 @@ export class GenPoint {
         this.type = type;
         this.elevation = elevation;
 
-        if (this.elevation !== this.elevation) {
+        if (this.x !== this.x) {
             debugger;
         }
 
@@ -45,11 +45,14 @@ export class GenPoint {
     }
 
     noise() {
-
-        return noise.noise(
-            (this.x + noiseX.noise(this.x * 0.0001, this.y * 0.0001) * 940) * 0.000015,
-            (this.y + noiseY.noise(this.x * 0.0001, this.y * 0.0001) * 940) * 0.000015,
-        ) * 0.5 + 0.5;
+        let result = (noise.noise(
+            (this.x + noiseX.noise(this.x * 0.001, this.y * 0.001) * 940) * 0.0003,
+            (this.y + noiseY.noise(this.x * 0.001, this.y * 0.001) * 940) * 0.0003,
+        ) * 0.35 + 0.35) + (noise.noise(
+            (this.x + noiseX.noise(this.x * 0.01, this.y * 0.01) * 140) * 0.005,
+            (this.y + noiseY.noise(this.x * 0.01, this.y * 0.01) * 140) * 0.005,
+        ) * 0.15 + 0.15); 
+        return Math.pow(result, 1)*0.8;
     }
 
     sample(radius: number) {
@@ -61,14 +64,18 @@ export class GenPoint {
         const type = this.nextType();
 
         let shift = (
-            (0 - this.elevation)*0.01 + Math.random() * 0.02 - 0.01
-        ) * this.noise();
+            (this.noise() - this.elevation)*0.02
+        );
+
+        if (this.elevation + shift !== this.elevation + shift) {
+            debugger;
+        }
 
         return new GenPoint(
             this.x + dx,
             this.y + dy,
             type,
-            this.elevation + shift
+            Math.max(this.elevation + shift, 0)
         );
     }
 
