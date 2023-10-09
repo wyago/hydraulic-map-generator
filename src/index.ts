@@ -1,41 +1,36 @@
 import { globalProjector } from "./projector";
 import { createUi } from "./ui/ui";
 
-import { BoxGeometry, Mesh, MeshBasicMaterial } from "three";
 import { SimplexNoise } from "ts-perlin-simplex";
 import './index.css';
 import { GenPoint } from "./map/GenPoint";
+import { TileSet } from "./map/Graph";
 import { Map } from "./map/Map";
 import { Tile } from "./map/Tile";
-import { generateMap } from "./map/generator";
+import { createDiscSampler } from "./map/pureDisc";
+import { byMin } from "./math";
 import { createCanvas } from "./render/canvas";
-import { genMesh, pointsMesh, riverMesh } from "./render/mesher";
+import { graphRenderer } from "./render/graphRenderer";
+import { pointsMesh, riverMesh } from "./render/mesher";
 
 function generator() {
-    const generator = generateMap(1500);
+    const generator = createDiscSampler(8, (x, y) => true);
 
     const {scene, render, element} = createCanvas();
 
-    let mesh = genMesh(generator.graph());
+    let mesh = graphRenderer();
     scene.add(mesh.object);
-    scene.add(new Mesh(new BoxGeometry(1,1,1), new MeshBasicMaterial({ color: 0xffffff})))
 
-    let generating = true;
-
-    (window as any).erode = () => {
-        generating = false;
-        element.remove();
-        eroder(generator.graph());
+    let generating = false;
+    for (let i = 0; i < 1000000; ++i)  {
+        if(!generator.step())
+            break;
     }
+    mesh.update(generator.vertices());
 
     function frame() {
         if (generating) {
-            for (let i = 0; i < 30000; ++i)  {
-                if(!generator.step())
-                    break;
-            }
-            console.log(generator.count())
-            mesh.update(generator.graph());
+            console.log(generator.vertices().count);
         }
         render();
         requestAnimationFrame(frame);
@@ -75,7 +70,7 @@ function fbm(noise: SimplexNoise, x: number, y: number) {
 
 function wavy(x: number, y: number) {
     x = x * 0.008;
-    y = y * 0.007;
+    y = y * 0.008;
     x = x + fbm(noiseX, x*0.1, y*0.1)*4;
     y = y + fbm(noiseY, x*0.1, y*0.1)*4;
 
@@ -84,7 +79,7 @@ function wavy(x: number, y: number) {
 
 function eroder(risers: GenPoint[]) {
     const tiles = risers.map(p => {
-        const softness = 0.3;//wavy(p.x, p.y) * 0.2;
+        const softness = wavy(p.x, p.y) * 0.2 + 0.2;
         const elevation = p.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
         const softRock = Math.min(elevation, softness);
         const hardRock = Math.max(0, elevation - softness);
@@ -104,25 +99,43 @@ function eroder(risers: GenPoint[]) {
 
     globalProjector.append(document.body, () => root.realize());
 
-    const map = new Map(tiles);
+    const map = new Map(new TileSet(tiles));
 
-    let mesh = pointsMesh(tiles);
-    let rivers = riverMesh(tiles);
-    const {scene, render, element} = createCanvas();
+    let mesh = pointsMesh();
+    let rivers = riverMesh();
+    const {scene, render, element} = createCanvas(({x, y}) => {
+        const region = map.tiles.vertices.points.search({
+            maxX: x + 10,
+            minX: x - 10,
+            maxY: y + 10,
+            minY: y - 10,
+        });
+        if (region.length === 0) {
+            return;
+        }
+
+        const p = byMin(region, t => {
+            const dx = t.maxX - x;
+            const dy = t.maxY - y;
+            return dx*dx + dy*dy;
+        });
+
+        root.inform(map.tiles, p.index);
+    });
     scene.add(mesh.object);
     scene.add(rivers.object);
     (window as any).dry = (n: number) => {
         for (let i = 0; i < risers.length; ++i) {
-            map.allTiles[i].water -= n || 0.1;
+            map.tiles.hardSoftWaterRiver[i*4+2] -= n || 0.1;
         }
     }
 
-    for (let i = 0; i < 10; ++i) {
+    for (let i = 0; i < 30; ++i) {
         map.simpleErosion();
     }
 
-    mesh.update();
-    rivers.update();
+    mesh.update(map.tiles);
+    rivers.update(map.tiles);
 
     let eroding = false;
     let bioming = false;
@@ -133,26 +146,27 @@ function eroder(risers: GenPoint[]) {
         j += 1;
         if (bioming) {
             map.fog();
-            mesh.update();
+            mesh.update(map.tiles);
         }
         if (eroding) {
+            //map.carry();
             map.setRivers();
             map.iterateRivers();
-            map.iterateSpread();
+            //map.iterateSpread();
             if (j % 3 === 0) {
-                mesh.update();
-                rivers.update();
+                mesh.update(map.tiles);
+                rivers.update(map.tiles);
             }
         }
         render();
         requestAnimationFrame(frame);
     }
-    frame();
+    requestAnimationFrame(frame);
 
     document.body.append(element);
 }
 
 
 window.addEventListener("load", () => {
-    generator();
+    loader();
 });

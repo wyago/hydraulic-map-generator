@@ -1,20 +1,19 @@
 import RBush from "rbush";
 import { BushVertex, Vertices } from "./Graph";
 
-export function createDiscSampler(radius: (x: number, y: number) => number, filter: (x: number, y: number) => boolean): Vertices {
-    const points = new RBush<BushVertex>();
-    const list = new Array<{x: number, y: number}>();
-    const actives = new Array<{x: number, y: number}>();
+export function createDiscSampler(radius: number, filter: (x: number, y: number) => boolean) {
+    let count = 1;
+    let points = new RBush<BushVertex>(9);
+    let xs = new Float32Array(1024);
+    let ys = new Float32Array(1024);
 
-    const seed = {
-        x: Math.random() * radius(0,0)*2 - radius(0,0),
-        y: Math.random() * radius(0,0)*2 - radius(0,0),
-    };
-    list.push(seed);
-    actives.push(seed);
+    const actives: number[] = [0];
+
+    xs[0] = Math.random() * radius*2 - radius;
+    ys[0] = Math.random() * radius*2 - radius;
 
     function near(nx: number, ny: number) {
-        const r = radius(nx, ny);
+        const r = radius;
         const region = points.search({
             minX: nx - r,
             minY: ny - r,
@@ -24,8 +23,8 @@ export function createDiscSampler(radius: (x: number, y: number) => number, filt
 
         for (let i = 0; i < region.length; ++i) {
             const target = region[i];
-            const dx = target.x - nx;
-            const dy = target.y - ny;
+            const dx = xs[target.index] - nx;
+            const dy = ys[target.index] - ny;
             if (dx*dx + dy*dy < r*r) {
                 return true;
             }
@@ -33,50 +32,65 @@ export function createDiscSampler(radius: (x: number, y: number) => number, filt
         return false;
     }
 
-    function makeSample(r: number, {x,y}: {x: number,y: number}) {
+    let sample = {x:0,y:0};
+    function makeSample(r: number, index) {
         const angle = Math.random() * 2 * Math.PI;
         let l = Math.random() * r + r;
         const dx = Math.cos(angle) * l;
         const dy = Math.sin(angle) * l;
-        return { x: x + dx, y: y + dy };
+        sample.x = xs[index] + dx;
+        sample.y = ys[index] + dy;
     }
 
-    while (actives.length) {
+    function step() {
+        if (actives.length === 0) {
+            return false;
+        }
         const i = ~~(Math.random() * actives.length);
         const active = actives[i];
-        const r = radius(active.x,active.y);
-
-        let first = false;
+        const r = radius;
 
         for (let i = 0; i < 7; ++i) {
-            const sample = makeSample(r, active);
+            makeSample(r, active);
             if (filter(sample.x, sample.y) && !near(sample.x, sample.y)) {
-                points.insert({
-                    index: list.length,
-                    minX: sample.x,
-                    maxX: sample.x,
-                    minY: sample.y,
-                    maxY: sample.y,
-                });
-                list.push(sample);
-
-                if (first) {
-                    actives[i] = sample;
-                    first = false;
-                } else {
-                    actives.push(sample);
+                if (count > xs.length) {
+                    const capacity = xs.length * 2;
+                    const newxs = new Float32Array(capacity);
+                    const newys = new Float32Array(capacity);
+                    newxs.set(xs);
+                    newys.set(ys);
+                    xs = newxs;
+                    ys = newys;
                 }
+
+                xs[count] = sample.x;
+                ys[count] = sample.y;
+                points.insert({
+                    index: count,
+                    minX: sample.x - r,
+                    maxX: sample.x + r,
+                    minY: sample.y - r,
+                    maxY: sample.y + r,
+                });
+
+                actives.push(count);
+                count += 1;
             }
         }
 
-        if (first) {
-            actives.splice(i, 1);
-        }
+        actives.splice(i, 1);
+        return true;
     }
 
     return {
-        points,
-        xs: new Float32Array(list.map(p => p.x)),
-        ys: new Float32Array(list.map(p => p.y)),
+        step,
+        vertices(): Vertices {
+            return {
+                points,
+                count,
+                xs,
+                ys,
+            }
+        }
     };
 }

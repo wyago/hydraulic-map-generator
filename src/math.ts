@@ -53,3 +53,11 @@ export function lerp(a: number, b: number, factor: number) {
     factor = clamp(factor, 0, 1);
     return (1 - factor)*a + (factor)*b;
 }
+
+export function sumBy<T>(x: T[], f: (t: T) => number) {
+    let sum = 0;
+    for (let i = 0; i < x.length; ++i) {
+        sum += f(x[i]);
+    }
+    return sum;
+}

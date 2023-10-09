@@ -20,9 +20,11 @@
         "typescript": "5.2.2"
     },
     "dependencies": {
+        "@jgtools/shg": "^1.0.4",
         "delaunator": "^5.0.0",
         "maquette": "3.6.0",
         "rbush": "^3.0.1",
+        "save": "^2.9.0",
         "three": "^0.154.0",
         "ts-perlin-simplex": "^0.0.3",
         "uuid": "9.0.1"

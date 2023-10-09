@@ -1,95 +1,111 @@
-import Delaunator from "delaunator";
 import { byMin, clamp } from "../math";
-import { Tile } from "./Tile";
-
-
+import { TileSet } from "./Graph";
 
 export class Map {
-    readonly allTiles: Tile[];
+    //readonly allTiles: Tile[];
+    readonly tiles: TileSet;
     //readonly tiles: RBush<Tile>;
 
-    constructor(tiles: Tile[]) {
+    constructor(tiles: TileSet) {
         //this.tiles = new RBush<Tile>();
 
-        this.allTiles = tiles;
+        this.tiles = tiles;
         //this.tiles.load(this.allTiles);
         
-        const source = tiles.map(a => ([a.x, a.y]));
-
-        function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
-        const delaunay = Delaunator.from(source);
-        function forEachTriangleEdge(callback: (p: number, q: number) => void) {
-            for (let e = 0; e < delaunay.triangles.length; e++) {
-                if (e > delaunay.halfedges[e]) {
-                    const p = delaunay.triangles[e];
-                    const q = delaunay.triangles[nextHalfedge(e)];
-                    callback(p, q);
-                }
-            }
+        for (let i = 0; i < tiles.count; ++i) {
+            tiles.downhills[i] = byMin(tiles.adjacents[i], i =>  this.tiles.totalElevation(i));
         }
+    }
 
-        forEachTriangleEdge((p, q) => {
-            tiles[p].adjacents.push(q);
-            tiles[q].adjacents.push(p);
-        });
-        
-        this.allTiles.forEach(source => {
-            source.adjacents.sort((x, y) => {
-                const left = tiles[x];
-                const right = tiles[y];
-                return Math.atan2(left.y - source.y, left.x - source.x) > Math.atan2(right.y - source.y, right.x - source.x) ? 1 : -1;
-            })
-            source.downhill = byMin(source.adjacents, i =>  this.allTiles[i].totalElevation());
-        });
+    carry() {
+        this.deriveDownhills();
+
+        for (let i = 0; i < this.tiles.count; ++i) {
+            let current = i;
+            let silt = 0.001;
+            if (this.tiles.softRock(current) > silt) {
+                this.tiles.hardSoftWaterRiver[i * 4 + 1] -= silt;
+            } else {
+                continue;
+            }
+
+            for (let j = 0; j < 100; ++j) {
+                let target = this.tiles.downhills[current];
+                const delta = this.tiles.totalElevation(target) - this.tiles.totalElevation(target);
+                if (delta > 0 || this.tiles.surfaceWater(current) > 0) {
+                    break;
+                }
+                current = target;
+            }
+            this.fill(current, silt);
+        }
     }
 
     setRivers() {
         this.deriveDownhills();
 
-        for (let i = 0; i < this.allTiles.length; ++i) {
-            const current = this.allTiles[i];
-            const surface = this.allTiles[i].surfaceWater();
+        for (let i = 0; i < this.tiles.count; ++i) {
+            const surface = this.tiles.surfaceWater(i);
             if (surface > 0.2) {
-                this.allTiles[i].water -= (surface - 0.2) * 0.3;
+                this.tiles.hardSoftWaterRiver[i * 4 + 2] -= (surface - 0.2) * 0.3;
             }
-            this.allTiles[i].riverAmount *= 0.9;
-            if (current.water < 0) {
-                current.water = 0;
-            }
-
-            if (false)
-            if (current.rockElevation() > 0.98) {
-                current.snow += 0.01;
-            } else if(current.rockElevation() < 0.9) {
-                if (current.snow > 0) {
-                    current.water += 0.0001;
-                }
-                current.snow = clamp(current.snow - 0.01, 0, 1);
+            this.tiles.hardSoftWaterRiver[i*4+3] *= 0.99;
+            if (this.tiles.water(i) < 0) {
+                this.tiles.hardSoftWaterRiver[i*4+2] = 0;
             }
         }
-        for (let i = 0; i < this.allTiles.length; ++i) {
-            let current = this.allTiles[i];
-            let velocity = 0.01;
-            for (let j = 0; j < 1000; ++j) {
-                let target = this.allTiles[current.downhill];
-                const delta = target.totalElevation() - current.totalElevation();
-                if (delta > 0 || current.surfaceWater() > 0 || current.snow > 0.1) {
+        for (let i = 0; i < this.tiles.count; ++i) {
+            let current = i;
+            let silt = 0;
+            for (let j = 0; j < 100; ++j) {
+                let target = this.tiles.downhills[current];
+                const delta = this.tiles.totalElevation(target) - this.tiles.totalElevation(target);
+                if (delta > 0 || this.tiles.surfaceWater(current) > 0) {
                     break;
                 }
                 current = target;
-                current.riverAmount += velocity;
-                velocity -= delta*10;
+                this.tiles.hardSoftWaterRiver[current*4 + 3] += 0.00001;
+                const river = this.tiles.hardSoftWaterRiver[current*4 + 3];
 
-                velocity = velocity*0.999 + 0.01*0.001;
+                const transfer = Math.min(river, 0.001, this.tiles.softRock(i));
+                silt += transfer;
+                this.tiles.hardSoftWaterRiver[i * 4 + 1] -= transfer;
             }
-            current.water += 0.0002;
+            this.fill(current, silt);
+            this.tiles.hardSoftWaterRiver[current*4 + 2] += 0.0001;
         }
     }
+
+    fill(start: number, silt: number) {
+        // We need to discover a fill area that can accomodate the silt.
+        // So we repeatedly check whether we have enough room, and if not,
+        // we add the lowest adjacent.
+        while (silt > 0.0001) {
+            let bar = Number.MAX_VALUE;
+            let which = 0;
+            const adj = this.tiles.adjacents[start];
+            for (let i = 0; i < adj.length; ++i) {
+                const elevation = this.tiles.rockElevation(adj[i]);
+                if (elevation < bar) {
+                    bar = elevation;
+                    which = adj[i];
+                }
+            }
+
+            if (this.tiles.rockElevation(which) < this.tiles.rockElevation(start)) {
+                start = which;
+            }
+
+            silt -= 0.0001;
+            this.tiles.hardSoftWaterRiver[start*4 + 1] += 0.0001;
+        }
+    }
+
 
     fog() {
         const vx = 1;
         const vy = 1;
-        for (let i = 0; i < this.allTiles.length; ++i) {
+        for (let i = 0; i < this.tiles.count; ++i) {
             const source = this.allTiles[i];
             if (source.surfaceWater() > 0) {
                 source.humidity = clamp(source.humidity + Math.random()*0.05, 0, 1);
@@ -136,113 +152,96 @@ export class Map {
     }
 
     simpleErosion() {
-        for (let i = 0; i < this.allTiles.length; ++i) {
-            const source = this.allTiles[i]
-
-            for (let j = 0; j < source.adjacents.length; ++j) {
-                const target = this.allTiles[source.adjacents[j]];
-                const delta = (source.rockElevation() - target.rockElevation());
+        for (let source = 0; source < this.tiles.count; ++source) {
+            for (let a = 0; a < this.tiles.adjacents[source].length; ++a) {
+                const target = this.tiles.adjacents[source][a];
+                const delta = (this.tiles.rockElevation(source) - this.tiles.rockElevation(target));
 
                 if (delta < 0) {
                     continue;
                 }
 
-                const softFactor = Math.min((source.softRock - target.softRock)*0.5,  delta*0.3* (source.surfaceWater() + 0.2));
-                target.softRock += softFactor;
-                source.softRock -= softFactor;
+                const softFactor = Math.min((this.tiles.softRock(source) - this.tiles.softRock(target))*0.5,  delta*0.5* (this.tiles.surfaceWater(source) + 0.2));
+                this.tiles.hardSoftWaterRiver[source*4 + 1] -= softFactor;
+                this.tiles.hardSoftWaterRiver[target*4 + 1] += softFactor;
 
-                const hardFactor = Math.min((source.hardRock - target.hardRock)*0.5,  delta*0.1 * (source.surfaceWater() + 0.3));
-                target.hardRock += hardFactor;
-                source.hardRock -= hardFactor;
+                const hardFactor = Math.min((this.tiles.hardRock(source) - this.tiles.hardRock(target))*0.5,  delta*0.1 * (this.tiles.surfaceWater(source) + 0.3));
+                this.tiles.hardSoftWaterRiver[source*4 + 0] -= hardFactor;
+                this.tiles.hardSoftWaterRiver[target*4 + 0] += hardFactor;
             }
         } 
     }
 
     deriveDownhills() {
-        for (let i = 0; i < this.allTiles.length; ++i) {
-            const source = this.allTiles[i]
-            const original = source.downhill;
+        for (let source = 0; source < this.tiles.count; ++source) {
+            const original = this.tiles.downhills[source];
             let next = original;
             let lowest = Number.MAX_VALUE;
-            for (let j = 0; j < source.adjacents.length; ++j) {
-                const target = this.allTiles[source.adjacents[j]];
-                const factor = target.totalElevation();
+            for (let j = 0; j < this.tiles.adjacents[source].length; ++j) {
+                const target = this.tiles.adjacents[source][j];
+                const factor = this.tiles.totalElevation(target);
                 if (factor < lowest) {
-                    next = source.adjacents[j];
+                    next = target;
                     lowest = factor;
                 }
             }
 
-            source.downhill = next;
+            this.tiles.downhills[source] = next;
         }
     }
 
     iterateRivers() {
-        for (let i = 0; i < this.allTiles.length; ++i) {
-            const source = this.allTiles[i];
-            const target = this.allTiles[source.downhill];
-            const delta = (source.totalElevation() - target.totalElevation());
+        for (let source = 0; source < this.tiles.count; ++source) {
+            const target = this.tiles.downhill(source);
+            const delta = (this.tiles.rockElevation(source) - this.tiles.rockElevation(target));
             if (delta < 0) {
                 continue;
             }
 
-            let pressure = 5*source.riverAmount;
+            let pressure = 1*this.tiles.river(source);
 
-            if (source.softRock > 0) {
-                pressure = Math.min(source.softRock, Math.min(pressure, delta*0.5));
-                source.softRock -= pressure;
-                target.softRock += pressure;
-            } else {
-                const erosion = Math.min(pressure * 0.001, source.hardRock);
-                source.hardRock -= erosion;
-                source.softRock += erosion;
-            }
-
-            if (source.snow > target.snow) {
-                const snow = (source.snow - target.snow)*0.1;
-                source.snow -= snow;
-                target.snow += snow;
-                let erosion = Math.min(snow, (source.rockElevation() - target.rockElevation()) * 0.4);
-                
-                if (source.softRock > 0) {
-                    erosion = Math.min((source.softRock - target.softRock)*0.3, erosion);
-                    source.softRock -= erosion;
-                    target.softRock += erosion;
-                } else {
-                    erosion = Math.min(source.hardRock, erosion*0.05);
-                    source.hardRock -= erosion;
-                    source.softRock += erosion;
-                }
+            if (this.tiles.softRock(source) < 0.01) {
+                const erosion = Math.min(pressure * 0.001, this.tiles.hardRock(source));
+                this.tiles.hardSoftWaterRiver[source*4+0] -= erosion;
+                this.tiles.hardSoftWaterRiver[source*4+1] += erosion;
             }
         }
     }
 
     iterateSpread() {
-        for (let i = 0; i < this.allTiles.length; ++i) {
-            const source = this.allTiles[i];
+        for (let source = 0; source < this.tiles.count; ++source) {
+            this.tiles.hardSoftWaterRiver[source*4 + 2] += 0.0001;
+            this.tiles.hardSoftWaterRiver[source*4 + 3] *= 0.99;
+        }
+        this.deriveDownhills();
+        for (let source = 0; source < this.tiles.count; ++source) {
+            if (this.tiles.water(source) > 0)
+            for (let j = 0; j < this.tiles.adjacents[source].length; ++j) {
+                const target = this.tiles.adjacents[source][j];
 
-            if (source.water > 0)
-            for (let j = 0; j < source.adjacents.length; ++j) {
-                const target = this.allTiles[source.adjacents[j]];
-
-                const delta = source.waterTable() - target.waterTable();
+                const delta = this.tiles.waterTable(source) - this.tiles.waterTable(target);
                 if (delta < 0) {
                     continue;
                 }
-                source.water = Math.max(source.water, 0);
-                let transfer = Math.min(delta / source.adjacents.length, source.water);
-                transfer = Math.min((source.water - target.water)*0.5, transfer);
+                this.tiles.hardSoftWaterRiver[source*4+2] = Math.max(this.tiles.water(source), 0);
+                let transfer = Math.min(delta / this.tiles.adjacents[source].length, this.tiles.water(source));
+                transfer = Math.min((this.tiles.water(source) - this.tiles.water(target))*0.5, transfer);
 
-                if (source.water < source.softRock) {
+                if (this.tiles.water(source) < this.tiles.softRock(source)) {
+                    transfer *= 0.1;
+                }
+                if (this.tiles.water(target) < this.tiles.softRock(target)) {
                     transfer *= 0.1;
                 }
 
-                source.water -= transfer;
-                target.water += transfer;
+                this.tiles.hardSoftWaterRiver[source*4 + 3] += transfer;
 
-                transfer = Math.min((source.softRock - target.softRock)*0.5, transfer * 0.01);
-                source.softRock -= transfer;
-                target.softRock += transfer;
+                this.tiles.hardSoftWaterRiver[source*4+2] -= transfer;
+                this.tiles.hardSoftWaterRiver[target*4+2] += transfer;
+
+                transfer = Math.min((this.tiles.rockElevation(source) - this.tiles.rockElevation(target))*0.5, transfer * 0.5, this.tiles.softRock(source));
+                this.tiles.hardSoftWaterRiver[source*4+1] -= transfer;
+                this.tiles.hardSoftWaterRiver[target*4+1] += transfer;
             }
         }
         

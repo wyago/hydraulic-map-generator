@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { PointLike } from '../map/PointLike';
 
-export function createCanvas() {
+export function createCanvas(clientmove: (e: {x: number, y: number}) => void) {
     const scene = new THREE.Scene();
     let camera: THREE.OrthographicCamera;
+    let aspect: number;
 
     const renderer = new THREE.WebGLRenderer();
     const sizeWatcher = () => {
         renderer.setSize( window.innerWidth, window.innerHeight );
-        const aspect = document.body.clientWidth / document.body.clientHeight;
+        aspect = document.body.clientWidth / document.body.clientHeight;
         camera = new THREE.OrthographicCamera(-aspect, aspect, 1, -1, -1000, 1000);
     };
     sizeWatcher();
@@ -38,6 +39,14 @@ export function createCanvas() {
             camera.translateX(-dx*zoom*0.1);
             camera.translateY(dy*zoom*0.1);
         }
+        const v = new THREE.Vector3((e.clientX / window.innerWidth ) * aspect * 2 - aspect,
+            - ( e.clientY / window.innerHeight ) * 2 + 1, 0.5);
+        v.unproject(camera);
+
+        clientmove({
+            x: v.x,
+            y: v.y
+        })
     })
 
     window.addEventListener("mouseup", e => { down = undefined});
