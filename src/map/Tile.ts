@@ -1,5 +1,4 @@
 import { SimplexNoise } from "ts-perlin-simplex";
-import { clamp } from "../math";
 import { PointLike } from "./PointLike";
 
 export type Roughness =
@@ -31,28 +30,29 @@ export class Tile {
     readonly x: number;
     readonly y: number;
     readonly roughness: Roughness;
-    elevation: number;
+    hardRock: number = 0;
+    softRock: number = 0;
+    water: number = 0;
+    snow: number = 0;
+    vegetation: number = 0;
 
     readonly adjacents: number[] = [];
     readonly points: PointLike[] = [];
     downhill: number = 0;
     riverAmount: number = 0;
-    lake: number = 0;
-    silt = 0.;
-    snow: number = 0;
-    vegetation: number = 0;
 
     readonly minX: number;
     readonly minY: number;
     readonly maxX: number;
     readonly maxY: number;
 
-    constructor(x: number, y: number, roughness: Roughness, elevation: number) {
+    constructor(x: number, y: number, roughness: Roughness, hardRock: number, softRock: number) {
         this.x = x;
         this.y = y;
         this.roughness = roughness;
-        this.elevation = elevation;
-        this.lake = Math.max(0.4 - this.elevation, 0);
+        this.hardRock = hardRock;
+        this.softRock = softRock;
+        this.water = Math.max(0.2 - hardRock, 0) + softRock;
 
         this.minX = this.x;
         this.maxX = this.x;
@@ -61,14 +61,18 @@ export class Tile {
     }
 
     totalElevation() {
-        return this.elevation + this.lake;
+        return this.hardRock + Math.max(this.softRock, this.water);
     }
 
-    hardHeight() {
-        return hardHeight[this.roughness];
+    rockElevation() {
+        return this.hardRock + this.softRock;
     }
 
-    hardness() {
-        return clamp(0.2 + this.silt*0.7 + Math.max(0, this.elevation - hardHeight[this.roughness])*0.75 - this.elevation*0.5, 0.01, 1) * fbm(this.x*0.01, this.y*0.01);
+    surfaceWater() {
+        return Math.max(0, this.water - this.softRock);
+    }
+
+    waterTable() {
+        return this.hardRock + this.water;
     }
 }

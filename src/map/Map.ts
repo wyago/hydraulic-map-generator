@@ -34,7 +34,12 @@ export class Map {
         });
         
         this.allTiles.forEach(source => {
-            source.downhill = byMin(source.adjacents, i =>  this.allTiles[i].elevation);
+            source.adjacents.sort((x, y) => {
+                const left = tiles[x];
+                const right = tiles[y];
+                return Math.atan2(left.y - source.y, left.x - source.x) > Math.atan2(right.y - source.y, right.x - source.x) ? 1 : -1;
+            })
+            source.downhill = byMin(source.adjacents, i =>  this.allTiles[i].totalElevation());
         });
     }
 
@@ -43,25 +48,23 @@ export class Map {
 
         for (let i = 0; i < this.allTiles.length; ++i) {
             const current = this.allTiles[i];
-            if ( this.allTiles[i].lake > 0.4) {
-                this.allTiles[i].lake -= 0.005*this.allTiles[i].totalElevation();
+            const surface = this.allTiles[i].surfaceWater();
+            if (surface > 0.2) {
+                this.allTiles[i].water -= (surface - 0.2) * 0.1;
             }
             this.allTiles[i].riverAmount *= 0.99;
-            if (current.lake < 0) {
-                current.lake = 0;
+            if (current.water < 0) {
+                current.water = 0;
             }
 
-            if (current.elevation > 0.98) {
+            if (false)
+            if (current.rockElevation() > 0.98) {
                 current.snow += 0.01;
-            } else if(current.elevation < 0.9) {
+            } else if(current.rockElevation() < 0.9) {
                 if (current.snow > 0) {
-                    current.lake += 0.0001;
+                    current.water += 0.0001;
                 }
                 current.snow = clamp(current.snow - 0.01, 0, 1);
-            }
-
-            if (current.vegetation < current.silt / current.elevation) {
-                current.vegetation += clamp(Math.log(current.riverAmount*0.1 * current.silt + 1), 0, 0.02);
             }
         }
         for (let i = 0; i < this.allTiles.length; ++i) {
@@ -69,13 +72,38 @@ export class Map {
             for (let j = 0; j < 1000; ++j) {
                 let target = this.allTiles[current.downhill];
                 const delta = target.totalElevation() - current.totalElevation();
-                if (delta > 0 || target.lake > 0.01 || current.snow > 0.1) {
+                if (delta > 0 || current.snow > 0.1) {
                     break;
                 }
-                current.riverAmount += 0.001;
                 current = target;
+                current.riverAmount += 0.01;
             }
+            
+            current.water += 0.0001;
         }
+    }
+
+    simpleErosion() {
+        for (let i = 0; i < this.allTiles.length; ++i) {
+            const source = this.allTiles[i]
+
+            for (let j = 0; j < source.adjacents.length; ++j) {
+                const target = this.allTiles[source.adjacents[j]];
+                const delta = (source.rockElevation() - target.rockElevation());
+
+                if (delta < 0.001) {
+                    continue;
+                }
+
+                const softFactor = Math.min((source.softRock - target.softRock)*0.5,  delta*0.1);
+                target.softRock += softFactor;
+                source.softRock -= softFactor;
+
+                const hardFactor = Math.min((source.hardRock - target.hardRock)*0.5,  delta*0.01);
+                target.hardRock += hardFactor;
+                source.hardRock -= hardFactor;
+            }
+        } 
     }
 
     deriveDownhills() {
@@ -106,30 +134,33 @@ export class Map {
                 continue;
             }
 
-            let pressure = 2.5 * source.hardness() * source.riverAmount * source.riverAmount;
-            pressure  = Math.min(pressure, (source.elevation - target.elevation)*0.3);
-            source.elevation -= pressure;
-            target.elevation += pressure;
+            let pressure = 10*source.riverAmount * source.riverAmount;
 
-            const silt = Math.min(source.silt*0.5, pressure*(5 * (1-source.vegetation*0.8)));
-            source.silt -= silt;
-            target.silt += silt;
-
-            if (source.silt < source.elevation) {
-                source.silt = Math.min(source.silt + pressure*0.5 * (1-source.vegetation), source.elevation);
-            }
-
-            if (source.vegetation > 0.1 && source.silt < source.elevation) {
-                source.silt += 0.01 * source.vegetation;
+            if (source.softRock > 0) {
+                pressure  = Math.min(pressure, (source.softRock - target.softRock)*0.5);
+                source.softRock -= pressure;
+                target.softRock += pressure;
+            } else {
+                const erosion = Math.min(pressure * 0.1, source.hardRock);
+                source.hardRock -= erosion;
+                source.softRock += erosion;
             }
 
             if (source.snow > target.snow) {
                 const snow = (source.snow - target.snow)*0.1;
                 source.snow -= snow;
                 target.snow += snow;
-                const erosion = Math.min(snow, (source.elevation - target.elevation) * 0.4);
-                source.elevation -= erosion * 0.1;
-                target.elevation += erosion * 0.1;
+                let erosion = Math.min(snow, (source.rockElevation() - target.rockElevation()) * 0.4);
+                
+                if (source.softRock > 0) {
+                    erosion = Math.min((source.softRock - target.softRock)*0.3, erosion);
+                    source.softRock -= erosion;
+                    target.softRock += erosion;
+                } else {
+                    erosion = Math.min(source.hardRock, erosion*0.05);
+                    source.hardRock -= erosion;
+                    source.softRock += erosion;
+                }
             }
         }
     }
@@ -138,57 +169,44 @@ export class Map {
         for (let i = 0; i < this.allTiles.length; ++i) {
             const source = this.allTiles[i];
 
-            if (source.lake > 0)
+            if (source.water > 0)
             for (let j = 0; j < source.adjacents.length; ++j) {
                 const target = this.allTiles[source.adjacents[j]];
 
-                const delta = source.totalElevation() - target.totalElevation();
+                const delta = source.waterTable() - target.waterTable();
                 if (delta < 0) {
                     continue;
                 }
-                source.lake = Math.max(source.lake, 0);
-                let transfer = Math.min(delta / source.adjacents.length * source.lake, source.lake);
-                source.lake -= transfer;
-                target.lake += transfer;
+                source.water = Math.max(source.water, 0);
+                let transfer = Math.min(delta / source.adjacents.length, source.water);
 
-                const erosion = Math.min(transfer*transfer*0.01, (source.elevation - target.elevation)*0.1) * source.hardness();
-                source.elevation -= erosion;
-                target.elevation += erosion;
+                transfer *= clamp(source.water / (source.softRock + 1), 0, 1);
+
+                source.water -= transfer;
+                target.water += transfer;
+
+                transfer = Math.min((source.softRock - target.softRock)*0.5, transfer * 0.01);
+                source.softRock -= transfer;
+                target.softRock += transfer;
             }
         }
         
-        if (false)
         for (let i = 0; i < this.allTiles.length; ++i) {
             const source = this.allTiles[i]
 
-            if (source.lake > 0.1) {
-                source.silt = Math.min(source.silt + source.lake*0.5, Math.max(source.silt, source.elevation * 0.1));
-            }
-
+            if (source.surfaceWater() > 0)
             for (let j = 0; j < source.adjacents.length; ++j) {
                 const target = this.allTiles[source.adjacents[j]];
-                const factor = (source.elevation - target.elevation) * source.hardness();
+                const delta = (source.rockElevation() - target.rockElevation());
 
-                const lake = source.lake + target.lake;
-
-                if (lake > 0.1) {
-                    target.elevation += factor*0.1*lake;
-                    source.elevation -= factor*0.1*lake;
+                if (delta < 0.01) {
+                    continue;
                 }
 
-                if (factor > 0.02) {
-                    target.elevation += factor*0.1;
-                    source.elevation -= factor*0.1;
-                }
-                
-                const siltFactor = source.silt - target.silt;
-                if (source.elevation - target.elevation > (0.5 - lake) && siltFactor > (0.5 - lake)) {
-                    const silt = Math.min(source.elevation*0.1, Math.min(source.silt*0.1, siltFactor*0.1));
-                    source.elevation -= silt;
-                    target.elevation += silt;
-                    source.silt -= silt;
-                    target.silt += silt;
-                }
+                const lake = source.surfaceWater() + target.surfaceWater();
+                const factor = Math.min((source.softRock - target.softRock)*0.5,  delta * lake * 0.1);
+                target.softRock += factor;
+                source.softRock -= factor;
             }
         }
     }

@@ -13,9 +13,9 @@ const mountain = new THREE.TextureLoader().load( '/mountain.png' );
 const hills = new THREE.TextureLoader().load( '/hills.png' );
 
 const siltAlbedo = {
-    r: 0.59,
-    g: 0.42,
-    b: 0.2,
+    r: 0.79,
+    g: 0.45,
+    b: 0.1,
 };
 
 const vegetationAlbedo = {
@@ -25,9 +25,9 @@ const vegetationAlbedo = {
 };
 
 const rockAlbedo = {
-    r: 0.41,
+    r: 0.33,
     g: 0.38,
-    b: 0.34,
+    b: 0.44,
 };
 
 const softRockAlbedo = {
@@ -35,6 +35,106 @@ const softRockAlbedo = {
     g: 0.58,
     b: 0.22,
 };
+
+function albedo(t: Tile) {
+    const result = new THREE.Vector3();
+
+    const siltPortion = Math.max((t.softRock) * 8, 0);
+    result.x = lerp(rockAlbedo.r, siltAlbedo.r, siltPortion);
+    result.y = lerp(rockAlbedo.g, siltAlbedo.g, siltPortion);
+    result.z = lerp(rockAlbedo.b, siltAlbedo.b, siltPortion);
+
+    return result;
+}
+
+function rockNormal(tiles: Tile[], t: Tile) {
+    let v = new THREE.Vector3(0,0,1);
+    if (t.adjacents.length > 0) {
+        const center = new THREE.Vector3(t.x, t.y, t.rockElevation()*400);
+        let avg = new THREE.Vector3(0,0,0);
+        for (let a = 0; a < t.adjacents.length; ++a) {
+            const i1 = t.adjacents[a];
+            const i2 = t.adjacents[(a + 1)%t.adjacents.length];
+            const first = new THREE.Vector3(tiles[i1].x, tiles[i1].y, tiles[i1].rockElevation()*400);
+            const second = new THREE.Vector3(tiles[i2].x, tiles[i2].y, tiles[i2].rockElevation()*400);
+            first.sub(center);
+            second.sub(center);
+
+            const cross = first.cross(second);
+            avg.add(cross);
+        }
+
+        avg.divideScalar(t.adjacents.length);
+        v = avg;
+        v.normalize();
+    } 
+    return v;
+}
+
+
+function totalNormal(tiles: Tile[], t: Tile) {
+    let v = new THREE.Vector3(0,0,1);
+    if (t.adjacents.length > 0) {
+        const center = new THREE.Vector3(t.x, t.y, t.rockElevation()*100);
+        let avg = new THREE.Vector3(0,0,0);
+        for (let a = 0; a < t.adjacents.length; ++a) {
+            const i1 = t.adjacents[a];
+            const i2 = t.adjacents[(a + 1)%t.adjacents.length];
+            const first = new THREE.Vector3(tiles[i1].x, tiles[i1].y, tiles[i1].totalElevation()*400);
+            const second = new THREE.Vector3(tiles[i2].x, tiles[i2].y, tiles[i2].totalElevation()*400);
+            first.sub(center);
+            second.sub(center);
+
+            const cross = first.cross(second);
+            avg.add(cross);
+        }
+
+        avg.divideScalar(t.adjacents.length);
+        v = avg;
+        v.normalize();
+    } 
+    return v;
+}
+
+const globalSunlight = new THREE.Vector3(0.9,0.8, 0.6);
+function lighting(tiles: Tile[], sun: THREE.Vector3, t: Tile) {
+    const rock = rockNormal(tiles, t);
+    const total = totalNormal(tiles, t);
+    const a = albedo(t);
+    
+    const rockDot = clamp(rock.dot(sun), 0, 1);
+    const totalDot = clamp(total.dot(sun), 0, 1);
+
+    const sunlight = globalSunlight.clone().multiplyScalar(rockDot);
+    const ambient = new THREE.Vector3(0.1,0.1, 0.15);
+
+    if (t.surfaceWater() > 0.01) {
+        const depthFactor = t.surfaceWater();
+        const depth = depthFactor*20
+
+        const reflect = 0.5;
+        const transit = sunlight.add(ambient)
+            .multiplyScalar(1 - reflect)
+            .sub(new THREE.Vector3(0.18, 0.13, 0.12).multiplyScalar(depth));
+        const groundLight = transit.multiply(a);
+
+        const bounceLight =
+            new THREE.Vector3(0.9,0.8, 0.6)
+            .multiplyScalar(reflect*Math.pow(totalDot, 20)*0.5)
+            .multiply(new THREE.Vector3(1,1,1))
+
+        return bounceLight.add(groundLight);
+    } else {
+        const groundLight = sunlight.add(ambient).multiply(a);
+        return groundLight;
+    }
+}
+
+function color(tiles: Tile[], sun: THREE.Vector3, t: Tile) {
+    const l = lighting(tiles, sun, t);
+    l.addScalar((1 - t.totalElevation()) * 0.4 * clamp(Math.sin(Date.now()*0.0001), 0, 1));
+    return l;
+}
 
 export function genMesh(points: GenPoint[]) {
     const geometry = new THREE.BufferGeometry();
@@ -183,7 +283,7 @@ export function pointsMesh(tiles: Tile[]) {
         const pointPositions = new Array<number>();
         for ( let i = 0; i < tiles.length; i ++ ) {
             const tile = tiles[i];
-            if (tile.roughness === type && tile.elevation > 0.4) {
+            if (tile.roughness === type && tile.surfaceWater() <= 0.01) {
                 pointPositions.push(
                     tiles[i].x,
                     tiles[i].y,
@@ -213,7 +313,7 @@ export function pointsMesh(tiles: Tile[]) {
                 const pointPositions = new Array<number>();
                 for ( let i = 0; i < tiles.length; i ++ ) {
                     const tile = tiles[i];
-                    if (tile.roughness === type && tile.elevation > 0.4) {
+                    if (tile.roughness === type && tile.surfaceWater() <= 0.01) {
                         pointPositions.push(
                             tiles[i].x,
                             tiles[i].y,
@@ -251,93 +351,26 @@ export function pointsMesh(tiles: Tile[]) {
                 geometry.setDrawRange(0, tiles.length);
             }
 
+            const z = Math.sin(-Date.now()*0.001);
+            const a = Math.cos(-Date.now()*0.001);
+            globalSunlight.set(1 - a * 0.1,1 - a * 0.3, 1 - a * 0.7);
+            const light = new THREE.Vector3(Math.cos(-Date.now()*0.001),Math.cos(-Date.now()*0.001),z);
+            //const light = new THREE.Vector3(0.1,0.4,1);
+            light.normalize();
+
             for (let i = 0; i < tiles.length; ++i) {
                 let t = tiles[i];
 
-                let vx = 0;
-                let vy = 0;
-                if (t.adjacents.length > 0) {
-                    for (let a = 0; a < t.adjacents.length; ++a) {
-                        const target = tiles[t.adjacents[a]];
-                        const delta = target.elevation - t.elevation;
-                        const dx = target.x - t.x;
-                        const dy = target.y - t.y;
-                        vx += dx * delta;
-                        vy += dy * delta;
-                    }
 
-                    const l = Math.sqrt(vx * vx + vy*vy);
-                    vx /= l;
-                    vy /= l;
-                }
+                //g = t.hardRock;
+                //b = t.surfaceWater();
 
-                const height = 0.1 + t.elevation * 0.9;
+                const c = color(tiles, light, t);
 
-                let r = 0.46 * height;
-                let g = 0.44 * height;
-                let b = 0.3 * height;
-
-                const siltPortion = Math.max(t.silt / t.elevation, 0);
-                const boundary = 0;
-                const over = siltPortion*2 - boundary;
-                r = lerp(rockAlbedo.r, siltAlbedo.r, over);
-                g = lerp(rockAlbedo.g, siltAlbedo.g, over);
-                b = lerp(rockAlbedo.b, siltAlbedo.b, over);
-                //r = lerp(averageAlbedo.r, siltAlbedo.r, clamp((t.silt - boundary)*50, 0, 1));
-                //g = lerp(averageAlbedo.g, siltAlbedo.g, clamp((t.silt - boundary)*50, 0, 1));
-                //b = lerp(averageAlbedo.b, siltAlbedo.b, clamp((t.silt - boundary)*50, 0, 1));
-
-                r = lerp(r, vegetationAlbedo.r, t.vegetation);
-                g = lerp(g, vegetationAlbedo.g, t.vegetation);
-                b = lerp(b, vegetationAlbedo.b, t.vegetation);
-
-                r *= height;
-                g *= height;
-                b *= height;
-
-                r = clamp(r + t.snow, 0, 1);
-                g = clamp(g + t.snow, 0, 1);
-                b = clamp(b + t.snow, 0, 1);
-
-                let lightFactor = {
-                    r: (vx + vy) * 0.3/Math.SQRT2*0.9 + 0.8,
-                    g: (vx + vy) * 0.3/Math.SQRT2*0.7 + .8,
-                    b: (vx + vy) * 0.3/Math.SQRT2*0.6 + 0.82,
-                }
-
-                const depthFactor = t.lake;
-                if (depthFactor > 0.01) {
-                    const depth = depthFactor*25 + 3;
-                    lightFactor.r -= depth * 0.18;
-                    lightFactor.g -= depth * 0.13;
-                    lightFactor.b -= depth * 0.12;
-                    if (lightFactor.r < 0) {
-                        lightFactor.r = 0;
-                    }
-                    if (lightFactor.g < 0) {
-                        lightFactor.g = 0;
-                    }
-                    if (lightFactor.b < 0) {
-                        lightFactor.b = 0;
-                    }
-                    if (t.lake > 0.04) {
-                        r += 0.01;
-                        g += 0.01;
-                        b += 0.02;
-                    }
-                }
-
-                r *= lightFactor.r*0.9;
-                g *= lightFactor.g*0.8;
-                b *= lightFactor.b*0.7;
-                
-                r += 0.011;
-                g += 0.011;
-                b += 0.021;
 
                 if (t.x === t.x && t.y === t.y)
                 {
-                    geometry.attributes.color.setXYZ(i, r, g, b);
+                    geometry.attributes.color.setXYZ(i, c.x, c.y, c.z);
                 }
             }
 
@@ -364,7 +397,7 @@ export function riverMesh(tiles: Tile[]) {
             let maxRiver = 0;
             for (let i = 0; i < tiles.length; ++i) {
                 const t = tiles[i];
-                if (t.lake > 0.02) {
+                if (t.surfaceWater() > 0.01) {
                     continue;
                 }
                 if (t.riverAmount > maxRiver) {
@@ -378,7 +411,7 @@ export function riverMesh(tiles: Tile[]) {
                 let b = 0.08;
         
                 let sourceAmount = Math.min(t.riverAmount / maxRiver * 5, 1);
-                if (sourceAmount > 0.1 && t.lake < 0.02)
+                if (sourceAmount > 0.1 && t.surfaceWater() < 0.02)
                 {
                     const target = tiles[t.downhill];
                     positions[j*3*2 + 0] = t.x;

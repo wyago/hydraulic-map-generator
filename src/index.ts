@@ -57,28 +57,43 @@ function loader() {
     });
 }
 
-
 const noise = new SimplexNoise();
 const noiseX = new SimplexNoise();
 const noiseY = new SimplexNoise();
-function fbm(x: number, y: number) {
+function fbm(noise: SimplexNoise, x: number, y: number) {
     let result = 0;
-    x = x + noiseX.noise(x * 0.001, x * 0.001) * 2000;
-    y = y + noiseY.noise(y * 0.001, y * 0.001) * 2000;
-    for (let i = 0; i < 10; ++i) {
-        const factor = Math.pow(2, i+1);
-        result = noise.noise(x / factor * 0.001, y / factor * 0.001) / factor;
+
+    let mul = 0.5;
+    let div = 0.5;
+    for (let i = 0; i < 16; ++i) {
+        result += noise.noise(x * mul, y * mul) * div;
+        mul *= 2;
+        div *= 0.5;
     }
-    return result * 0.5 + 0.5;
+    return result;
+}
+
+function wavy(x: number, y: number) {
+    x = x * 0.005;
+    y = y * 0.005;
+    x = x + fbm(noiseX, x*0.1, y*0.1)*12;
+    y = y + fbm(noiseY, x*0.1, y*0.1)*12;
+
+    return fbm(noise, x, y) * 0.5 + 0.5;
 }
 
 function eroder(risers: GenPoint[]) {
     const tiles = risers.map(p => {
+        const softness = wavy(p.x+0.5, p.y+0.5) * 0.05 + 0.2;
+        const elevation = p.elevation;//clamp(1 - Math.sqrt(p.x*p.x + p.y*p.y) * 0.0001, 0.1, 1);
+        const softRock = Math.min(elevation, softness);
+        const hardRock = Math.max(0, elevation - softness);
         return new Tile(
             p.x,
             p.y,
             p.type,
-            p.elevation
+            hardRock,
+            softRock
         )
 });
     const root = createUi();
@@ -96,14 +111,15 @@ function eroder(risers: GenPoint[]) {
     rivers.update();
     (window as any).dry = (n: number) => {
         for (let i = 0; i < risers.length; ++i) {
-            map.allTiles[i].lake -= n || 0.1;
+            map.allTiles[i].water -= n || 0.1;
         }
     }
 
-    //map.simpleErosion();
+    for (let i = 0; i < 10; ++i)
+    map.simpleErosion();
     //map.setRivers();
 
-    let eroding = true;
+    let eroding = false;
     let j = 0;
 
     console.log("starting");
