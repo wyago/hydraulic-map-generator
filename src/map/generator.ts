@@ -38,7 +38,7 @@ export function generateMap(size: number) {
         1
     )]);
 
-    for (let i = 0; i < 5; ++i) {
+    for (let i = 0; i < 1; ++i) {
         mountainStep(
             Math.random() * radius * 200 - radius*100,
             Math.random() * radius * 200 - radius*100

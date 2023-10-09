@@ -65,7 +65,7 @@ function fbm(noise: SimplexNoise, x: number, y: number) {
 
     let mul = 0.5;
     let div = 0.5;
-    for (let i = 0; i < 16; ++i) {
+    for (let i = 0; i < 20; ++i) {
         result += noise.noise(x * mul, y * mul) * div;
         mul *= 2;
         div *= 0.5;
@@ -74,18 +74,18 @@ function fbm(noise: SimplexNoise, x: number, y: number) {
 }
 
 function wavy(x: number, y: number) {
-    x = x * 0.005;
-    y = y * 0.005;
-    x = x + fbm(noiseX, x*0.1, y*0.1)*12;
-    y = y + fbm(noiseY, x*0.1, y*0.1)*12;
+    x = x * 0.008;
+    y = y * 0.007;
+    x = x + fbm(noiseX, x*0.1, y*0.1)*4;
+    y = y + fbm(noiseY, x*0.1, y*0.1)*4;
 
     return fbm(noise, x, y) * 0.5 + 0.5;
 }
 
 function eroder(risers: GenPoint[]) {
     const tiles = risers.map(p => {
-        const softness = wavy(p.x+0.5, p.y+0.5) * 0.05 + 0.2;
-        const elevation = p.elevation;//clamp(1 - Math.sqrt(p.x*p.x + p.y*p.y) * 0.0001, 0.1, 1);
+        const softness = 0.3;//wavy(p.x, p.y) * 0.2;
+        const elevation = p.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
         const softRock = Math.min(elevation, softness);
         const hardRock = Math.max(0, elevation - softness);
         return new Tile(
@@ -96,7 +96,11 @@ function eroder(risers: GenPoint[]) {
             softRock
         )
 });
-    const root = createUi();
+    const root = createUi((e) => {
+        eroding = e;
+    }, (e) => {
+        bioming = e;
+    });
 
     globalProjector.append(document.body, () => root.realize());
 
@@ -107,34 +111,36 @@ function eroder(risers: GenPoint[]) {
     const {scene, render, element} = createCanvas();
     scene.add(mesh.object);
     scene.add(rivers.object);
-    mesh.update();
-    rivers.update();
     (window as any).dry = (n: number) => {
         for (let i = 0; i < risers.length; ++i) {
             map.allTiles[i].water -= n || 0.1;
         }
     }
 
-    for (let i = 0; i < 10; ++i)
-    map.simpleErosion();
-    //map.setRivers();
+    for (let i = 0; i < 10; ++i) {
+        map.simpleErosion();
+    }
+
+    mesh.update();
+    rivers.update();
 
     let eroding = false;
+    let bioming = false;
     let j = 0;
 
     console.log("starting");
     function frame() {
         j += 1;
+        if (bioming) {
+            map.fog();
+            mesh.update();
+        }
         if (eroding) {
-            if (j % 5 === 0) {
-                map.setRivers();
-            } else if (j % 5 === 1) {
-                map.iterateRivers();
-            } else if (j % 5 === 2) {
-                map.iterateSpread();
-            } else if (j % 5 === 3) {
+            map.setRivers();
+            map.iterateRivers();
+            map.iterateSpread();
+            if (j % 3 === 0) {
                 mesh.update();
-            } else {
                 rivers.update();
             }
         }
@@ -148,5 +154,5 @@ function eroder(risers: GenPoint[]) {
 
 
 window.addEventListener("load", () => {
-    loader();
+    generator();
 });

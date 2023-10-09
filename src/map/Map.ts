@@ -50,9 +50,9 @@ export class Map {
             const current = this.allTiles[i];
             const surface = this.allTiles[i].surfaceWater();
             if (surface > 0.2) {
-                this.allTiles[i].water -= (surface - 0.2) * 0.1;
+                this.allTiles[i].water -= (surface - 0.2) * 0.3;
             }
-            this.allTiles[i].riverAmount *= 0.99;
+            this.allTiles[i].riverAmount *= 0.9;
             if (current.water < 0) {
                 current.water = 0;
             }
@@ -69,17 +69,69 @@ export class Map {
         }
         for (let i = 0; i < this.allTiles.length; ++i) {
             let current = this.allTiles[i];
+            let velocity = 0.01;
             for (let j = 0; j < 1000; ++j) {
                 let target = this.allTiles[current.downhill];
                 const delta = target.totalElevation() - current.totalElevation();
-                if (delta > 0 || current.snow > 0.1) {
+                if (delta > 0 || current.surfaceWater() > 0 || current.snow > 0.1) {
                     break;
                 }
                 current = target;
-                current.riverAmount += 0.01;
+                current.riverAmount += velocity;
+                velocity -= delta*10;
+
+                velocity = velocity*0.999 + 0.01*0.001;
             }
-            
-            current.water += 0.0001;
+            current.water += 0.0002;
+        }
+    }
+
+    fog() {
+        const vx = 1;
+        const vy = 1;
+        for (let i = 0; i < this.allTiles.length; ++i) {
+            const source = this.allTiles[i];
+            if (source.surfaceWater() > 0) {
+                source.humidity = clamp(source.humidity + Math.random()*0.05, 0, 1);
+            }
+
+            if (source.fog) {
+                let moisten = source.fog*0.01;
+                const air = 1 - source.totalElevation();
+                if (air < source.fog) {
+                    moisten = Math.min(source.fog, source.fog - air);
+                }
+                source.vegetation += moisten;
+                if (source.vegetation > 1) {
+                    source.vegetation = 1;
+                }
+                source.fog -= moisten;
+            }
+
+            let next = 0;
+            let lowest = Number.MAX_VALUE;
+            for (let a = 0; a < source.adjacents.length; ++a) {
+                const target = this.allTiles[source.adjacents[a]];
+
+                const dx = target.x - source.x;
+                const dy = target.y - source.y;
+                const dot = dx*vx + dy*vy;
+                if (dot < lowest) {
+                    lowest = dot;
+                    next = a;
+                }
+            }
+
+            const target = this.allTiles[source.adjacents[next]];
+
+            let transfer = (source.humidity - target.humidity)*0.1;
+            if (target.totalElevation() > source.totalElevation()) {
+                target.fog += transfer*0.5;
+                transfer *= 0.5;
+            }
+            source.humidity -= transfer;
+            target.humidity += transfer;
+
         }
     }
 
@@ -91,15 +143,15 @@ export class Map {
                 const target = this.allTiles[source.adjacents[j]];
                 const delta = (source.rockElevation() - target.rockElevation());
 
-                if (delta < 0.001) {
+                if (delta < 0) {
                     continue;
                 }
 
-                const softFactor = Math.min((source.softRock - target.softRock)*0.5,  delta*0.1);
+                const softFactor = Math.min((source.softRock - target.softRock)*0.5,  delta*0.3* (source.surfaceWater() + 0.2));
                 target.softRock += softFactor;
                 source.softRock -= softFactor;
 
-                const hardFactor = Math.min((source.hardRock - target.hardRock)*0.5,  delta*0.01);
+                const hardFactor = Math.min((source.hardRock - target.hardRock)*0.5,  delta*0.1 * (source.surfaceWater() + 0.3));
                 target.hardRock += hardFactor;
                 source.hardRock -= hardFactor;
             }
@@ -134,14 +186,14 @@ export class Map {
                 continue;
             }
 
-            let pressure = 10*source.riverAmount * source.riverAmount;
+            let pressure = 5*source.riverAmount;
 
             if (source.softRock > 0) {
-                pressure  = Math.min(pressure, (source.softRock - target.softRock)*0.5);
+                pressure = Math.min(source.softRock, Math.min(pressure, delta*0.5));
                 source.softRock -= pressure;
                 target.softRock += pressure;
             } else {
-                const erosion = Math.min(pressure * 0.1, source.hardRock);
+                const erosion = Math.min(pressure * 0.001, source.hardRock);
                 source.hardRock -= erosion;
                 source.softRock += erosion;
             }
@@ -179,8 +231,11 @@ export class Map {
                 }
                 source.water = Math.max(source.water, 0);
                 let transfer = Math.min(delta / source.adjacents.length, source.water);
+                transfer = Math.min((source.water - target.water)*0.5, transfer);
 
-                transfer *= clamp(source.water / (source.softRock + 1), 0, 1);
+                if (source.water < source.softRock) {
+                    transfer *= 0.1;
+                }
 
                 source.water -= transfer;
                 target.water += transfer;
@@ -191,6 +246,7 @@ export class Map {
             }
         }
         
+        if(false)
         for (let i = 0; i < this.allTiles.length; ++i) {
             const source = this.allTiles[i]
 
@@ -199,7 +255,7 @@ export class Map {
                 const target = this.allTiles[source.adjacents[j]];
                 const delta = (source.rockElevation() - target.rockElevation());
 
-                if (delta < 0.01) {
+                if (delta < 0) {
                     continue;
                 }
 

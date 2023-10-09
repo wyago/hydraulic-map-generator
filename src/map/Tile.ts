@@ -40,6 +40,8 @@ export class Tile {
     readonly points: PointLike[] = [];
     downhill: number = 0;
     riverAmount: number = 0;
+    fog: number = 0;
+    humidity: number = 0;
 
     readonly minX: number;
     readonly minY: number;
@@ -52,7 +54,7 @@ export class Tile {
         this.roughness = roughness;
         this.hardRock = hardRock;
         this.softRock = softRock;
-        this.water = Math.max(0.2 - hardRock, 0) + softRock;
+        this.water = Math.max(0.4 - hardRock, 0) + softRock*0.5;
 
         this.minX = this.x;
         this.maxX = this.x;

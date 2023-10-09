@@ -5,7 +5,7 @@ import vertexGlsl from "./vertex.glsl";
 
 import { GenPoint } from "../map/GenPoint";
 import { Tile } from "../map/Tile";
-import { clamp, lerp } from "../math";
+import { lerp } from "../math";
 import voronoiFragment from "./voronoiFragment.glsl";
 import voronoiVertex from "./voronoiVertex.glsl";
 
@@ -20,7 +20,7 @@ const siltAlbedo = {
 
 const vegetationAlbedo = {
     r: 0.12,
-    g: 0.28,
+    g: 0.38,
     b: 0.2,
 };
 
@@ -39,10 +39,14 @@ const softRockAlbedo = {
 function albedo(t: Tile) {
     const result = new THREE.Vector3();
 
-    const siltPortion = Math.max((t.softRock) * 8, 0);
+    const siltPortion = Math.max((t.softRock) * 3, 0);
     result.x = lerp(rockAlbedo.r, siltAlbedo.r, siltPortion);
     result.y = lerp(rockAlbedo.g, siltAlbedo.g, siltPortion);
     result.z = lerp(rockAlbedo.b, siltAlbedo.b, siltPortion);
+
+    result.x = lerp(result.x, vegetationAlbedo.r, t.vegetation);
+    result.y = lerp(result.y, vegetationAlbedo.g, t.vegetation);
+    result.z = lerp(result.z, vegetationAlbedo.b, t.vegetation);
 
     return result;
 }
@@ -50,13 +54,13 @@ function albedo(t: Tile) {
 function rockNormal(tiles: Tile[], t: Tile) {
     let v = new THREE.Vector3(0,0,1);
     if (t.adjacents.length > 0) {
-        const center = new THREE.Vector3(t.x, t.y, t.rockElevation()*400);
+        const center = new THREE.Vector3(t.x, t.y, -t.rockElevation()*400);
         let avg = new THREE.Vector3(0,0,0);
         for (let a = 0; a < t.adjacents.length; ++a) {
             const i1 = t.adjacents[a];
             const i2 = t.adjacents[(a + 1)%t.adjacents.length];
-            const first = new THREE.Vector3(tiles[i1].x, tiles[i1].y, tiles[i1].rockElevation()*400);
-            const second = new THREE.Vector3(tiles[i2].x, tiles[i2].y, tiles[i2].rockElevation()*400);
+            const first = new THREE.Vector3(tiles[i1].x, tiles[i1].y, -tiles[i1].rockElevation()*400);
+            const second = new THREE.Vector3(tiles[i2].x, tiles[i2].y, -tiles[i2].rockElevation()*400);
             first.sub(center);
             second.sub(center);
 
@@ -74,14 +78,15 @@ function rockNormal(tiles: Tile[], t: Tile) {
 
 function totalNormal(tiles: Tile[], t: Tile) {
     let v = new THREE.Vector3(0,0,1);
-    if (t.adjacents.length > 0) {
-        const center = new THREE.Vector3(t.x, t.y, t.rockElevation()*100);
+    const adj = t.adjacents.filter(a => tiles[a].surfaceWater() > 0);
+    if (adj.length > 0) {
+        const center = new THREE.Vector3(t.x, t.y, -t.rockElevation()*100);
         let avg = new THREE.Vector3(0,0,0);
-        for (let a = 0; a < t.adjacents.length; ++a) {
-            const i1 = t.adjacents[a];
-            const i2 = t.adjacents[(a + 1)%t.adjacents.length];
-            const first = new THREE.Vector3(tiles[i1].x, tiles[i1].y, tiles[i1].totalElevation()*400);
-            const second = new THREE.Vector3(tiles[i2].x, tiles[i2].y, tiles[i2].totalElevation()*400);
+        for (let a = 0; a <adj.length; ++a) {
+            const i1 = adj[a];
+            const i2 = adj[(a + 1)%adj.length];
+            const first = new THREE.Vector3(tiles[i1].x, tiles[i1].y, -tiles[i1].totalElevation()*400);
+            const second = new THREE.Vector3(tiles[i2].x, tiles[i2].y, -tiles[i2].totalElevation()*400);
             first.sub(center);
             second.sub(center);
 
@@ -89,7 +94,7 @@ function totalNormal(tiles: Tile[], t: Tile) {
             avg.add(cross);
         }
 
-        avg.divideScalar(t.adjacents.length);
+        avg.divideScalar(adj.length);
         v = avg;
         v.normalize();
     } 
@@ -97,44 +102,6 @@ function totalNormal(tiles: Tile[], t: Tile) {
 }
 
 const globalSunlight = new THREE.Vector3(0.9,0.8, 0.6);
-function lighting(tiles: Tile[], sun: THREE.Vector3, t: Tile) {
-    const rock = rockNormal(tiles, t);
-    const total = totalNormal(tiles, t);
-    const a = albedo(t);
-    
-    const rockDot = clamp(rock.dot(sun), 0, 1);
-    const totalDot = clamp(total.dot(sun), 0, 1);
-
-    const sunlight = globalSunlight.clone().multiplyScalar(rockDot);
-    const ambient = new THREE.Vector3(0.1,0.1, 0.15);
-
-    if (t.surfaceWater() > 0.01) {
-        const depthFactor = t.surfaceWater();
-        const depth = depthFactor*20
-
-        const reflect = 0.5;
-        const transit = sunlight.add(ambient)
-            .multiplyScalar(1 - reflect)
-            .sub(new THREE.Vector3(0.18, 0.13, 0.12).multiplyScalar(depth));
-        const groundLight = transit.multiply(a);
-
-        const bounceLight =
-            new THREE.Vector3(0.9,0.8, 0.6)
-            .multiplyScalar(reflect*Math.pow(totalDot, 20)*0.5)
-            .multiply(new THREE.Vector3(1,1,1))
-
-        return bounceLight.add(groundLight);
-    } else {
-        const groundLight = sunlight.add(ambient).multiply(a);
-        return groundLight;
-    }
-}
-
-function color(tiles: Tile[], sun: THREE.Vector3, t: Tile) {
-    const l = lighting(tiles, sun, t);
-    l.addScalar((1 - t.totalElevation()) * 0.4 * clamp(Math.sin(Date.now()*0.0001), 0, 1));
-    return l;
-}
 
 export function genMesh(points: GenPoint[]) {
     const geometry = new THREE.BufferGeometry();
@@ -266,10 +233,17 @@ export function pointsMesh(tiles: Tile[]) {
         positions[i*3+2] = 0;
     }
     geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-    geometry.setAttribute( 'color', new THREE.BufferAttribute( new Float32Array(tiles.length*3), 3 ) );
+    geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(tiles.length*3), 3 ) );
+    geometry.setAttribute( 'rocknormal', new THREE.BufferAttribute( new Float32Array(tiles.length*3), 3 ) );
+    geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(tiles.length*3), 3 ) );
+    geometry.setAttribute( 'water', new THREE.BufferAttribute( new Float32Array(tiles.length), 1 ) );
+    geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(tiles.length), 1 ) );
+    geometry.setAttribute( 'fog', new THREE.BufferAttribute( new Float32Array(tiles.length), 1 ) );
     const material = new THREE.ShaderMaterial( {
         uniforms: {
+            sunlight: { value: new THREE.Vector3() },
             color: { value: new THREE.Color( 0xffffff ) },
+            time: { value: 0 },
         },
     
         depthWrite: true,
@@ -283,7 +257,7 @@ export function pointsMesh(tiles: Tile[]) {
         const pointPositions = new Array<number>();
         for ( let i = 0; i < tiles.length; i ++ ) {
             const tile = tiles[i];
-            if (tile.roughness === type && tile.surfaceWater() <= 0.01) {
+            if (tile.roughness === type && tile.surfaceWater()) {
                 pointPositions.push(
                     tiles[i].x,
                     tiles[i].y,
@@ -313,7 +287,7 @@ export function pointsMesh(tiles: Tile[]) {
                 const pointPositions = new Array<number>();
                 for ( let i = 0; i < tiles.length; i ++ ) {
                     const tile = tiles[i];
-                    if (tile.roughness === type && tile.surfaceWater() <= 0.01) {
+                    if (tile.roughness === type && tile.surfaceWater()) {
                         pointPositions.push(
                             tiles[i].x,
                             tiles[i].y,
@@ -333,8 +307,21 @@ export function pointsMesh(tiles: Tile[]) {
     const h = makePoints("hills", hills);
     result.add(m.object);
     result.add(h.object);
+
+    function updateUniforms() {
+        globalSunlight.set(0.9,0.9, 0.85);
+        const light = new THREE.Vector3(
+            0.3,
+             0.1,
+            0.8);
+        light.normalize();
+        material.uniforms.light = { value: light };
+        material.uniforms.sunlight = { value: globalSunlight };
+    }
+
     return {
         object: result,
+        updateUniforms,
         update(updateTiles?: Tile[]) {
 
             if (updateTiles && updateTiles.length > geometry.attributes.color.array.length / 3) {
@@ -346,35 +333,41 @@ export function pointsMesh(tiles: Tile[]) {
                     positions[i*3+2] = 0;
                 }
                 geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-                geometry.setAttribute( 'color', new THREE.BufferAttribute( new Float32Array(tiles.length*3), 3 ) );
+                geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(tiles.length*3), 3 ) );
+                geometry.setAttribute( 'water', new THREE.BufferAttribute( new Float32Array(tiles.length), 1 ) );
+                geometry.setAttribute( 'rocknormal', new THREE.BufferAttribute( new Float32Array(tiles.length*3), 3 ) );
+                geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(tiles.length*3), 3 ) );
+                geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(tiles.length), 1 ) );
+                geometry.setAttribute( 'fog', new THREE.BufferAttribute( new Float32Array(tiles.length), 1 ) );
                 geometry.attributes.position.needsUpdate = true;
                 geometry.setDrawRange(0, tiles.length);
             }
 
-            const z = Math.sin(-Date.now()*0.001);
-            const a = Math.cos(-Date.now()*0.001);
-            globalSunlight.set(1 - a * 0.1,1 - a * 0.3, 1 - a * 0.7);
-            const light = new THREE.Vector3(Math.cos(-Date.now()*0.001),Math.cos(-Date.now()*0.001),z);
-            //const light = new THREE.Vector3(0.1,0.4,1);
-            light.normalize();
-
             for (let i = 0; i < tiles.length; ++i) {
                 let t = tiles[i];
 
-
-                //g = t.hardRock;
-                //b = t.surfaceWater();
-
-                const c = color(tiles, light, t);
-
-
+                const a = albedo(t).multiplyScalar(t.totalElevation()*0.6 + 0.4);
+                const rock = rockNormal(tiles, t);
+                const water = totalNormal(tiles, t);
                 if (t.x === t.x && t.y === t.y)
                 {
-                    geometry.attributes.color.setXYZ(i, c.x, c.y, c.z);
+                    geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
+                    geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
+                    geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
+                    geometry.attributes.water.setX(i, t.surfaceWater());
+                    geometry.attributes.height.setX(i, t.totalElevation());
+                    geometry.attributes.fog.setX(i, t.fog);
                 }
             }
 
-            geometry.attributes.color.needsUpdate = true;
+            updateUniforms();
+
+            geometry.attributes.albedo.needsUpdate = true;
+            geometry.attributes.water.needsUpdate = true;
+            geometry.attributes.rocknormal.needsUpdate = true;
+            geometry.attributes.waternormal.needsUpdate = true;
+            geometry.attributes.height.needsUpdate = true;
+            geometry.attributes.fog.needsUpdate = true;
         }
     };
 }
@@ -410,9 +403,10 @@ export function riverMesh(tiles: Tile[]) {
                 let g = 0.23;
                 let b = 0.08;
         
-                let sourceAmount = Math.min(t.riverAmount / maxRiver * 5, 1);
-                if (sourceAmount > 0.1 && t.surfaceWater() < 0.02)
+                let sourceAmount = Math.min(t.riverAmount / maxRiver * 5, 0.9);
+                if (sourceAmount > 0.01 && t.surfaceWater() < 0)
                 {
+                    sourceAmount += 0.1;
                     const target = tiles[t.downhill];
                     positions[j*3*2 + 0] = t.x;
                     positions[j*3*2 + 1] = t.y;
@@ -421,14 +415,6 @@ export function riverMesh(tiles: Tile[]) {
                     positions[j*3*2 + 3] = target.x;
                     positions[j*3*2 + 4] = target.y;
                     positions[j*3*2 + 5] = -5;
-                    
-                    if (Math.random() < t.riverAmount*0.01) {
-                        sourceAmount = 1;
-                        r = 1;
-                        g = 1;
-                        b = 1;
-                    }
-
 
                     colors[j*3*2 + 0] = r*sourceAmount;
                     colors[j*3*2 + 1] = g*sourceAmount;
