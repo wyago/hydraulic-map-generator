@@ -16,12 +16,12 @@ void main() {
     float totalDot = clamp(dot(waternormal, light), 0.0, 1.0);
 
     vec3 sunColor = sunlight * rockDot;
-    vec3 ambient = vec3(0.1, 0.1, 0.15);
+    vec3 ambient = vec3(0.2, 0.2, 0.25);
 
     if (water > 0.0) {
-        float depth = water * 16.0;
+        float depth = water * 11.0;
 
-        float reflect = 0.7;
+        float reflect = 0.6;
         vec3 subtractor = vec3(0.18, 0.13, 0.12) * depth;
         vec3 transit = sunColor * (1.0 - reflect) - subtractor;
 

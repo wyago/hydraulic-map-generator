@@ -13,8 +13,8 @@ const mountain = new THREE.TextureLoader().load( '/mountain.png' );
 const hills = new THREE.TextureLoader().load( '/hills.png' );
 
 const siltAlbedo = {
-    r: 0.79,
-    g: 0.45,
+    r: 0.69,
+    g: 0.43,
     b: 0.1,
 };
 
@@ -25,9 +25,9 @@ const vegetationAlbedo = {
 };
 
 const rockAlbedo = {
-    r: 0.33,
+    r: 0.4,
     g: 0.38,
-    b: 0.44,
+    b: 0.36,
 };
 
 const softRockAlbedo = {
@@ -305,9 +305,9 @@ export function pointsMesh() {
     function updateUniforms() {
         globalSunlight.set(0.9,0.9, 0.85);
         const light = new THREE.Vector3(
-            0.3,
-             0.1,
-            0.8);
+            0.5,
+             0.5,
+            10.5);
         light.normalize();
         material.uniforms.light = { value: light };
         material.uniforms.sunlight = { value: globalSunlight };
@@ -344,7 +344,7 @@ export function pointsMesh() {
                 geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
                 geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
                 geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
-                geometry.attributes.water.setX(i, tiles.surfaceWater(i));
+                geometry.attributes.water.setX(i, 0.4 - tiles.rockElevation(i));
                 geometry.attributes.height.setX(i, tiles.totalElevation(i));
             }
 
@@ -362,8 +362,8 @@ export function pointsMesh() {
 
 export function riverMesh() {
     const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(1024*3*10);
-    const colors =  new Float32Array(1024*3*10);
+    const positions = new Float32Array(1024*3*6000);
+    const colors =  new Float32Array(1024*3*6000);
     geometry.setAttribute( 'position', new THREE.BufferAttribute(positions, 3 ) );
     geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 3 ) );
     geometry.setDrawRange(0,0);
@@ -389,8 +389,8 @@ export function riverMesh() {
                 let g = 0.23;
                 let b = 0.08;
         
-                let sourceAmount = Math.min(tiles.river(i) / maxRiver * 5, 0.9);
-                if (sourceAmount > 0.01 && tiles.surfaceWater(i) <= 0)
+                let sourceAmount = Math.min(tiles.river(i) * 10, 0.9);
+                if (sourceAmount > 0.01 && tiles.surfaceWater(i) <= 0 && tiles.totalElevation(i) - tiles.totalElevation(tiles.downhill(i)) > 0.0001)
                 {
                     sourceAmount += 0.1;
                     const target = tiles.downhill(i);

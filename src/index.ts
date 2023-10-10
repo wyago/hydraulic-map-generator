@@ -79,7 +79,7 @@ function wavy(x: number, y: number) {
 
 function eroder(risers: GenPoint[]) {
     const tiles = risers.map(p => {
-        const softness = wavy(p.x, p.y) * 0.2 + 0.2;
+        const softness = wavy(p.x, p.y) * 0.2;
         const elevation = p.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
         const softRock = Math.min(elevation, softness);
         const hardRock = Math.max(0, elevation - softness);
@@ -130,7 +130,7 @@ function eroder(risers: GenPoint[]) {
         }
     }
 
-    for (let i = 0; i < 30; ++i) {
+    for (let i = 0; i < 20; ++i) {
         map.simpleErosion();
     }
 

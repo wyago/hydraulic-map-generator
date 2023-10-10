@@ -132,4 +132,67 @@ export class TileSet {
     waterTable(i: number) {
         return this.hardRock(i) + this.water(i);
     }
+
+    marshal() {
+        return JSON.stringify({
+            xs: [...this.vertices.xs],
+            ys: [...this.vertices.ys],
+            terrain: [...this.hardSoftWaterRiver],
+        });
+    }
+
+    unmarshal(text: string) {
+        const json = JSON.parse(text);
+        this.vertices = {
+            count: json.xs.length,
+            points: new RBush<BushVertex>(),
+            xs: new Float32Array(json.xs),
+            ys: new Float32Array(json.ys),
+        };
+        this.count = this.vertices.count;
+
+        this.hardSoftWaterRiver = new Float32Array(json.terrain);
+       
+        this.vertices.points.load(json.xs.map((x, i) => ({
+            index: i,
+            maxX: x,
+            minX: x,
+            maxY: this.vertices.ys[i],
+            minY: this.vertices.ys[i],
+        })))
+
+        this.downhills = json.xs.map(i => 0);
+        
+        const source = json.xs.map((x, i) => ([x, json.ys[i]]));
+
+        function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
+        const delaunay = Delaunator.from(source);
+        function forEachTriangleEdge(callback: (p: number, q: number) => void) {
+            for (let e = 0; e < delaunay.triangles.length; e++) {
+                if (e > delaunay.halfedges[e]) {
+                    const p = delaunay.triangles[e];
+                    const q = delaunay.triangles[nextHalfedge(e)];
+                    callback(p, q);
+                }
+            }
+        }
+
+        this.adjacents = source.map(s => []);
+        forEachTriangleEdge((p, q) => {
+            this.adjacents[p].push(q);
+            this.adjacents[q].push(p);
+        });
+
+        this.adjacents = this.adjacents.map((a,i) => {
+            const sourcex = this.vertices.xs[i];
+            const sourcey = this.vertices.ys[i];
+            return a.sort((x, y) => {
+                const leftx = this.vertices.xs[x];
+                const lefty = this.vertices.ys[x];
+                const rightx = this.vertices.xs[y];
+                const righty = this.vertices.ys[y];
+                return Math.atan2(lefty - sourcey, leftx - sourcex) > Math.atan2(righty - sourcey, rightx - sourcex) ? 1 : -1;
+            })
+        }); 
+    }
 }

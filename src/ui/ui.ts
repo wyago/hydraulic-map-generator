@@ -4,7 +4,12 @@ import { TileSet } from "../map/Graph";
 import { globalProjector } from "../projector";
 import "./ui.css";
 
-export function createUi(onseteroding: (eroding: boolean) => void, onsetbioming: (bioming: boolean) => void) {
+export type UiOptions = {
+  options: {name: string, onchange: (v: boolean) => void}[],
+  onsave: () => void,
+}
+
+export function createUi(options: {onseteroding: (eroding: boolean) => void, onsetbioming: (bioming: boolean) => void) {
   let info = h("div");
 
   return {

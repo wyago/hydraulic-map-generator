@@ -54,7 +54,7 @@ export class Tile {
         this.roughness = roughness;
         this.hardRock = hardRock;
         this.softRock = softRock;
-        this.water = Math.max(0.4 - hardRock, 0) + softRock*0.5;
+        this.water = Math.max(0.4 - hardRock - softRock, 0);
 
         this.minX = this.x;
         this.maxX = this.x;
@@ -63,7 +63,7 @@ export class Tile {
     }
 
     totalElevation() {
-        return this.hardRock + Math.max(this.softRock, this.water);
+        return this.hardRock + this.softRock + this.water;
     }
 
     rockElevation() {
@@ -71,7 +71,8 @@ export class Tile {
     }
 
     surfaceWater() {
-        return Math.max(0, this.water - this.softRock);
+        return this.water;
+        //return Math.max(0, this.water - this.softRock);
     }
 
     waterTable() {
