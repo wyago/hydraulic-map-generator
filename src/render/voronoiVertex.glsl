@@ -16,7 +16,7 @@ void main() {
     float totalDot = clamp(dot(waternormal, light), 0.0, 1.0);
 
     vec3 sunColor = sunlight * rockDot;
-    vec3 ambient = vec3(0.2, 0.2, 0.25);
+    vec3 ambient = vec3(0.2, 0.2, 0.25) * height;
 
     if (water > 0.0) {
         float depth = water * 11.0;

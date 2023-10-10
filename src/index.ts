@@ -2,13 +2,14 @@ import { globalProjector } from "./projector";
 import { createUi } from "./ui/ui";
 
 import { SimplexNoise } from "ts-perlin-simplex";
+import { iota } from "./construction";
 import './index.css';
 import { GenPoint } from "./map/GenPoint";
 import { TileSet } from "./map/Graph";
 import { Map } from "./map/Map";
 import { Tile } from "./map/Tile";
 import { createDiscSampler } from "./map/pureDisc";
-import { byMin } from "./math";
+import { byMin, clamp } from "./math";
 import { createCanvas } from "./render/canvas";
 import { graphRenderer } from "./render/graphRenderer";
 import { pointsMesh, riverMesh } from "./render/mesher";
@@ -68,25 +69,36 @@ function fbm(noise: SimplexNoise, x: number, y: number) {
     return result;
 }
 
+function height(x: number, y: number) {
+
+}
+
 function wavy(x: number, y: number) {
-    x = x * 0.008;
-    y = y * 0.008;
-    x = x + fbm(noiseX, x*0.1, y*0.1)*4;
-    y = y + fbm(noiseY, x*0.1, y*0.1)*4;
+    x = x * 0.017;
+    y = y * 0.017;
+    x = x + fbm(noiseX, x*0.4, y*0.4)*8;
+    y = y + fbm(noiseY, x*0.4, y*0.4)*8;
 
     return fbm(noise, x, y) * 0.5 + 0.5;
 }
 
 function eroder(risers: GenPoint[]) {
-    const tiles = risers.map(p => {
-        const softness = wavy(p.x, p.y) * 0.2;
-        const elevation = p.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
+    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 1000*1000);
+    while (gen.step());
+
+    const vs = gen.vertices();
+
+    const tiles = iota(vs.count).map(i => {
+        const x = vs.xs[i];
+        const y = vs.ys[i];
+        const softness = wavy(x, y) * 0.3;
+        const elevation = clamp(1 - Math.sqrt(x*x + y*y) * 0.0015 + fbm(noiseX, x*0.005,y*0.005), 0, 1) //p.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
         const softRock = Math.min(elevation, softness);
         const hardRock = Math.max(0, elevation - softness);
         return new Tile(
-            p.x,
-            p.y,
-            p.type,
+            x,
+            y,
+            "flat",
             hardRock,
             softRock
         )
@@ -130,7 +142,7 @@ function eroder(risers: GenPoint[]) {
         }
     }
 
-    for (let i = 0; i < 20; ++i) {
+    for (let i = 0; i < 10; ++i) {
         map.simpleErosion();
     }
 
@@ -144,19 +156,23 @@ function eroder(risers: GenPoint[]) {
     console.log("starting");
     function frame() {
         j += 1;
+        let start = Date.now();
         if (bioming) {
-            map.fog();
-            mesh.update(map.tiles);
-        }
-        if (eroding) {
-            //map.carry();
-            map.setRivers();
-            map.iterateRivers();
-            //map.iterateSpread();
-            if (j % 3 === 0) {
-                mesh.update(map.tiles);
-                rivers.update(map.tiles);
+            for (let i = 0; i < 10; ++i) {
+                map.iterateSpread();
             }
+            mesh.update(map.tiles);
+            rivers.update(map.tiles);
+        } else if (eroding) {
+            for (let i = 0; i < 5; ++i) {
+                map.setRivers();
+                map.iterateRivers();
+                for (let i = 0; i < 10; ++i) {
+                    map.iterateSpread();
+                }
+            }
+            mesh.update(map.tiles);
+            rivers.update(map.tiles);
         }
         render();
         requestAnimationFrame(frame);

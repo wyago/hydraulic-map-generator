@@ -25,24 +25,24 @@ const vegetationAlbedo = {
 };
 
 const rockAlbedo = {
-    r: 0.4,
+    r: 0.45,
     g: 0.38,
     b: 0.36,
 };
 
 const softRockAlbedo = {
-    r: 0.65,
-    g: 0.58,
-    b: 0.22,
+    r: 0.3,
+    g: 0.40,
+    b: 0.32,
 };
 
 function albedo(tiles: TileSet, i: number) {
     const result = new THREE.Vector3();
 
     const siltPortion = Math.max((tiles.softRock(i)) * 3, 0);
-    result.x = lerp(rockAlbedo.r, siltAlbedo.r, siltPortion);
-    result.y = lerp(rockAlbedo.g, siltAlbedo.g, siltPortion);
-    result.z = lerp(rockAlbedo.b, siltAlbedo.b, siltPortion);
+    result.x = lerp(rockAlbedo.r, softRockAlbedo.r, siltPortion);
+    result.y = lerp(rockAlbedo.g, softRockAlbedo.g, siltPortion);
+    result.z = lerp(rockAlbedo.b, softRockAlbedo.b, siltPortion);
 
     return result;
 }
@@ -344,7 +344,7 @@ export function pointsMesh() {
                 geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
                 geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
                 geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
-                geometry.attributes.water.setX(i, 0.4 - tiles.rockElevation(i));
+                geometry.attributes.water.setX(i, tiles.surfaceWater(i));
                 geometry.attributes.height.setX(i, tiles.totalElevation(i));
             }
 
@@ -360,6 +360,15 @@ export function pointsMesh() {
     };
 }
 
+function offset(tiles: TileSet, i: number) {
+    const start = new THREE.Vector2(tiles.vertices.xs[i], tiles.vertices.ys[i]);
+    const target = tiles.downhill(i);
+    const end = new THREE.Vector2(tiles.vertices.xs[target], tiles.vertices.ys[target]);
+    end.sub(start);
+
+    return new THREE.Vector2(-end.y, end.x);
+}
+
 export function riverMesh() {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(1024*3*6000);
@@ -368,8 +377,7 @@ export function riverMesh() {
     geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 3 ) );
     geometry.setDrawRange(0,0);
 
-    const result= new THREE.LineSegments( geometry, 
-        new THREE.LineBasicMaterial({ vertexColors: true, depthTest: false, blending: THREE.SubtractiveBlending }) );
+    const result= new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({ vertexColors: true, depthTest: false }) );
     result.frustumCulled = false;
     return {
         object: result,
@@ -394,6 +402,12 @@ export function riverMesh() {
                 {
                     sourceAmount += 0.1;
                     const target = tiles.downhill(i);
+
+                    const so = offset(tiles, i);
+                    const st = offset(tiles, target);
+
+                    positions.push()
+
                     positions[j*3*2 + 0] = tiles.x(i);
                     positions[j*3*2 + 1] = tiles.y(i);
                     positions[j*3*2 + 2] = -5;

@@ -54,7 +54,7 @@ export class Tile {
         this.roughness = roughness;
         this.hardRock = hardRock;
         this.softRock = softRock;
-        this.water = Math.max(0.4 - hardRock - softRock, 0);
+        this.water = Math.max(0.1 - hardRock - softRock, 0);
 
         this.minX = this.x;
         this.maxX = this.x;

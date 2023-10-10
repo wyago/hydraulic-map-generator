@@ -1,4 +1,4 @@
-import { byMin, clamp, lerp } from "../math";
+import { byMin, clamp } from "../math";
 import { TileSet } from "./Graph";
 
 export class Map {
@@ -45,10 +45,6 @@ export class Map {
         this.deriveDownhills();
 
         for (let i = 0; i < this.tiles.count; ++i) {
-            const surface = this.tiles.surfaceWater(i);
-            if (surface > 0.2) {
-                this.tiles.hardSoftWaterRiver[i * 4 + 2] -= (surface - 0.2) * 0.3;
-            }
             this.tiles.hardSoftWaterRiver[i*4+3] *= 0.9;
             if (this.tiles.water(i) < 0) {
                 this.tiles.hardSoftWaterRiver[i*4+2] = 0;
@@ -73,15 +69,12 @@ export class Map {
             this.fill(current, silt);
 
             if (this.tiles.rockElevation(current) > 0.5) {
-                //this.tiles.hardSoftWaterRiver[i * 4 + 2] += 0.0001;
+                this.tiles.hardSoftWaterRiver[i * 4 + 2] += 0.001;
             }
         }
     }
 
     fill(start: number, silt: number) {
-        // We need to discover a fill area that can accomodate the silt.
-        // So we repeatedly check whether we have enough room, and if not,
-        // we add the lowest adjacent.
         while (silt > 0.0001) {
             let bar = Number.MAX_VALUE;
             let which = 0;
@@ -100,56 +93,6 @@ export class Map {
 
             silt -= 0.0001;
             this.tiles.hardSoftWaterRiver[start*4 + 1] += 0.0001;
-        }
-    }
-
-
-    fog() {
-        const vx = 1;
-        const vy = 1;
-        for (let i = 0; i < this.tiles.count; ++i) {
-            const source = this.allTiles[i];
-            if (source.surfaceWater() > 0) {
-                source.humidity = clamp(source.humidity + Math.random()*0.05, 0, 1);
-            }
-
-            if (source.fog) {
-                let moisten = source.fog*0.01;
-                const air = 1 - source.totalElevation();
-                if (air < source.fog) {
-                    moisten = Math.min(source.fog, source.fog - air);
-                }
-                source.vegetation += moisten;
-                if (source.vegetation > 1) {
-                    source.vegetation = 1;
-                }
-                source.fog -= moisten;
-            }
-
-            let next = 0;
-            let lowest = Number.MAX_VALUE;
-            for (let a = 0; a < source.adjacents.length; ++a) {
-                const target = this.allTiles[source.adjacents[a]];
-
-                const dx = target.x - source.x;
-                const dy = target.y - source.y;
-                const dot = dx*vx + dy*vy;
-                if (dot < lowest) {
-                    lowest = dot;
-                    next = a;
-                }
-            }
-
-            const target = this.allTiles[source.adjacents[next]];
-
-            let transfer = (source.humidity - target.humidity)*0.1;
-            if (target.totalElevation() > source.totalElevation()) {
-                target.fog += transfer*0.5;
-                transfer *= 0.5;
-            }
-            source.humidity -= transfer;
-            target.humidity += transfer;
-
         }
     }
 
@@ -202,7 +145,7 @@ export class Map {
                 continue;
             }
 
-            let pressure = 0.8*this.tiles.river(source)*(1 - this.tiles.softRock(source));
+            let pressure = 1.5*this.tiles.river(source)*clamp(1 - this.tiles.softRock(source)*4, 0, 1);
 
             const erosion = Math.min(pressure, this.tiles.hardRock(source));
             this.tiles.hardSoftWaterRiver[source*4+0] -= erosion;
@@ -212,11 +155,11 @@ export class Map {
 
     iterateSpread() {
         for (let source = 0; source < this.tiles.count; ++source) {
-            this.tiles.hardSoftWaterRiver[source*4 + 2] += 0.0001;
-            this.tiles.hardSoftWaterRiver[source*4 + 3] *= 0.99;
-        }
-        this.deriveDownhills();
-        for (let source = 0; source < this.tiles.count; ++source) {
+            const surface = this.tiles.surfaceWater(source);
+            if (this.tiles.totalElevation(source) > 0.2 && surface > 0.1) {
+                //this.tiles.hardSoftWaterRiver[source * 4 + 2] -= clamp(surface - 0.1, 0, 1) * 0.01;
+            }
+
             if (this.tiles.water(source) > 0)
             for (let j = 0; j < this.tiles.adjacents[source].length; ++j) {
                 const target = this.tiles.adjacents[source][j];
@@ -225,41 +168,17 @@ export class Map {
                 if (delta < 0) {
                     continue;
                 }
-                this.tiles.hardSoftWaterRiver[source*4+2] = Math.max(this.tiles.water(source), 0);
-                let transfer = Math.min(delta / this.tiles.adjacents[source].length, this.tiles.water(source));
-                transfer = Math.min((this.tiles.water(source) - this.tiles.water(target))*0.5, transfer);
-
-                transfer *= lerp(1,0.01, this.tiles.softRock(source) - this.tiles.water(source));
-                transfer *= lerp(1,0.1, this.tiles.softRock(target) - this.tiles.water(target));
-
-                //this.tiles.hardSoftWaterRiver[source*4 + 3] += transfer;
+                let transfer = Math.min(delta * 0.5, this.tiles.water(source));
 
                 this.tiles.hardSoftWaterRiver[source*4+2] -= transfer;
                 this.tiles.hardSoftWaterRiver[target*4+2] += transfer;
 
-                //transfer = Math.min((this.tiles.rockElevation(source) - this.tiles.rockElevation(target))*0.5, transfer * 0.5, this.tiles.softRock(source));
-                //this.tiles.hardSoftWaterRiver[source*4+1] -= transfer;
-                //this.tiles.hardSoftWaterRiver[target*4+1] += transfer;
-            }
-        }
-        
-        if(false)
-        for (let i = 0; i < this.allTiles.length; ++i) {
-            const source = this.allTiles[i]
-
-            if (source.surfaceWater() > 0)
-            for (let j = 0; j < source.adjacents.length; ++j) {
-                const target = this.allTiles[source.adjacents[j]];
-                const delta = (source.rockElevation() - target.rockElevation());
-
-                if (delta < 0) {
+                transfer = Math.min((this.tiles.rockElevation(source) - this.tiles.rockElevation(target))*0.5, transfer * 0.01, this.tiles.softRock(source));
+                if (transfer < 0) {
                     continue;
                 }
-
-                const lake = source.surfaceWater() + target.surfaceWater();
-                const factor = Math.min((source.softRock - target.softRock)*0.5,  delta * lake * 0.1);
-                target.softRock += factor;
-                source.softRock -= factor;
+                this.tiles.hardSoftWaterRiver[source*4+1] -= transfer;
+                this.tiles.hardSoftWaterRiver[target*4+1] += transfer;
             }
         }
     }
