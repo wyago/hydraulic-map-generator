@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointLike } from '../map/PointLike';
 
-export function createCanvas(clientmove: (e: {x: number, y: number}) => void) {
+export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
     const scene = new THREE.Scene();
     let camera: THREE.OrthographicCamera;
     let aspect: number;
@@ -31,19 +31,27 @@ export function createCanvas(clientmove: (e: {x: number, y: number}) => void) {
         down = { x: e.x, y: e.y };
     });
 
+    let xangle = 0;
+    let yangle = 0;
     window.addEventListener("mousemove", e => {
         if (down) {
             const dx = e.x - down.x;
             const dy = e.y - down.y;
             down = { x: e.x, y: e.y };
-            camera.translateX(-dx*zoom*0.1);
-            camera.translateY(dy*zoom*0.1);
+            //camera.translateX(-dx*zoom*0.1);
+            //camera.translateY(dy*zoom*0.1);
+            xangle += dy*0.1;
+
+            camera.position.x = 0;
+            camera.position.y = Math.cos(xangle);
+            camera.position.z = Math.sin(xangle);
+            camera.lookAt(new THREE.Vector3(0,0,0));
         }
         const v = new THREE.Vector3((e.clientX / window.innerWidth ) * aspect * 2 - aspect,
             - ( e.clientY / window.innerHeight ) * 2 + 1, 0.5);
         v.unproject(camera);
 
-        clientmove({
+        clientmove?.({
             x: v.x,
             y: v.y
         })

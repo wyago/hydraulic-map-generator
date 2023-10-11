@@ -61,7 +61,7 @@ function fbm(noise: SimplexNoise, x: number, y: number) {
 
     let mul = 0.5;
     let div = 0.5;
-    for (let i = 0; i < 20; ++i) {
+    for (let i = 0; i < 30; ++i) {
         result += noise.noise(x * mul, y * mul) * div;
         mul *= 2;
         div *= 0.5;
@@ -74,16 +74,18 @@ function height(x: number, y: number) {
 }
 
 function wavy(x: number, y: number) {
-    x = x * 0.017;
-    y = y * 0.017;
-    x = x + fbm(noiseX, x*0.4, y*0.4)*8;
-    y = y + fbm(noiseY, x*0.4, y*0.4)*8;
+    x = x * 0.004;
+    y = y * 0.004;
+    x += 0.5;
+    y += 0.5;
+    x = x + fbm(noiseX, x*0.2, y*0.2)*5;
+    y = y + fbm(noiseY, x*0.2, y*0.2)*5;
 
     return fbm(noise, x, y) * 0.5 + 0.5;
 }
 
 function eroder(risers: GenPoint[]) {
-    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 1000*1000);
+    const gen = createDiscSampler(8, (x, y) => x*x*0.5 + y*y < 1000*1000);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -91,8 +93,8 @@ function eroder(risers: GenPoint[]) {
     const tiles = iota(vs.count).map(i => {
         const x = vs.xs[i];
         const y = vs.ys[i];
-        const softness = wavy(x, y) * 0.3;
-        const elevation = clamp(1 - Math.sqrt(x*x + y*y) * 0.0015 + fbm(noiseX, x*0.005,y*0.005), 0, 1) //p.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
+        const softness = 0;//Math.pow(fbm(noise, x * 0.005, y * 0.005) * 0.4 + 0.4, 4);
+        const elevation = clamp(1 - Math.sqrt(x*x*0.7 + y*y*2.5) * 0.0014 + wavy(x,y) * 2 - 1, 0, 1) //p.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
         const softRock = Math.min(elevation, softness);
         const hardRock = Math.max(0, elevation - softness);
         return new Tile(
@@ -103,6 +105,22 @@ function eroder(risers: GenPoint[]) {
             softRock
         )
 });
+
+    /*const tiles = risers.map(riser => {
+        const x = riser.x;
+        const y = riser.y;
+        const softness = wavy(x, y) * 0.3;
+        const elevation = riser.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
+        const softRock = Math.min(elevation, softness);
+        const hardRock = Math.max(0, elevation - softness);
+        return new Tile(
+            x,
+            y,
+            "flat",
+            hardRock,
+            softRock
+        )
+});*/
     const root = createUi((e) => {
         eroding = e;
     }, (e) => {
@@ -146,6 +164,7 @@ function eroder(risers: GenPoint[]) {
         map.simpleErosion();
     }
 
+    map.deriveUphills();
     mesh.update(map.tiles);
     rivers.update(map.tiles);
 
@@ -158,19 +177,23 @@ function eroder(risers: GenPoint[]) {
         j += 1;
         let start = Date.now();
         if (bioming) {
-            for (let i = 0; i < 10; ++i) {
-                map.iterateSpread();
-            }
+            map.fog(8);
+    map.deriveUphills();
+    map.deriveDownhills();
             mesh.update(map.tiles);
             rivers.update(map.tiles);
         } else if (eroding) {
-            for (let i = 0; i < 5; ++i) {
+            for (let i = 0; i < 1; ++i) {
                 map.setRivers();
                 map.iterateRivers();
-                for (let i = 0; i < 10; ++i) {
-                    map.iterateSpread();
-                }
+                //map.simpleErosion();
+                map.iterateSpread();
+                map.iterateSpread();
+                map.iterateSpread();
+                map.iterateSpread();
             }
+    map.deriveUphills();
+    map.deriveDownhills();
             mesh.update(map.tiles);
             rivers.update(map.tiles);
         }
@@ -184,5 +207,5 @@ function eroder(risers: GenPoint[]) {
 
 
 window.addEventListener("load", () => {
-    loader();
+    eroder([]);
 });

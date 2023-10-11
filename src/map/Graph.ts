@@ -23,8 +23,10 @@ export class TileSet {
     count: number;
 
     hardSoftWaterRiver: Float32Array;
+    fog: Float32Array;
 
     downhills: number[];
+    uphill: number[];
     adjacents: number[][];
 
     constructor(points: Tile[]) {
@@ -36,6 +38,8 @@ export class TileSet {
             xs: new Float32Array(points.length),
             ys: new Float32Array(points.length),
         }
+        this.fog = new Float32Array(points.length);
+        this.uphill = new Array<number>(points.length);
         this.vertices.points.load(points.map((p, i) => ({
             index: i,
             maxX: p.x,
