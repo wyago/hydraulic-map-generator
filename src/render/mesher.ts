@@ -45,9 +45,9 @@ function albedo(tiles: TileSet, i: number) {
     result.y = lerp(rockAlbedo.g, siltAlbedo.g, siltPortion);
     result.z = lerp(rockAlbedo.b, siltAlbedo.b, siltPortion);
 
-    result.x = lerp(result.x, vegetationAlbedo.r, Math.min(tiles.fog[i], softness));
-    result.y = lerp(result.y, vegetationAlbedo.g, Math.min(tiles.fog[i], softness));
-    result.z = lerp(result.z, vegetationAlbedo.b, Math.min(tiles.fog[i], softness));
+    result.x = lerp(result.x, vegetationAlbedo.r, Math.min(tiles.vegetation[i], softness + 0.7));
+    result.y = lerp(result.y, vegetationAlbedo.g, Math.min(tiles.vegetation[i], softness + 0.7));
+    result.z = lerp(result.z, vegetationAlbedo.b, Math.min(tiles.vegetation[i], softness + 0.7));
 
     return result;
 }
@@ -56,14 +56,14 @@ function rockNormal(tiles: TileSet, i: number) {
     let v = new THREE.Vector3(0,0,1);
     const adjacents = tiles.adjacents[i];
     if (adjacents.length > 0) {
-        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*100);
+        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*50);
         let avg = new THREE.Vector3(0,0,0);
         for (let a = 0; a < adjacents.length; ++a) {
             const i1 = adjacents[a];
             const i2 = adjacents[(a + 1)%adjacents.length];
 
-            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.rockElevation(i1)*100);
-            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.rockElevation(i2)*100);
+            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.rockElevation(i1)*50);
+            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.rockElevation(i2)*50);
             first.sub(center);
             second.sub(center);
 
@@ -83,13 +83,13 @@ function totalNormal(tiles: TileSet, i: number) {
     let v = new THREE.Vector3(0,0,1);
     const adj = tiles.adjacents[i].filter(a => tiles.surfaceWater(a) > 0);
     if (adj.length > 0) {
-        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*100);
+        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*50);
         let avg = new THREE.Vector3(0,0,0);
         for (let a = 0; a <adj.length; ++a) {
             const i1 = adj[a];
             const i2 = adj[(a + 1)%adj.length];
-            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.totalElevation(i1)*100);
-            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.totalElevation(i2)*100);
+            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.totalElevation(i1)*50);
+            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.totalElevation(i2)*50);
             first.sub(center);
             second.sub(center);
 
@@ -105,6 +105,53 @@ function totalNormal(tiles: TileSet, i: number) {
 }
 
 const globalSunlight = new THREE.Vector3(0.9,0.8, 0.6);
+
+function makePoints(type: string, texture: THREE.Texture) {
+    const pointPositions = new Array<number>();
+    for ( let i = 0; i < points.length; i ++ ) {
+        const point = points[i];
+        if (point.type === type && point.elevation > 0.4) {
+            pointPositions.push(
+                points[i].x,
+                points[i].y,
+                0
+            );
+        }
+    }
+
+    const pointsGeo = new THREE.BufferGeometry();
+    pointsGeo.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(pointPositions), 3 ) );
+
+    const pointsMaterial = new THREE.ShaderMaterial( {
+        uniforms: {
+            color: { value: new THREE.Color( 0xffffff ) },
+            pointTexture: { value: texture }
+        },
+    
+        vertexShader: vertexGlsl,
+        fragmentShader: fragmentGlsl,
+        blending: THREE.NormalBlending,
+        depthTest: false,
+        transparent: true
+    });
+    return {
+        object: new THREE.Points(pointsGeo, pointsMaterial),
+        update() {
+            const pointPositions = new Array<number>();
+            for ( let i = 0; i < points.length; i ++ ) {
+                const point = points[i];
+                if (point.type === type && point.elevation > 0.4) {
+                    pointPositions.push(
+                        points[i].x,
+                        points[i].y,
+                        0
+                    );
+                }
+            }
+            pointsGeo.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(pointPositions), 3 ) );
+        }
+    };
+}
 
 export function genMesh(points: GenPoint[]) {
     const geometry = new THREE.BufferGeometry();
@@ -128,52 +175,6 @@ export function genMesh(points: GenPoint[]) {
         blending: THREE.NormalBlending,
     });
     
-    function makePoints(type: string, texture: THREE.Texture) {
-        const pointPositions = new Array<number>();
-        for ( let i = 0; i < points.length; i ++ ) {
-            const point = points[i];
-            if (point.type === type && point.elevation > 0.4) {
-                pointPositions.push(
-                    points[i].x,
-                    points[i].y,
-                    0
-                );
-            }
-        }
-    
-        const pointsGeo = new THREE.BufferGeometry();
-        pointsGeo.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(pointPositions), 3 ) );
-    
-        const pointsMaterial = new THREE.ShaderMaterial( {
-            uniforms: {
-                color: { value: new THREE.Color( 0xffffff ) },
-                pointTexture: { value: texture }
-            },
-        
-            vertexShader: vertexGlsl,
-            fragmentShader: fragmentGlsl,
-            blending: THREE.NormalBlending,
-            depthTest: false,
-            transparent: true
-        });
-        return {
-            object: new THREE.Points(pointsGeo, pointsMaterial),
-            update() {
-                const pointPositions = new Array<number>();
-                for ( let i = 0; i < points.length; i ++ ) {
-                    const point = points[i];
-                    if (point.type === type && point.elevation > 0.4) {
-                        pointPositions.push(
-                            points[i].x,
-                            points[i].y,
-                            0
-                        );
-                    }
-                }
-                pointsGeo.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(pointPositions), 3 ) );
-            }
-        };
-    }
 
     const result= new THREE.Object3D();
     result.add(new THREE.Points( geometry, material ))
@@ -252,32 +253,15 @@ export function pointsMesh() {
         blending: THREE.NormalBlending,
     });
 
-    
-    function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
-    const delaunay = Delaunator.from(source);
-    function forEachTriangleEdge(callback: (p: number, q: number) => void) {
-        for (let e = 0; e < delaunay.triangles.length; e++) {
-            if (e > delaunay.halfedges[e]) {
-                const p = delaunay.triangles[e];
-                const q = delaunay.triangles[nextHalfedge(e)];
-                callback(p, q);
-            }
-        }
-    }
-
     const result= new THREE.Object3D();
     result.add(new THREE.Points( geometry, material ))
-    //result.add(new THREE.LineSegments( new THREE.WireframeGeometry(geometry), new THREE.LineBasicMaterial( {color: new THREE.Color("rgba(0,0,0)"), opacity: 0.2, transparent: true } ) ))
-    //const m = makePoints("mountain", mountain);
-    //const h = makePoints("hills", hills);
-    //result.add(m.object);
-    //result.add(h.object);
 
     function updateUniforms() {
         globalSunlight.set(0.9,0.9, 0.85);
+        const rad = Date.now() * 0.001;
         const light = new THREE.Vector3(
-            0.5,
-             0.5,
+            Math.cos(rad),
+             Math.sin(rad),
             0.5);
         light.normalize();
         material.uniforms.light = { value: light };
@@ -294,7 +278,7 @@ export function pointsMesh() {
                 for (let i = 0; i < tiles.count; ++i) {
                     positions[i*3+0] = tiles.x(i);
                     positions[i*3+1] = tiles.y(i);
-                    positions[i*3+2] = -tiles.rockElevation(i)*100;
+                    positions[i*3+2] = -tiles.rockElevation(i)*50;
                 }
                 geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
                 geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
@@ -393,8 +377,8 @@ export function riverMesh() {
                     const sv = new THREE.Vector2(tiles.vertices.xs[i], tiles.vertices.ys[i]);
                     const tv = new THREE.Vector2(tiles.vertices.xs[target], tiles.vertices.ys[target]);
 
-                    const te = tiles.totalElevation(target)*-100;
-                    const se = tiles.totalElevation(i)*-100;
+                    const te = tiles.totalElevation(target)*-50;
+                    const se = tiles.totalElevation(i)*-50;
                     positions.push(tv.x + tx, tv.y + ty, te);
                     positions.push(sv.x + sx, sv.y + sy, se);
                     positions.push(sv.x - sx, sv.y - sy, se);

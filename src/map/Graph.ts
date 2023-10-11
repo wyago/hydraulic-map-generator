@@ -23,7 +23,7 @@ export class TileSet {
     count: number;
 
     hardSoftWaterRiver: Float32Array;
-    fog: Float32Array;
+    vegetation: Float32Array;
 
     downhills: number[];
     uphill: number[];
@@ -38,7 +38,7 @@ export class TileSet {
             xs: new Float32Array(points.length),
             ys: new Float32Array(points.length),
         }
-        this.fog = new Float32Array(points.length);
+        this.vegetation = new Float32Array(points.length);
         this.uphill = new Array<number>(points.length);
         this.vertices.points.load(points.map((p, i) => ({
             index: i,
@@ -145,8 +145,7 @@ export class TileSet {
         });
     }
 
-    unmarshal(text: string) {
-        const json = JSON.parse(text);
+    unmarshal(json: any) {
         this.vertices = {
             count: json.xs.length,
             points: new RBush<BushVertex>(),
@@ -154,6 +153,8 @@ export class TileSet {
             ys: new Float32Array(json.ys),
         };
         this.count = this.vertices.count;
+        this.vegetation = new Float32Array(this.count);
+        this.uphill = new Array<number>(this.count);
 
         this.hardSoftWaterRiver = new Float32Array(json.terrain);
        
@@ -198,5 +199,6 @@ export class TileSet {
                 return Math.atan2(lefty - sourcey, leftx - sourcex) > Math.atan2(righty - sourcey, rightx - sourcex) ? 1 : -1;
             })
         }); 
+        return this;
     }
 }
