@@ -6,15 +6,16 @@ export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
     let camera: THREE.OrthographicCamera;
     let aspect: number;
 
+    let zoom = 65;
     const renderer = new THREE.WebGLRenderer();
     const sizeWatcher = () => {
         renderer.setSize( window.innerWidth, window.innerHeight );
         aspect = document.body.clientWidth / document.body.clientHeight;
         camera = new THREE.OrthographicCamera(-aspect, aspect, 1, -1, -1000, 1000);
+        camera.scale.setScalar(Math.pow(zoom, 2));
     };
     sizeWatcher();
 
-    let zoom = 65;
     camera!.scale.setScalar(Math.pow(zoom, 2));
 
     window.addEventListener("wheel", e => {
@@ -36,11 +37,13 @@ export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
             const dx = e.x - down.x;
             const dy = e.y - down.y;
             down = { x: e.x, y: e.y };
-            camera.translateX(-dx*zoom*0.1);
-            camera.translateY(dy*zoom*0.1);
+            const v = new THREE.Vector3((dx / window.innerHeight) * 2,
+                (dy / window.innerHeight) * 2, 0.5);
+            camera.translateX(-v.x * Math.pow(zoom, 2));
+            camera.translateY(v.y * Math.pow(zoom, 2));
         }
-        const v = new THREE.Vector3((e.clientX / window.innerWidth ) * aspect * 2 - aspect,
-            - ( e.clientY / window.innerHeight ) * 2 + 1, 0.5);
+        const v = new THREE.Vector3((e.pageX / window.innerHeight ) / aspect * 2 - 1,
+            - ( e.pageY / window.innerHeight ) * 2 + 1, 0.5);
         v.unproject(camera);
 
         clientmove?.({

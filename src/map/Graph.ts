@@ -1,5 +1,6 @@
 import Delaunator from "delaunator";
 import RBush from "rbush";
+import { clamp } from "../math";
 import { Tile } from "./Tile";
 
 export type BushVertex = {
@@ -19,18 +20,31 @@ export type Vertices = {
 }
 
 export class TileSet {
+    air(i: number) {
+        return 2 - this.totalElevation(i)*2;
+    }
     vertices: Vertices;
     count: number;
 
-    hardSoftWaterRiver: Float32Array;
+    hard: Float32Array;
+    soft: Float32Array;
+    water: Float32Array;
+    river: Float32Array;
     vegetation: Float32Array;
+    fog: Float32Array;
 
     downhills: number[];
     uphill: number[];
     adjacents: number[][];
 
     constructor(points: Tile[]) {
-        this.hardSoftWaterRiver = new Float32Array(points.length * 4);
+        this.hard = new Float32Array(points.length);
+        this.soft = new Float32Array(points.length);
+        this.water = new Float32Array(points.length);
+        this.river = new Float32Array(points.length);
+        this.vegetation = new Float32Array(points.length);
+        this.fog = new Float32Array(points.length);
+
         this.count = points.length;
         this.vertices = {
             count: points.length,
@@ -38,7 +52,6 @@ export class TileSet {
             xs: new Float32Array(points.length),
             ys: new Float32Array(points.length),
         }
-        this.vegetation = new Float32Array(points.length);
         this.uphill = new Array<number>(points.length);
         this.vertices.points.load(points.map((p, i) => ({
             index: i,
@@ -52,9 +65,9 @@ export class TileSet {
 
         for (let i = 0; i < points.length; ++i) {
             const t = points[i];
-            this.hardSoftWaterRiver[i*4 + 0] = t.hardRock;
-            this.hardSoftWaterRiver[i*4 + 1] = t.softRock;
-            this.hardSoftWaterRiver[i*4 + 2] = t.water;
+            this.hard[i] = t.hardRock;
+            this.soft[i] = t.softRock;
+            this.water[i] = t.water;
             this.vertices.xs[i] = t.x;
             this.vertices.ys[i] = t.y;
         }
@@ -105,44 +118,35 @@ export class TileSet {
         return this.downhills[source];
     }
 
-    hardRock(i: number) {
-        return this.hardSoftWaterRiver[i*4];
-    }
-
-    softRock(i: number) {
-        return this.hardSoftWaterRiver[i*4 + 1];
-    }
-
-    water(i: number) {
-        return this.hardSoftWaterRiver[i*4 + 2];
-    }
-
-    river(i: number) {
-        return this.hardSoftWaterRiver[i*4 + 3];
-    }
-
     totalElevation(i: number) {
-        return this.hardRock(i) + Math.max(this.softRock(i), this.water(i));
+        return this.hard[i] + Math.max(this.soft[i], this.water[i]);
     }
 
     rockElevation(i: number) {
-        return this.hardRock(i) + this.softRock(i);
+        return this.hard[i] + this.soft[i];
     }
 
     surfaceWater(i: number) {
-        return Math.max(0, this.water(i) - this.softRock(i));
+        return Math.max(0, this.water[i] - this.soft[i]);
+    }
+
+    surfaceRock(i: number) {
+        return clamp(this.rockElevation(i) - this.surfaceWater(i), 0, 1);
     }
 
     waterTable(i: number) {
-        return this.hardRock(i) + this.water(i);
+        return this.hard[i] + this.water[i];
     }
 
     marshal() {
-        return JSON.stringify({
-            xs: [...this.vertices.xs],
-            ys: [...this.vertices.ys],
-            terrain: [...this.hardSoftWaterRiver],
-        });
+        return `{
+            xs: [${[...this.vertices.xs].map(x => x.toFixed(4)).join(",")}],
+            ys: [${[...this.vertices.ys].map(x => x.toFixed(4)).join(",")}],
+            hard: [${[...this.hard].map(x => x.toFixed(4)).join(",")}],
+            soft: [${[...this.soft].map(x => x.toFixed(4)).join(",")}],
+            water: [${[...this.water].map(x => x.toFixed(4)).join(",")}],
+            vegetation: [${[...this.vegetation].map(x => x.toFixed(4)).join(",")}]
+        }`
     }
 
     unmarshal(json: any) {
@@ -153,11 +157,13 @@ export class TileSet {
             ys: new Float32Array(json.ys),
         };
         this.count = this.vertices.count;
-        this.vegetation = new Float32Array(this.count);
+        this.hard = new Float32Array(json.hard);
+        this.soft = new Float32Array(json.soft);
+        this.water = new Float32Array(json.water);
+        this.vegetation = new Float32Array(json.vegetation);
+        this.river = new Float32Array(this.count);
         this.uphill = new Array<number>(this.count);
 
-        this.hardSoftWaterRiver = new Float32Array(json.terrain);
-       
         this.vertices.points.load(json.xs.map((x, i) => ({
             index: i,
             maxX: x,

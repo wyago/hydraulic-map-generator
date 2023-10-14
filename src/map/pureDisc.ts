@@ -53,7 +53,7 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
         for (let i = 0; i < 7; ++i) {
             makeSample(r, active);
             if (filter(sample.x, sample.y) && !near(sample.x, sample.y)) {
-                if (count > xs.length) {
+                if (count >= xs.length) {
                     const capacity = xs.length * 2;
                     const newxs = new Float32Array(capacity);
                     const newys = new Float32Array(capacity);
@@ -85,11 +85,12 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
     return {
         step,
         vertices(): Vertices {
+            count -= 1;
             return {
                 points,
                 count,
-                xs,
-                ys,
+                xs: xs.subarray(0, count),
+                ys: ys.subarray(0, count),
             }
         }
     };

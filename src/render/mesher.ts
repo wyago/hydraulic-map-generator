@@ -3,9 +3,12 @@ import * as THREE from "three";
 import fragmentGlsl from "./fragment.glsl";
 import vertexGlsl from "./vertex.glsl";
 
+import Delaunator from "delaunator";
 import { GenPoint } from "../map/GenPoint";
 import { TileSet } from "../map/Graph";
 import { clamp, lerp } from "../math";
+import triangleFragment from "./triangleFragment.glsl";
+import triangleVertex from "./triangleVertex.glsl";
 import voronoiFragment from "./voronoiFragment.glsl";
 import voronoiVertex from "./voronoiVertex.glsl";
 
@@ -21,7 +24,7 @@ const siltAlbedo = {
 const vegetationAlbedo = {
     r: 0.16,
     g: 0.26,
-    b: 0.16,
+    b: 0.12,
 };
 
 const rockAlbedo = {
@@ -39,15 +42,17 @@ const softRockAlbedo = {
 function albedo(tiles: TileSet, i: number) {
     const result = new THREE.Vector3();
 
-    const softness = (tiles.softRock(i) / tiles.rockElevation(i)) * 3;
+    const softness = (tiles.soft[i] / tiles.rockElevation(i)) * 3;
     const siltPortion = Math.max(softness, 0);
     result.x = lerp(rockAlbedo.r, siltAlbedo.r, siltPortion);
     result.y = lerp(rockAlbedo.g, siltAlbedo.g, siltPortion);
     result.z = lerp(rockAlbedo.b, siltAlbedo.b, siltPortion);
 
-    result.x = lerp(result.x, vegetationAlbedo.r, Math.min(tiles.vegetation[i], softness + 0.7));
-    result.y = lerp(result.y, vegetationAlbedo.g, Math.min(tiles.vegetation[i], softness + 0.7));
-    result.z = lerp(result.z, vegetationAlbedo.b, Math.min(tiles.vegetation[i], softness + 0.7));
+    if (tiles.surfaceWater(i) < 0.01) {
+        result.x = lerp(result.x, vegetationAlbedo.r, Math.min(tiles.vegetation[i], softness + 0.7));
+        result.y = lerp(result.y, vegetationAlbedo.g, Math.min(tiles.vegetation[i], softness + 0.7));
+        result.z = lerp(result.z, vegetationAlbedo.b, Math.min(tiles.vegetation[i], softness + 0.7));
+    }
 
     return result;
 }
@@ -56,14 +61,14 @@ function rockNormal(tiles: TileSet, i: number) {
     let v = new THREE.Vector3(0,0,1);
     const adjacents = tiles.adjacents[i];
     if (adjacents.length > 0) {
-        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*50);
+        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*150);
         let avg = new THREE.Vector3(0,0,0);
         for (let a = 0; a < adjacents.length; ++a) {
             const i1 = adjacents[a];
             const i2 = adjacents[(a + 1)%adjacents.length];
 
-            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.rockElevation(i1)*50);
-            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.rockElevation(i2)*50);
+            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.rockElevation(i1)*150);
+            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.rockElevation(i2)*150);
             first.sub(center);
             second.sub(center);
 
@@ -83,13 +88,13 @@ function totalNormal(tiles: TileSet, i: number) {
     let v = new THREE.Vector3(0,0,1);
     const adj = tiles.adjacents[i].filter(a => tiles.surfaceWater(a) > 0);
     if (adj.length > 0) {
-        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*50);
+        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*150);
         let avg = new THREE.Vector3(0,0,0);
         for (let a = 0; a <adj.length; ++a) {
             const i1 = adj[a];
             const i2 = adj[(a + 1)%adj.length];
-            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.totalElevation(i1)*50);
-            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.totalElevation(i2)*50);
+            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.totalElevation(i1)*150);
+            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.totalElevation(i2)*150);
             first.sub(center);
             second.sub(center);
 
@@ -244,6 +249,8 @@ export function pointsMesh() {
             sunlight: { value: new THREE.Vector3() },
             color: { value: new THREE.Color( 0xffffff ) },
             time: { value: 0 },
+            selected: { value: 0 },
+            mode: { value: 0 }
         },
     
         depthWrite: true,
@@ -260,19 +267,28 @@ export function pointsMesh() {
         globalSunlight.set(0.9,0.9, 0.85);
         const rad = Date.now() * 0.001;
         const light = new THREE.Vector3(
-            Math.cos(rad),
-             Math.sin(rad),
+            0.5,
+            0.5,
             0.5);
         light.normalize();
         material.uniforms.light = { value: light };
         material.uniforms.sunlight = { value: globalSunlight };
     }
 
+    let start = 0;
+
     return {
         object: result,
         updateUniforms,
+        select(id: number) {
+            material.uniforms.selected.value = id;
+            material.uniformsNeedUpdate = true;
+        },
+        mode(i: number) {
+            material.uniforms.mode.value = i;
+            material.uniformsNeedUpdate = true;
+        },
         update(tiles: TileSet) {
-
             if (tiles.count > geometry.attributes.albedo.array.length / 3) {
                 const positions = new Float32Array(tiles.count*3);
                 for (let i = 0; i < tiles.count; ++i) {
@@ -287,11 +303,13 @@ export function pointsMesh() {
                 geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
                 geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
                 geometry.setAttribute( 'fog', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
+                geometry.setAttribute( 'index', new THREE.BufferAttribute( new Int32Array(tiles.count), 1 ) );
                 geometry.attributes.position.needsUpdate = true;
                 geometry.setDrawRange(0, tiles.count);
             }
 
-            for (let i = 0; i < tiles.count; ++i) {
+            for (let j = 0; j < tiles.count; ++j) {
+                const i = j % tiles.count;
                 const a = albedo(tiles, i).multiplyScalar(tiles.totalElevation(i)*0.6 + 0.4);
                 const rock = rockNormal(tiles, i);
                 const water = totalNormal(tiles, i);
@@ -300,7 +318,14 @@ export function pointsMesh() {
                 geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
                 geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
                 geometry.attributes.water.setX(i, tiles.surfaceWater(i));
+                geometry.attributes.fog.setX(i, tiles.fog[i]);
                 geometry.attributes.height.setX(i, tiles.totalElevation(i));
+                geometry.attributes.index.setX(i, i);
+            }
+            
+            start += ~~(tiles.count/10);
+            if (start > tiles.count) {
+                start = 0;
             }
 
             updateUniforms();
@@ -311,6 +336,7 @@ export function pointsMesh() {
             geometry.attributes.waternormal.needsUpdate = true;
             geometry.attributes.height.needsUpdate = true;
             geometry.attributes.fog.needsUpdate = true;
+            geometry.attributes.index.needsUpdate = true;
         }
     };
 }
@@ -347,16 +373,16 @@ export function riverMesh() {
             for (let i = 0; i < tiles.count; ++i) {
                 if (include[i] === 0 && tiles.surfaceWater(i) > 0) {
                     let current = i;
-                    include[current] = 1;
+                    include[current] += 1;
                     do  {
                         const next = tiles.uphill[current];
-                        if (tiles.totalElevation(next) < tiles.totalElevation(current)) {
+                        if (tiles.totalElevation(next) <= tiles.totalElevation(current)) {
                             break;
                         }
-                        include[current] = 1;
+                        include[current] += 1;
                         current = next;
-                    } while (!include[current]);
-                    include[current] = 1;
+                    } while (true);
+                    include[current] += 1;
                 }
             }
 
@@ -365,7 +391,7 @@ export function riverMesh() {
                 let g = 0.1;
                 let b = 0.05;
 
-                if (include[i] > 0 && tiles.surfaceWater(i) === 0)
+                if (tiles.surfaceWater(i) === 0)
                 {
                     const target = tiles.uphill[i];
                     const sourceAmount = 1;//Math.min(Math.log(tiles.river(i)*1 + 1), 2.9);
@@ -413,4 +439,126 @@ export function riverMesh() {
             geometry.attributes.color.needsUpdate = true;
         }
     }
+}
+
+
+export function triangleMesh() {
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(1024*3);
+    geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+    geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
+    geometry.setAttribute( 'rocknormal', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
+    geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
+    geometry.setAttribute( 'water', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
+    geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
+    geometry.setAttribute( 'fog', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
+    geometry.setDrawRange(0,0);
+    const material = new THREE.ShaderMaterial( {
+        uniforms: {
+            sunlight: { value: new THREE.Vector3() },
+            color: { value: new THREE.Color( 0xffffff ) },
+            time: { value: 0 },
+        },
+    
+        depthWrite: true,
+        depthTest: true,
+        vertexShader: triangleVertex,
+        fragmentShader: triangleFragment,
+        blending: THREE.NormalBlending,
+    });
+
+    const result= new THREE.Object3D();
+    result.add(new THREE.Mesh( geometry, material ))
+
+    function updateUniforms() {
+        globalSunlight.set(0.9,0.9, 0.85);
+        const rad = Date.now() * 0.001;
+        const light = new THREE.Vector3(
+            Math.cos(rad),
+             Math.sin(rad),
+            0.5);
+        light.normalize();
+        material.uniforms.light = { value: light };
+        material.uniforms.sunlight = { value: globalSunlight };
+    }
+
+    let start = 0;
+
+    return {
+        object: result,
+        updateUniforms,
+        update(tiles: TileSet) {
+            if (tiles.count > geometry.attributes.albedo.array.length / 3) {
+                const positions = new Float32Array(tiles.count*3);
+                for (let i = 0; i < tiles.count; ++i) {
+                    positions[i*3+0] = tiles.x(i);
+                    positions[i*3+1] = tiles.y(i);
+                    positions[i*3+2] = -tiles.rockElevation(i)*50;
+                }
+                geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+                geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
+                geometry.setAttribute( 'water', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
+                geometry.setAttribute( 'rocknormal', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
+                geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
+                geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
+                geometry.setAttribute( 'fog', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
+                geometry.attributes.position.needsUpdate = true;
+                geometry.setDrawRange(0, tiles.count);
+
+                
+                const source = [...tiles.vertices.xs].map((x, i) => ([x, tiles.vertices.ys[i]]));
+
+                function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
+                const delaunay = Delaunator.from(source); 
+                function edgesOfTriangle(t) { return [3 * t, 3 * t + 1, 3 * t + 2]; }
+
+                function pointsOfTriangle(delaunay, t) {
+                    return edgesOfTriangle(t)
+                        .map(e => delaunay.triangles[e]);
+                }
+
+                function forEachTriangle(delaunay, callback) {
+                    for (let t = 0; t < delaunay.triangles.length / 3; t++) {
+                        callback(pointsOfTriangle(delaunay, t));
+                    }
+                }
+
+                const indices = new Array<number>();
+                forEachTriangle(delaunay, (is) => {
+                    indices.push(...is.reverse());
+                });
+
+                geometry.setIndex(indices);
+            }
+
+            for (let j = 0; j < tiles.count; ++j) {
+                const i = j % tiles.count;
+                const a = albedo(tiles, i).multiplyScalar(tiles.totalElevation(i)*0.6 + 0.4);
+                const rock = rockNormal(tiles, i);
+                const water = totalNormal(tiles, i);
+
+                geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
+                geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
+                geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
+                geometry.attributes.water.setX(i, tiles.surfaceWater(i));
+                geometry.attributes.fog.setX(i, tiles.fog[i]);
+                geometry.attributes.height.setX(i, tiles.totalElevation(i));
+            }
+            
+            start += ~~(tiles.count/10);
+            if (start > tiles.count) {
+                start = 0;
+            }
+           
+
+            updateUniforms();
+
+            geometry.attributes.albedo.needsUpdate = true;
+            geometry.attributes.water.needsUpdate = true;
+            geometry.attributes.rocknormal.needsUpdate = true;
+            geometry.attributes.waternormal.needsUpdate = true;
+            geometry.attributes.height.needsUpdate = true;
+            geometry.attributes.fog.needsUpdate = true;
+        }
+    };
 }

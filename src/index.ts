@@ -11,10 +11,10 @@ import { Tile } from "./map/Tile";
 import { createDiscSampler } from "./map/pureDisc";
 import { byMin, clamp } from "./math";
 import { createCanvas } from "./render/canvas";
-import { pointsMesh, riverMesh } from "./render/mesher";
+import { pointsMesh } from "./render/mesher";
 
 function generator() {
-    const gen = createDiscSampler(8, (x, y) => x*x*0.5 + y*y < 1000*1000);
+    const gen = createDiscSampler(8, (x, y) => x*x + y*y*2 < 5500*5500);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -22,8 +22,11 @@ function generator() {
     const tiles = iota(vs.count).map(i => {
         const x = vs.xs[i];
         const y = vs.ys[i];
-        const softness = 0;//Math.pow(fbm(noise, x * 0.005, y * 0.005) * 0.4 + 0.4, 4);
-        const elevation = clamp(1 - Math.sqrt(x*x*0.7 + y*y*2.5) * 0.0014 + wavy(x,y) * 2 - 1, 0.05, 1) //p.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
+        const softness = 0;
+
+        const plateau = clamp(0.8 - Math.sqrt(x*x*0.7 + y*y*2.5) * 0.00025, -0.2, 0.8);
+
+        const elevation = clamp(clamp(plateau + wavy(x,y)*0.5, 0.01, 0.8) + wavy(x,y)*0.1 + 0.1, 0, 1);
         const softRock = Math.min(elevation, softness);
         const hardRock = Math.max(0, elevation - softness);
         return new Tile(
@@ -36,7 +39,7 @@ function generator() {
 });
 
 const map = new Map(new TileSet(tiles));
-eroder(map);
+eroder(map, tiles);
 }
 
 function loader() {
@@ -50,7 +53,7 @@ function loader() {
         const tiles = risers.map(riser => {
             const x = riser.x;
             const y = riser.y;
-            const softness = wavy(x, y) * 0.3;
+            const softness = 0;
             const elevation = riser.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
             const softRock = Math.min(elevation, softness);
             const hardRock = Math.max(0, elevation - softness);
@@ -91,21 +94,19 @@ function fbm(noise: SimplexNoise, x: number, y: number) {
 }
 
 function wavy(x: number, y: number) {
-    x = x * 0.004;
-    y = y * 0.004;
+    x = x * 0.002;
+    y = y * 0.002;
     x += 0.5;
     y += 0.5;
-    x = x + fbm(noiseX, x*0.2, y*0.2)*5;
-    y = y + fbm(noiseY, x*0.2, y*0.2)*5;
+    x = x + fbm(noiseX, x*0.1, y*0.1)*3;
+    y = y + fbm(noiseY, x*0.1, y*0.1)*3;
 
-    return fbm(noise, x, y) * 0.5 + 0.5;
+    return fbm(noise, x, y);
 }
 
-function eroder(map: Map) {
-
-
+function eroder(map: Map, tiles: Tile[]) {
     let mesh = pointsMesh();
-    let rivers = riverMesh();
+    //let rivers = riverMesh();
     let informId = 0;
 
     const {scene, render, element} = createCanvas(({x, y}) => {
@@ -126,9 +127,10 @@ function eroder(map: Map) {
         });
 
         informId = p.index;
+        mesh.select(informId);
     });
     scene.add(mesh.object);
-    scene.add(rivers.object);
+    //scene.add(rivers.object);
 
     for (let i = 0; i < 10; ++i) {
         map.simpleErosion();
@@ -136,12 +138,14 @@ function eroder(map: Map) {
 
     map.deriveUphills();
     mesh.update(map.tiles);
-    rivers.update(map.tiles);
+    //rivers.update(map.tiles);
 
     let eroding = false;
     let bioming = false;
     let flowing = false;
     let laking = false;
+    let growing = false;
+    let rendering = false;
     let j = 0;
     
     const root = createUi({
@@ -155,12 +159,39 @@ function eroder(map: Map) {
             name: "Flowing",
             onchange: e => flowing = e
         }, {
+            name: "Growing",
+            onchange: e => growing = e
+        }, {
             name: "Laking",
             onchange: e => laking = e
+        }, {
+            name: "Rendering",
+            onchange: e => rendering = e
         }],
         actions: [{
             name: "Reset water",
-            onclick: () => map.resetWater()
+            onclick: () => {
+                map.resetWater()
+                mesh.update(map.tiles);
+            }
+        }, {
+            name: "Clear fog",
+            onclick: () => {
+                for (let i = 0; i < map.tiles.count; ++i) {
+                    map.tiles.fog[i] = 0;
+                }
+                mesh.update(map.tiles);
+            }
+        }, {
+            name: "Height rendering",
+            onclick: () => {
+                mesh.mode(1);
+            }
+        }, {
+            name: "Normal rendering",
+            onclick: () => {
+                mesh.mode(0);
+            }
         }]
     });
 
@@ -172,38 +203,43 @@ function eroder(map: Map) {
         let start = Date.now();
         if (bioming) {
             map.fog(8);
-    map.deriveUphills();
-    map.deriveDownhills();
-            mesh.update(map.tiles);
-            rivers.update(map.tiles);
-        } else if (eroding) {
+        }
+        if (growing) {
+            for (let i = 0; i < tiles.length; ++i) {
+                map.tiles.hard[i] += tiles[i].hardRock*0.0002;
+            }
+        }
+        if (eroding) {
             for (let i = 0; i < 1; ++i) {
                 map.setRivers();
+                map.fog(8);
                 map.iterateRivers();
-                //map.simpleErosion();
-                map.iterateSpread();
-                map.iterateSpread();
-                map.iterateSpread();
-                map.iterateSpread();
+                map.fixWater();
+                map.spreadWater();
+                map.spreadWater();
+                map.spreadWater();
+                map.landslide();
             }
-    map.deriveUphills();
-    map.deriveDownhills();
-            mesh.update(map.tiles);
-            rivers.update(map.tiles);
-        } else if (flowing) {
-            map.iterateSpread();
-            mesh.update(map.tiles);
-            rivers.update(map.tiles);
-        } else if (laking) {
-            map.rain();
-            map.iterateSpread();
-            map.iterateSpread();
-            map.iterateSpread();
-            map.iterateSpread();
-            mesh.update(map.tiles);
-            rivers.update(map.tiles);
         }
-        render();
+        if (flowing) {
+            map.spreadWater();
+            while (Date.now() - start < 200) {
+                map.spreadWater();
+            }
+        }
+        if (laking) {
+            map.iterateLakes();
+            map.spreadWater();
+        }
+        if (rendering && (flowing || eroding || bioming || laking)) {
+            map.deriveUphills();
+            map.deriveDownhills();
+            mesh.update(map.tiles);
+            //rivers.update(map.tiles);
+        }
+        if (rendering) {
+            render();
+        }
         root.inform(map.tiles, informId);
         requestAnimationFrame(frame);
     }
@@ -214,5 +250,5 @@ function eroder(map: Map) {
 
 
 window.addEventListener("load", () => {
-    unmarshaler();
+    generator();
 });

@@ -12,6 +12,7 @@
     "author": "",
     "license": "UNLICENSED",
     "devDependencies": {
+        "@tsconfig/recommended": "^1.0.3",
         "@types/delaunator": "^5.0.0",
         "@types/rbush": "^3.0.0",
         "@types/three": "^0.154.0",
