@@ -7,6 +7,11 @@ export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
 
     let zoom = 30;
     const renderer = new THREE.WebGLRenderer();
+    renderer.setClearColor(new THREE.Color(
+        Math.pow(6/255,2),
+        Math.pow(17/255, 2),
+        Math.pow(27/255, 2)
+    ));
     const sizeWatcher = () => {
         renderer.setSize( window.innerWidth, window.innerHeight );
         aspect = document.body.clientWidth / document.body.clientHeight;
@@ -28,10 +33,12 @@ export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
 
     let down: {x:number,y:number} | undefined;
     window.addEventListener("mousedown", e => {
+        e.preventDefault();
         down = { x: e.x, y: e.y };
     });
 
     window.addEventListener("mousemove", e => {
+        e.preventDefault();
         if (down) {
             const dx = e.x - down.x;
             const dy = e.y - down.y;

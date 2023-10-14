@@ -1,7 +1,6 @@
 import Delaunator from "delaunator";
 import RBush from "rbush";
 import { clamp } from "../math";
-import { Tile } from "./Tile";
 
 export type BushVertex = {
     readonly index: number;
@@ -17,6 +16,14 @@ export type Vertices = {
     count: number;
     xs: Float32Array;
     ys: Float32Array;
+}
+
+function mapVertices<T>(vertices: Vertices, f: (x: number, y: number, i: number) => T) {
+    let result = new Array<T>(vertices.count);
+    for (let i = 0; i < vertices.count; ++i) {
+        result[i] = f(vertices.xs[i], vertices.ys[i], i);
+    }
+    return result;
 }
 
 export class TileSet {
@@ -37,42 +44,29 @@ export class TileSet {
     uphill: number[];
     adjacents: number[][];
 
-    constructor(points: Tile[]) {
-        this.hard = new Float32Array(points.length);
-        this.soft = new Float32Array(points.length);
-        this.water = new Float32Array(points.length);
-        this.river = new Float32Array(points.length);
-        this.vegetation = new Float32Array(points.length);
-        this.fog = new Float32Array(points.length);
+    constructor(vertices: Vertices) {
+        this.hard = new Float32Array(vertices.count);
+        this.soft = new Float32Array(vertices.count);
+        this.water = new Float32Array(vertices.count);
+        this.river = new Float32Array(vertices.count);
+        this.vegetation = new Float32Array(vertices.count);
+        this.fog = new Float32Array(vertices.count);
 
-        this.count = points.length;
-        this.vertices = {
-            count: points.length,
-            points: new RBush<BushVertex>(),
-            xs: new Float32Array(points.length),
-            ys: new Float32Array(points.length),
-        }
-        this.uphill = new Array<number>(points.length);
-        this.vertices.points.load(points.map((p, i) => ({
+        this.count = vertices.count;
+        this.vertices = vertices;
+        this.uphill = new Array<number>(vertices.count);
+        this.vertices.points = new RBush<BushVertex>();
+        this.vertices.points.load(mapVertices(vertices, (x, y, i) => ({
             index: i,
-            maxX: p.x,
-            minX: p.x,
-            maxY: p.y,
-            minY: p.y,
+            maxX: x,
+            minX: x,
+            maxY: y,
+            minY: y,
         })))
 
-        this.downhills = points.map(i => 0);
-
-        for (let i = 0; i < points.length; ++i) {
-            const t = points[i];
-            this.hard[i] = t.hardRock;
-            this.soft[i] = t.softRock;
-            this.water[i] = t.water;
-            this.vertices.xs[i] = t.x;
-            this.vertices.ys[i] = t.y;
-        }
+        this.downhills = new Array<number>(vertices.count);
         
-        const source = points.map(a => ([a.x, a.y]));
+        const source = mapVertices(vertices, (x,y) => [x, y]);
 
         function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
         const delaunay = Delaunator.from(source);
@@ -90,7 +84,6 @@ export class TileSet {
         forEachTriangleEdge((p, q) => {
             this.adjacents[p].push(q);
             this.adjacents[q].push(p);
-
         });
 
         this.adjacents = this.adjacents.map((a,i) => {

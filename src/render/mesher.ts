@@ -1,11 +1,8 @@
 import * as THREE from "three";
 
 
-import Delaunator from "delaunator";
-import { TileSet } from "../map/Graph";
+import { TileSet } from "../map/TileSet";
 import { clamp, lerp } from "../math";
-import triangleFragment from "./triangleFragment.glsl";
-import triangleVertex from "./triangleVertex.glsl";
 import voronoiFragment from "./voronoiFragment.glsl";
 import voronoiVertex from "./voronoiVertex.glsl";
 
@@ -25,12 +22,6 @@ const rockAlbedo = {
     r: 0.49,
     g: 0.38,
     b: 0.36,
-};
-
-const softRockAlbedo = {
-    r: 0.3,
-    g: 0.40,
-    b: 0.32,
 };
 
 function albedo(tiles: TileSet, i: number) {
@@ -298,7 +289,6 @@ export function riverMesh() {
                 geometry.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(positions), 3 ) );
                 geometry.setAttribute( 'color', new THREE.BufferAttribute( new Float32Array(colors), 3 ) );
             } else {
-
                 for (let i = 0; i < positions.length; ++i) {
                     geometry.attributes.position[i] = positions[i];
                     geometry.attributes.color[i] = colors[i];
@@ -310,124 +300,4 @@ export function riverMesh() {
             geometry.attributes.color.needsUpdate = true;
         }
     }
-}
-
-export function triangleMesh() {
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(1024*3);
-    geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-    geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
-    geometry.setAttribute( 'rocknormal', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
-    geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
-    geometry.setAttribute( 'water', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
-    geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
-    geometry.setAttribute( 'fog', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
-    geometry.setDrawRange(0,0);
-    const material = new THREE.ShaderMaterial( {
-        uniforms: {
-            sunlight: { value: new THREE.Vector3() },
-            color: { value: new THREE.Color( 0xffffff ) },
-            time: { value: 0 },
-        },
-    
-        depthWrite: true,
-        depthTest: true,
-        vertexShader: triangleVertex,
-        fragmentShader: triangleFragment,
-        blending: THREE.NormalBlending,
-    });
-
-    const result= new THREE.Object3D();
-    result.add(new THREE.Mesh( geometry, material ))
-
-    function updateUniforms() {
-        globalSunlight.set(0.9,0.9, 0.85);
-        const rad = Date.now() * 0.001;
-        const light = new THREE.Vector3(
-            Math.cos(rad),
-             Math.sin(rad),
-            0.5);
-        light.normalize();
-        material.uniforms.light = { value: light };
-        material.uniforms.sunlight = { value: globalSunlight };
-    }
-
-    let start = 0;
-
-    return {
-        object: result,
-        updateUniforms,
-        update(tiles: TileSet) {
-            if (tiles.count > geometry.attributes.albedo.array.length / 3) {
-                const positions = new Float32Array(tiles.count*3);
-                for (let i = 0; i < tiles.count; ++i) {
-                    positions[i*3+0] = tiles.x(i);
-                    positions[i*3+1] = tiles.y(i);
-                    positions[i*3+2] = -tiles.rockElevation(i)*50;
-                }
-                geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-                geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
-                geometry.setAttribute( 'water', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
-                geometry.setAttribute( 'rocknormal', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
-                geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
-                geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
-                geometry.setAttribute( 'fog', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
-                geometry.attributes.position.needsUpdate = true;
-                geometry.setDrawRange(0, tiles.count);
-
-                
-                const source = [...tiles.vertices.xs].map((x, i) => ([x, tiles.vertices.ys[i]]));
-
-                const delaunay = Delaunator.from(source); 
-                function edgesOfTriangle(t) { return [3 * t, 3 * t + 1, 3 * t + 2]; }
-
-                function pointsOfTriangle(delaunay, t) {
-                    return edgesOfTriangle(t)
-                        .map(e => delaunay.triangles[e]);
-                }
-
-                function forEachTriangle(delaunay, callback) {
-                    for (let t = 0; t < delaunay.triangles.length / 3; t++) {
-                        callback(pointsOfTriangle(delaunay, t));
-                    }
-                }
-
-                const indices = new Array<number>();
-                forEachTriangle(delaunay, (is) => {
-                    indices.push(...is.reverse());
-                });
-
-                geometry.setIndex(indices);
-            }
-
-            for (let j = 0; j < tiles.count; ++j) {
-                const i = j % tiles.count;
-                const a = albedo(tiles, i).multiplyScalar(tiles.totalElevation(i)*0.6 + 0.4);
-                const rock = rockNormal(tiles, i);
-                const water = totalNormal(tiles, i);
-
-                geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
-                geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
-                geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
-                geometry.attributes.water.setX(i, tiles.surfaceWater(i));
-                geometry.attributes.fog.setX(i, tiles.fog[i]);
-                geometry.attributes.height.setX(i, tiles.totalElevation(i));
-            }
-            
-            start += ~~(tiles.count/10);
-            if (start > tiles.count) {
-                start = 0;
-            }
-           
-
-            updateUniforms();
-
-            geometry.attributes.albedo.needsUpdate = true;
-            geometry.attributes.water.needsUpdate = true;
-            geometry.attributes.rocknormal.needsUpdate = true;
-            geometry.attributes.waternormal.needsUpdate = true;
-            geometry.attributes.height.needsUpdate = true;
-            geometry.attributes.fog.needsUpdate = true;
-        }
-    };
 }

@@ -1,5 +1,5 @@
 import RBush from "rbush";
-import { BushVertex, Vertices } from "./Graph";
+import { BushVertex, Vertices } from "./TileSet";
 
 export function createDiscSampler(radius: number, filter: (x: number, y: number) => boolean) {
     let count = 1;

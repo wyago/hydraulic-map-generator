@@ -1,5 +1,5 @@
 div#ui {
-    position: float;
+    position: fixed;
     display: flex;
     justify-content: center;
     align-items: flex-end;
@@ -13,19 +13,33 @@ div#ui {
 }
 
 div.modal {
+    color: #fff;
     margin: 10px;
     padding: 20px;
-    background-color: #fff;
-    border-radius: 5px;
+    background-color: #0007;
+    width:100%;
 }
 
-div.section {
+details {
     margin: 5px;
     padding: 10px;
     border-radius: 5px;
-    background-color: #bbb;
+    background-color: #0019;
 }
 
 label {
     margin-right: 20px;
+}
+
+button {
+	padding: 6px 10px;
+	margin: 4px;
+	cursor: pointer;
+	width: 100%;
+}
+
+div.pair {
+    width: 100%;
+    display:flex;
+    justify-content: flex-end;
 }
