@@ -128,10 +128,6 @@ function eroder() {
     scene.add(mesh.object);
     scene.add(rivers.object);
 
-    for (let i = 0; i < 10; ++i) {
-        map.simpleErosion();
-    }
-
     map.deriveUphills();
     mesh.update(map.tiles);
     rivers.update(map.tiles);

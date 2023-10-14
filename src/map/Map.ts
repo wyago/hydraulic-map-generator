@@ -111,27 +111,6 @@ export class Map {
             this.tiles.soft[start] += transfer
         }
     }
-
-    simpleErosion() {
-        for (let source = 0; source < this.tiles.count; ++source) {
-            for (let a = 0; a < this.tiles.adjacents[source].length; ++a) {
-                const target = this.tiles.adjacents[source][a];
-                const delta = (this.tiles.rockElevation(source) - this.tiles.rockElevation(target));
-
-                if (delta < 0) {
-                    continue;
-                }
-
-                const softFactor = Math.min((this.tiles.soft[source] - this.tiles.soft[target])*0.5,  delta*0.00001);
-                this.tiles.soft[source] -= softFactor;
-                this.tiles.soft[target] += softFactor;
-
-                const hardFactor = Math.min((this.tiles.hard[source] - this.tiles.hard[target])*0.5,  delta*0.00001);
-                this.tiles.hard[source] -= hardFactor;
-                this.tiles.soft[target] += hardFactor;
-            }
-        } 
-    }
     
     simpleErode(center: number, amount: number) {
         const hardFactor = Math.min(this.tiles.hard[center], amount*0.1);
