@@ -6,7 +6,7 @@
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "build": "esbuild src/index.ts --bundle --outdir=public --target=es6",
-        "build-min": "esbuild src/index.ts  --minify --bundle --outfile=public/a.js",
+        "build-min": "esbuild src/index.ts  --minify --bundle --outfile=public/index.js",
         "start": "esbuild src/index.ts --bundle --outdir=public  --target=es6 --watch --servedir=public --loader:.glsl=text --sourcemap"
     },
     "author": "",
