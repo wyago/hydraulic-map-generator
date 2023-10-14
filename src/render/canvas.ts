@@ -1,12 +1,11 @@
 import * as THREE from 'three';
-import { PointLike } from '../map/PointLike';
 
 export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
     const scene = new THREE.Scene();
     let camera: THREE.OrthographicCamera;
     let aspect: number;
 
-    let zoom = 65;
+    let zoom = 30;
     const renderer = new THREE.WebGLRenderer();
     const sizeWatcher = () => {
         renderer.setSize( window.innerWidth, window.innerHeight );
@@ -27,7 +26,7 @@ export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
         camera.scale.setScalar(Math.pow(zoom, 2));
     });
 
-    let down: PointLike | undefined;
+    let down: {x:number,y:number} | undefined;
     window.addEventListener("mousedown", e => {
         down = { x: e.x, y: e.y };
     });

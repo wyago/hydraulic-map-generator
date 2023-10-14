@@ -4,17 +4,16 @@ import { createUi } from "./ui/ui";
 import { SimplexNoise } from "ts-perlin-simplex";
 import { iota } from "./construction";
 import './index.css';
-import { GenPoint } from "./map/GenPoint";
 import { TileSet } from "./map/Graph";
 import { Map } from "./map/Map";
 import { Tile } from "./map/Tile";
-import { createDiscSampler } from "./map/pureDisc";
+import { createDiscSampler } from "./map/discSampler";
 import { byMin, clamp } from "./math";
 import { createCanvas } from "./render/canvas";
 import { pointsMesh } from "./render/mesher";
 
 function generator() {
-    const gen = createDiscSampler(8, (x, y) => x*x + y*y*2 < 5500*5500);
+    const gen = createDiscSampler(8, (x, y) => x*x + y*y*2 < 1000*1000);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -24,7 +23,7 @@ function generator() {
         const y = vs.ys[i];
         const softness = 0;
 
-        const plateau = clamp(0.8 - Math.sqrt(x*x*0.7 + y*y*2.5) * 0.00025, -0.2, 0.8);
+        const plateau = clamp(0.8 - Math.sqrt(x*x*0.7 + y*y*2.5) * 0.00135, -0.2, 0.8);
 
         const elevation = clamp(clamp(plateau + wavy(x,y)*0.5, 0.01, 0.8) + wavy(x,y)*0.1 + 0.1, 0, 1);
         const softRock = Math.min(elevation, softness);
@@ -32,49 +31,13 @@ function generator() {
         return new Tile(
             x,
             y,
-            "flat",
             hardRock,
             softRock
         )
-});
-
-const map = new Map(new TileSet(tiles));
-eroder(map, tiles);
-}
-
-function loader() {
-    fetch("/asdf.json").then(r => r.json()).then(response => {
-        const risers = response.map(x => new GenPoint(
-            x.x,
-            x.y,
-            x.type,
-            x.elevation
-        ));
-        const tiles = risers.map(riser => {
-            const x = riser.x;
-            const y = riser.y;
-            const softness = 0;
-            const elevation = riser.elevation;//clamp(wavy(p.x + 100000, p.y) - Math.sqrt(p.x*p.x + p.y*p.y) * 0.00008, 0.05, 1);
-            const softRock = Math.min(elevation, softness);
-            const hardRock = Math.max(0, elevation - softness);
-            return new Tile(
-                x,
-                y,
-                "flat",
-                hardRock,
-                softRock
-            )
     });
+
     const map = new Map(new TileSet(tiles));
-        eroder(map);
-    });
-}
-
-function unmarshaler() {
-    fetch("/save.json").then(r => r.json()).then(response => {
-        const map = new Map(new TileSet([]).unmarshal(response));
-        eroder(map);
-    });
+    eroder(map, tiles);
 }
 
 const noise = new SimplexNoise();
@@ -107,7 +70,7 @@ function wavy(x: number, y: number) {
 function eroder(map: Map, tiles: Tile[]) {
     let mesh = pointsMesh();
     //let rivers = riverMesh();
-    let informId = 0;
+    let informId = -1;
 
     const {scene, render, element} = createCanvas(({x, y}) => {
         const region = map.tiles.vertices.points.search({
@@ -117,6 +80,7 @@ function eroder(map: Map, tiles: Tile[]) {
             minY: y - 10,
         });
         if (region.length === 0) {
+            mesh.select(-1);
             return;
         }
 
@@ -145,7 +109,7 @@ function eroder(map: Map, tiles: Tile[]) {
     let flowing = false;
     let laking = false;
     let growing = false;
-    let rendering = false;
+    let rendering = true;
     let j = 0;
     
     const root = createUi({
@@ -166,6 +130,7 @@ function eroder(map: Map, tiles: Tile[]) {
             onchange: e => laking = e
         }, {
             name: "Rendering",
+            start: true,
             onchange: e => rendering = e
         }],
         actions: [{
@@ -231,15 +196,11 @@ function eroder(map: Map, tiles: Tile[]) {
             map.iterateLakes();
             map.spreadWater();
         }
-        if (rendering && (flowing || eroding || bioming || laking)) {
-            map.deriveUphills();
-            map.deriveDownhills();
+        if (rendering) {
             mesh.update(map.tiles);
             //rivers.update(map.tiles);
         }
-        if (rendering) {
-            render();
-        }
+        render();
         root.inform(map.tiles, informId);
         requestAnimationFrame(frame);
     }

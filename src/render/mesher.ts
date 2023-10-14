@@ -1,19 +1,13 @@
 import * as THREE from "three";
 
-import fragmentGlsl from "./fragment.glsl";
-import vertexGlsl from "./vertex.glsl";
 
 import Delaunator from "delaunator";
-import { GenPoint } from "../map/GenPoint";
 import { TileSet } from "../map/Graph";
 import { clamp, lerp } from "../math";
 import triangleFragment from "./triangleFragment.glsl";
 import triangleVertex from "./triangleVertex.glsl";
 import voronoiFragment from "./voronoiFragment.glsl";
 import voronoiVertex from "./voronoiVertex.glsl";
-
-const mountain = new THREE.TextureLoader().load( '/mountain.png' );
-const hills = new THREE.TextureLoader().load( '/hills.png' );
 
 const siltAlbedo = {
     r: 0.69,
@@ -111,128 +105,6 @@ function totalNormal(tiles: TileSet, i: number) {
 
 const globalSunlight = new THREE.Vector3(0.9,0.8, 0.6);
 
-function makePoints(type: string, texture: THREE.Texture) {
-    const pointPositions = new Array<number>();
-    for ( let i = 0; i < points.length; i ++ ) {
-        const point = points[i];
-        if (point.type === type && point.elevation > 0.4) {
-            pointPositions.push(
-                points[i].x,
-                points[i].y,
-                0
-            );
-        }
-    }
-
-    const pointsGeo = new THREE.BufferGeometry();
-    pointsGeo.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(pointPositions), 3 ) );
-
-    const pointsMaterial = new THREE.ShaderMaterial( {
-        uniforms: {
-            color: { value: new THREE.Color( 0xffffff ) },
-            pointTexture: { value: texture }
-        },
-    
-        vertexShader: vertexGlsl,
-        fragmentShader: fragmentGlsl,
-        blending: THREE.NormalBlending,
-        depthTest: false,
-        transparent: true
-    });
-    return {
-        object: new THREE.Points(pointsGeo, pointsMaterial),
-        update() {
-            const pointPositions = new Array<number>();
-            for ( let i = 0; i < points.length; i ++ ) {
-                const point = points[i];
-                if (point.type === type && point.elevation > 0.4) {
-                    pointPositions.push(
-                        points[i].x,
-                        points[i].y,
-                        0
-                    );
-                }
-            }
-            pointsGeo.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(pointPositions), 3 ) );
-        }
-    };
-}
-
-export function genMesh(points: GenPoint[]) {
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(points.length*3);
-    for (let i = 0; i < points.length; ++i) {
-        positions[i*3+0] = points[i].x;
-        positions[i*3+1] = points[i].y;
-        positions[i*3+2] = 0;
-    }
-    geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-    geometry.setAttribute( 'color', new THREE.BufferAttribute( new Float32Array(points.length*3), 3 ) );
-    const material = new THREE.ShaderMaterial( {
-        uniforms: {
-            color: { value: new THREE.Color( 0xffffff ) },
-        },
-    
-        depthWrite: true,
-        depthTest: true,
-        vertexShader: voronoiVertex,
-        fragmentShader: voronoiFragment,
-        blending: THREE.NormalBlending,
-    });
-    
-
-    const result= new THREE.Object3D();
-    result.add(new THREE.Points( geometry, material ))
-    //result.add(new THREE.LineSegments( new THREE.WireframeGeometry(geometry), new THREE.LineBasicMaterial( {color: new THREE.Color("rgba(0,0,0)"), opacity: 0.2, transparent: true } ) ))
-    const m = makePoints("mountain", mountain);
-    const h = makePoints("hills", hills);
-    result.add(m.object);
-    result.add(h.object);
-    return {
-        object: result,
-        update(updatePoints?: GenPoint[]) {
-
-            if (updatePoints && updatePoints.length > geometry.attributes.color.array.length / 3) {
-                points = updatePoints;
-                const positions = new Float32Array(points.length*3);
-                for (let i = 0; i < points.length; ++i) {
-                    positions[i*3+0] = points[i].x;
-                    positions[i*3+1] = points[i].y;
-                    positions[i*3+2] = 0;
-                }
-                geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-                geometry.setAttribute( 'color', new THREE.BufferAttribute( new Float32Array(points.length*3), 3 ) );
-                geometry.attributes.position.needsUpdate = true;
-                geometry.setDrawRange(0, points.length);
-            }
-
-            for (let i = 0; i < points.length; ++i) {
-                let t = points[i];
-
-                const height = 0.4 + t.elevation * 0.5;
-
-                let r = 0.46 * height;
-                let g = 0.44 * height;
-                let b = 0.3 * height;
-
-                if (t.elevation < 0.4) {
-                    const depth = (0.4 - t.elevation)*2 + 0.5;
-                    r -= depth * 0.18;
-                    g -= depth * 0.13;
-                    b -= depth * 0.12;
-                }
-
-                if (t.x === t.x && t.y === t.y)
-                {
-                    geometry.attributes.color.setXYZ(i, r, g, b);
-                }
-            }
-
-            geometry.attributes.color.needsUpdate = true;
-        }
-    };
-}
-
 export function pointsMesh() {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(1024*3);
@@ -323,7 +195,7 @@ export function pointsMesh() {
                 geometry.attributes.index.setX(i, i);
             }
             
-            start += ~~(tiles.count/10);
+            start += ~~(tiles.count/20);
             if (start > tiles.count) {
                 start = 0;
             }
@@ -340,7 +212,6 @@ export function pointsMesh() {
         }
     };
 }
-
 
 export function riverMesh() {
     const geometry = new THREE.BufferGeometry();
@@ -441,7 +312,6 @@ export function riverMesh() {
     }
 }
 
-
 export function triangleMesh() {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(1024*3);
@@ -508,7 +378,6 @@ export function triangleMesh() {
                 
                 const source = [...tiles.vertices.xs].map((x, i) => ([x, tiles.vertices.ys[i]]));
 
-                function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
                 const delaunay = Delaunator.from(source); 
                 function edgesOfTriangle(t) { return [3 * t, 3 * t + 1, 3 * t + 2]; }
 

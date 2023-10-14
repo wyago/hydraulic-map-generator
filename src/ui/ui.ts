@@ -5,7 +5,7 @@ import { globalProjector } from "../projector";
 import "./ui.css";
 
 export type CreateProps = {
-  options?: { name: string, onchange: (value: boolean) => void }[];
+  options?: { name: string, start?: boolean, onchange: (value: boolean) => void }[];
   actions?: { name: string, onclick: () => void }[];
 }
 
@@ -42,6 +42,7 @@ export function createUi({options, actions}: CreateProps) {
                 h("label", [o.name]),
                 h("input", {
                   type: "checkbox",
+                  value: (o.start ?? false).toString(),
                   onchange: e => {
                     o.onchange((e.target as HTMLInputElement).checked);
                   }

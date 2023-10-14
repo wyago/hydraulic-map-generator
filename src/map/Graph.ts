@@ -21,7 +21,7 @@ export type Vertices = {
 
 export class TileSet {
     air(i: number) {
-        return 2 - this.totalElevation(i)*2;
+        return 1 - this.totalElevation(i);
     }
     vertices: Vertices;
     count: number;
