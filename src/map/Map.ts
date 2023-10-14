@@ -56,6 +56,7 @@ export class Map {
             this.tiles.river[i] *= 0.9;
             this.tiles.fog[i] *= 0.9;
             this.tiles.vegetation[i] = clamp(this.tiles.vegetation[i] - 0.004, 0, 1);
+            this.tiles.vegetation[i] += this.tiles.water[i];
             if (this.tiles.water[i] < 0) {
                 this.tiles.water[i] = 0;
             }
@@ -76,14 +77,14 @@ export class Map {
                 break;
             }
             const transfer = Math.min(
-                0.02* multiplier*delta,
+                0.01* multiplier*delta,
                 this.tiles.soft[current]
             );
             this.tiles.soft[current] -= transfer;
             this.tiles.soft[target] += transfer;
 
             this.tiles.river[current] += 0.2 * delta * multiplier;
-            this.tiles.vegetation[current] += 0.005 * multiplier;
+            this.tiles.vegetation[current] += 0.001 * multiplier;
             current = target;
         }
 
@@ -231,9 +232,9 @@ export class Map {
                     break;
                 }
 
-                const air = sumBy(region, x => this.tiles.air(x) + this.tiles.surfaceRock(x)*0.01)/region.length;
+                const air = sumBy(region, x => this.tiles.air(x))/region.length;
                 let soak = 0;
-                if (Math.random()*humidity < air) {
+                if (humidity > air) {
                     soak = humidity - air;
                 }
 
@@ -255,16 +256,13 @@ export class Map {
                         const factor = this.tiles.totalElevation(deflector) - this.tiles.totalElevation(deflectordown);
 
                         const opposition = d.dot(normV);
-                        if (opposition < -0.8) {
-                            this.simpleErode(target, -opposition*0.01);
-                        }
 
-                        if (opposition < 0.7) {
-                            vx -= d.x * factor * 3 / region.length;
-                            vy -= d.y * factor * 3 / region.length; 
+                        if (opposition < 0.5) {
+                            vx -= d.x * factor * 2 / region.length;
+                            vy -= d.y * factor * 2 / region.length; 
                         } else {
-                            vx += d.x * factor * 5 / region.length;
-                            vy += d.y * factor * 5 / region.length; 
+                            vx += d.x * factor * 3 / region.length;
+                            vy += d.y * factor * 3 / region.length; 
                         }
                         
                         const hit = clamp(soak, 0, humidity);
@@ -277,7 +275,7 @@ export class Map {
                     }
 
                     if (this.tiles.vegetation[target] < 1 - humidity) {
-                        const transfer = humidity*0.1;
+                        const transfer = humidity*0.08;
                         this.tiles.vegetation[target] += transfer;
                     }
                 }

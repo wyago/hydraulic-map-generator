@@ -149,7 +149,7 @@ function eroder() {
             onchange: value => map.setWindMultiplier(value)
         }, {
             name: "Landslide angle",
-            start: 0.06,
+            start: 0.11,
             onchange: value => map.setLandslideAngle(value)
         }, {
             name: "Water height",
