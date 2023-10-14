@@ -28,7 +28,7 @@ function mapVertices<T>(vertices: Vertices, f: (x: number, y: number, i: number)
 
 export class TileSet {
     air(i: number) {
-        return 1 - this.totalElevation(i);
+        return 0.5 - this.totalElevation(i);
     }
     vertices: Vertices;
     count: number;
@@ -124,7 +124,7 @@ export class TileSet {
     }
 
     surfaceRock(i: number) {
-        return clamp(this.rockElevation(i) - this.surfaceWater(i), 0, 1);
+        return clamp(this.hard[i] + this.soft[i] - this.water[i], 0, 1);
     }
 
     waterTable(i: number) {
