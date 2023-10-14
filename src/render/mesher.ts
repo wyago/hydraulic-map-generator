@@ -112,7 +112,7 @@ export function pointsMesh() {
             sunlight: { value: new THREE.Vector3() },
             color: { value: new THREE.Color( 0xffffff ) },
             time: { value: 0 },
-            selected: { value: 0 },
+            selected: { value: -1 },
             mode: { value: 0 }
         },
     

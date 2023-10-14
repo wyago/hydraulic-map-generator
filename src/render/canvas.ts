@@ -32,12 +32,12 @@ export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
     });
 
     let down: {x:number,y:number} | undefined;
-    window.addEventListener("mousedown", e => {
+    renderer.domElement.addEventListener("mousedown", e => {
         e.preventDefault();
         down = { x: e.x, y: e.y };
     });
 
-    window.addEventListener("mousemove", e => {
+    renderer.domElement.addEventListener("mousemove", e => {
         e.preventDefault();
         if (down) {
             const dx = e.x - down.x;
@@ -58,9 +58,9 @@ export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
         })
     })
 
-    window.addEventListener("mouseup", e => { down = undefined});
-    window.addEventListener("mouseleave", e => { down = undefined});
-    window.addEventListener("mouseout", e => { down = undefined});
+    renderer.domElement.addEventListener("mouseup", e => { down = undefined});
+    renderer.domElement.addEventListener("mouseleave", e => { down = undefined});
+    renderer.domElement.addEventListener("mouseout", e => { down = undefined});
 
     window.addEventListener("resize", sizeWatcher);
 

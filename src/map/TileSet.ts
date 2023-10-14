@@ -133,12 +133,13 @@ export class TileSet {
 
     marshal() {
         return `{
-            xs: [${[...this.vertices.xs].map(x => x.toFixed(4)).join(",")}],
-            ys: [${[...this.vertices.ys].map(x => x.toFixed(4)).join(",")}],
-            hard: [${[...this.hard].map(x => x.toFixed(4)).join(",")}],
-            soft: [${[...this.soft].map(x => x.toFixed(4)).join(",")}],
-            water: [${[...this.water].map(x => x.toFixed(4)).join(",")}],
-            vegetation: [${[...this.vegetation].map(x => x.toFixed(4)).join(",")}]
+            "istileset": true,
+            "xs": [${[...this.vertices.xs].map(x => x.toFixed(1)).join(",")}],
+            "ys": [${[...this.vertices.ys].map(x => x.toFixed(1)).join(",")}],
+            "hard": [${[...this.hard].map(x => x.toFixed(3)).join(",")}],
+            "soft": [${[...this.soft].map(x => x.toFixed(3)).join(",")}],
+            "water": [${[...this.water].map(x => x.toFixed(3)).join(",")}],
+            "vegetation": [${[...this.vegetation].map(x => x.toFixed(3)).join(",")}]
         }`
     }
 

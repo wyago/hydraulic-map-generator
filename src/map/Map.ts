@@ -1,12 +1,9 @@
 import * as THREE from "three";
-import { FbmNoise } from "../FbmNoise";
-import { byMin, clamp, sumBy } from "../math";
+import { byMin, clamp, lerp, sumBy } from "../math";
 import { TileSet } from "./TileSet";
 
 export class Map {
     readonly tiles: TileSet;
-    windX: FbmNoise = new FbmNoise(0.00007, 2);
-    windY: FbmNoise = new FbmNoise(0.00007, 2);
 
     constructor(tiles: TileSet) {
 
@@ -19,23 +16,22 @@ export class Map {
         this.resetWater();
     }
 
-    iterateLakes() {
-        this.deriveDownhills();
+    riverMultiplier = 1;
+    windMultiplier = 1;
+    landslideAngle = 0.1;
+    waterHeight = 0.25;
 
-        let total = 0;
-
-        for (let i = 0; i < this.tiles.count; ++i) {
-            let current = i;
-            if (this.tiles.surfaceWater(current) < 0.1) {
-                this.tiles.water[current] += 0.01;
-                total += 0.01;
-            }
-        }
-
-        const increment = total / this.tiles.count;
-        for (let i = 0; i < this.tiles.count; ++i) {
-            this.tiles.water[i] = Math.max(0, this.tiles.water[i] - increment);
-        }
+    setRiverMultiplier(value: number) {
+        this.riverMultiplier = value;
+    }
+    setWindMultiplier(value: number) {
+        this.windMultiplier = value;
+    }
+    setLandslideAngle(value: number) {
+        this.landslideAngle = value;
+    }
+    setWaterHeight(value: number) {
+        this.waterHeight = value;
     }
 
     fixWater() {
@@ -44,25 +40,17 @@ export class Map {
         let targets = 0;
         for (let i = 0; i < this.tiles.count; ++i) {
             currentWater += this.tiles.water[i];
-            goal += Math.max(0.25 - this.tiles.hard[i], 0) + this.tiles.soft[i];
-            if (this.tiles.water[i] > 0.1) {
-                targets += 1;
-            }
+            goal += Math.max(this.waterHeight - this.tiles.hard[i], 0) + this.tiles.soft[i];
+            targets += 1;
         } 
 
-        if (currentWater < goal) {
-            const add = (goal - currentWater)/targets;
-            for (let i = 0; i < this.tiles.count; ++i) {
-                if (this.tiles.water[i] > 0.1) {
-                    this.tiles.water[i] += add;
-                }
-            } 
-        }
+        const add = (goal - currentWater)/targets;
+        for (let i = 0; i < this.tiles.count; ++i) {
+            this.tiles.water[i] += add;
+        } 
     }
 
-    setRivers() {
-        this.deriveDownhills();
-
+    passTime() {
         for (let i = 0; i < this.tiles.count; ++i) {
             this.tiles.river[i] *= 0.9;
             this.tiles.fog[i] *= 0.9;
@@ -75,26 +63,26 @@ export class Map {
 
     river(i: number, amount: number) {
         let current = i;
-        const surface = this.tiles.surfaceWater(current)*0.5;
+        const surface = this.tiles.surfaceWater(current)*0.1;
         amount += surface;
         this.tiles.water[current] -= surface;
-        let multiplier = amount*200;
+        let multiplier = amount*500*this.riverMultiplier;
 
-        for (let j = 0; j < 100; ++j) {
+        for (let j = 0; j < 400; ++j) {
             let target = this.tiles.downhills[current];
             const delta = this.tiles.totalElevation(current) - this.tiles.totalElevation(target);
-            if (delta < 0 || this.tiles.surfaceWater(target) > 0) {
+            if (delta < 0) {
                 break;
             }
             const transfer = Math.min(
-                0.5* multiplier*this.tiles.soft[current]*delta,
+                0.2* multiplier*this.tiles.soft[current]*delta,
                 this.tiles.soft[current]
             );
             this.tiles.soft[current] -= transfer;
             this.tiles.soft[target] += transfer;
 
-            this.tiles.river[current] += 0.5 * delta * multiplier;
-            this.tiles.vegetation[current] += 0.02 * multiplier;
+            this.tiles.river[current] += 0.2 * delta * multiplier;
+            this.tiles.vegetation[current] += 0.005 * multiplier;
             current = target;
         }
 
@@ -146,7 +134,7 @@ export class Map {
     }
     
     simpleErode(center: number, amount: number) {
-        const hardFactor = Math.min(this.tiles.hard[center], amount*0.01);
+        const hardFactor = Math.min(this.tiles.hard[center], amount*0.1);
         this.tiles.hard[center] -= hardFactor;
         this.tiles.soft[center] += hardFactor;
         this.tiles.water[center] += hardFactor;
@@ -223,13 +211,13 @@ export class Map {
         for (let source = 0; source < this.tiles.count; ++source) {
             const target = this.tiles.downhills[source];
             const delta = this.tiles.rockElevation(source) - this.tiles.rockElevation(target);
-            if (delta > 0.1) {
+            if (delta > this.landslideAngle) {
                 const transfer = Math.min(delta * 0.5, this.tiles.soft[source]);
 
                 this.tiles.soft[source] -= transfer;
                 this.tiles.soft[target] += transfer;
             }
-            if (delta > 0.15) {
+            if (delta > this.landslideAngle*1.5) {
                 const transfer = Math.min(delta * 0.1, this.tiles.hard[source]);
 
                 this.tiles.hard[source] -= transfer;
@@ -238,27 +226,42 @@ export class Map {
         }
     }
 
+    getWind() {
+        return {
+            x: this.wind.x,
+            y: -this.wind.y
+        }
+    }
+
     fogI = 0;
-    angle = 0;
-    fog(radius: number) {
-        this.angle += Math.random() * 0.2 - 0.1;
-        for (let i = 0; i < 1000; ++i) {
+    wind = new THREE.Vector2();
+    fog(radius: number, windInfluence: { x: number, y: number }) {
+        const angle = Math.random() * 2 * Math.PI;
+
+        const wind = Math.sqrt(windInfluence.x*windInfluence.x + windInfluence.y*windInfluence.y);
+
+        this.wind.x += lerp(Math.cos(angle)*0.04, windInfluence.x, Math.pow(wind, 4));
+        this.wind.y -= lerp(Math.sin(angle)*0.04, windInfluence.y, Math.pow(wind, 4));
+        this.wind.normalize();
+        this.deriveDownhills();
+
+        for (let i = 0; i < 100; ++i) {
             const source = ~~(Math.random() * this.tiles.count);
             if (this.tiles.surfaceWater(source) < 0.01 && this.tiles.river[source] < 4) {
                 continue;
             }
 
-            let humidity = Math.min(Math.pow(this.tiles.surfaceWater(source), 2) * 0.4, this.tiles.water[source]);
+            let humidity = Math.min(this.tiles.surfaceWater(source) * 0.1 + 0.01, this.tiles.water[source]);
             this.tiles.water[source] -= humidity;
 
             let x = this.tiles.vertices.xs[source];
             let y = this.tiles.vertices.ys[source];
 
             this.fogI += 1;
-            let vx = Math.cos(this.angle)*radius*1;
-            let vy = Math.sin(this.angle)*radius*1;
+            let vx = this.wind.x*radius*1;
+            let vy = this.wind.y*radius*1;
 
-            for (let iter = 0; iter < 80 && humidity > 0; ++iter) {
+            for (let iter = 0; iter < 100 && humidity > 0; ++iter) {
                 const region = this.tiles.vertices.points.search({
                     maxX: x + radius * 2,
                     minX: x - radius * 2,
@@ -269,7 +272,7 @@ export class Map {
                     break;
                 }
 
-                const air = sumBy(region, x => this.tiles.air(x) + 0.0001)/region.length;
+                const air = sumBy(region, x => this.tiles.air(x) + this.tiles.surfaceRock(x)*0.01)/region.length;
                 let soak = 0;
                 if (air < humidity) {
                     soak = humidity - air;
@@ -292,17 +295,17 @@ export class Map {
 
                         const factor = this.tiles.totalElevation(deflector) - this.tiles.totalElevation(deflectordown);
 
-                        const opposition = Math.abs(d.dot(normV));
-                        if (opposition > 0.5) {
-                            this.simpleErode(target, opposition*0.1*factor*humidity);
+                        const opposition = d.dot(normV);
+                        if (opposition < -0.5) {
+                            this.simpleErode(target, opposition*0.1*factor*humidity*this.windMultiplier);
                         }
 
-                        if (opposition > 0.5) {
-                            vx += d.x * factor * 6.5 / region.length;
-                            vy += d.y * factor * 6.5 / region.length; 
+                        if (opposition < 0.5) {
+                            vx -= d.x * factor * 3 / region.length;
+                            vy -= d.y * factor * 3 / region.length; 
                         } else {
-                            vx -= d.x * factor * 6.5 / region.length;
-                            vy -= d.y * factor * 6.5 / region.length; 
+                            vx += d.x * factor * 3 / region.length;
+                            vy += d.y * factor * 3 / region.length; 
                         }
                         
                         const hit = clamp(soak, 0, humidity);
@@ -311,11 +314,11 @@ export class Map {
                     }
 
                     if (this.tiles.fog[target] < 1 - humidity) {
-                        this.tiles.fog[target] += humidity*0.1;
+                        this.tiles.fog[target] += humidity*0.5;
                     }
 
                     if (this.tiles.vegetation[target] < 1 - humidity) {
-                        const transfer = humidity*0.02;
+                        const transfer = humidity*0.1;
                         this.tiles.vegetation[target] += transfer;
                     }
                 }
@@ -348,7 +351,7 @@ export class Map {
 
     resetWater() {
         for (let source = 0; source < this.tiles.count; ++source) { 
-            this.tiles.water[source] = Math.max(0.25 - this.tiles.hard[source], 0) + this.tiles.soft[source];
+            this.tiles.water[source] = Math.max(this.waterHeight - this.tiles.hard[source], 0) + this.tiles.soft[source];
         }
     }
 
