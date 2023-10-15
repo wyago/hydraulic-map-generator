@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { byMin, clamp, lerp, sumBy } from "../math";
-import { TileSet } from "./TileSet";
+import { TileSet } from "./PointSet";
 
 export class Eroder {
     readonly tiles: TileSet;

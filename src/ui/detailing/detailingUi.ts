@@ -1,7 +1,7 @@
 import { VNodeProperties, h } from "maquette";
 import { Gameboard } from "../../../gameboard/gameboard";
 import { createCanvas } from "../../render/canvas";
-import { TileSet } from "../../terrain/TileSet";
+import { TileSet } from "../../terrain/PointSet";
 
 export function createDetailingUi(original: TileSet) {
     const board = new Gameboard(original, 1, 16);

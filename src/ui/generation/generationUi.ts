@@ -3,7 +3,7 @@ import { byMin, clamp } from "../../math";
 import { createCanvas } from "../../render/canvas";
 import { pointsMesh, riverMesh } from "../../render/mesher";
 import { Eroder } from "../../terrain/Eroder";
-import { TileSet } from "../../terrain/TileSet";
+import { TileSet } from "../../terrain/PointSet";
 import { createDiscSampler } from "../../terrain/discSampler";
 import { createCodeLink } from "../codeLink";
 import { createConfigurator } from "../configurator";

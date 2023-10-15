@@ -6,8 +6,7 @@ export function pointRenderer(positions: Float32Array) {
 
     const result= new THREE.Object3D();
     result.add(new THREE.Points( geometry, new THREE.PointsMaterial({
-        size: 5,
-        sizeAttenuation: true
+        size: 1
     })));
 
     return result;

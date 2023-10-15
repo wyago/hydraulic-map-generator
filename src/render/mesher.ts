@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 
 import { clamp, lerp } from "../math";
-import { TileSet } from "../terrain/TileSet";
+import { TileSet } from "../terrain/PointSet";
 import voronoiFragment from "./voronoiFragment.glsl";
 import voronoiVertex from "./voronoiVertex.glsl";
 
