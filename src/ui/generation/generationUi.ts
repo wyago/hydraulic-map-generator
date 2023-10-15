@@ -12,6 +12,7 @@ import { createWindSelector } from "./windSelector";
 import { VNodeProperties, h } from "maquette";
 import { createBooleanInput } from "../booleanInput";
 import { createButton } from "../button";
+import { createDropdown } from "../dropdown";
 import { createNumberInput } from "../numberInput";
 import { createPanel } from "../panel";
 import "../ui.css";
@@ -199,27 +200,30 @@ export function createGenerationUi() {
             controls.passTime,
             controls.showWatersheds,
 
+            createDropdown({
+                label: "Rendering mode",
+                start: "0",
+                values: [{
+                    display: "Normal",
+                    key: "0",
+                }, {
+                    display: "Height map",
+                    key: "1"
+                }, {
+                    display: "Occlusion map",
+                    key: "2",
+                }],
+                onchange: e => {
+                    mesh.mode(Number.parseInt(e));
+                }
+            }),
+
             createButton({
                 text: "Generate new terrain",
                 onclick: () => {
                     initialState(eroder);
                     updateMeshes();
                 }
-            }),
-
-            createButton({
-                text: "Occlusion rendering",
-                onclick: () => mesh.mode(2)
-            }),
-
-            createButton({
-                text: "Height rendering",
-                onclick: () => mesh.mode(1)
-            }),
-
-            createButton({
-                text: "Normal rendering",
-                onclick: () => mesh.mode(0),
             }),
 
             createButton({
