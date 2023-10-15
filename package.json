@@ -1,5 +1,5 @@
 {
-    "name": "qwer.cafe",
+    "name": "hydraulicerosion",
     "version": "1.0.0",
     "description": "",
     "main": "index.js",
@@ -9,8 +9,8 @@
         "build-min": "esbuild src/index.ts  --minify --bundle --outfile=public/index.js --loader:.glsl=text ",
         "start": "esbuild src/index.ts --bundle --outdir=public  --target=es6 --watch --servedir=public --loader:.glsl=text --sourcemap"
     },
-    "author": "",
-    "license": "UNLICENSED",
+    "author": "Wyatt Goodin",
+    "license": "MIT",
     "devDependencies": {
         "@tsconfig/recommended": "^1.0.3",
         "@types/delaunator": "^5.0.0",
