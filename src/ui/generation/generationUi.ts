@@ -135,9 +135,13 @@ export function createGenerationUi() {
             start: 1,
             onchange: value => eroder.setWindMultiplier(value)
         }, {
-            name: "Landslide angle",
-            start: 0.08,
-            onchange: value => eroder.setLandslideAngle(value)
+            name: "Silt landslide angle",
+            start: 0.12,
+            onchange: value => eroder.setSiltLandslideAngle(value)
+        }, {
+            name: "Rock landslide angle",
+            start: 0.2,
+            onchange: value => eroder.setRockLandslideAngle(value)
         }, {
             name: "Water height",
             start: 0.25,

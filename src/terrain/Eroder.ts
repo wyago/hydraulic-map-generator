@@ -17,7 +17,8 @@ export class Eroder {
 
     riverMultiplier = 1;
     windMultiplier = 1;
-    landslideAngle = 0.1;
+    siltLandslideAngle = 0.12;
+    rockLandslideAngle = 0.2;
     waterHeight = 0.25;
     showWind = true;
 
@@ -27,8 +28,11 @@ export class Eroder {
     setWindMultiplier(value: number) {
         this.windMultiplier = value;
     }
-    setLandslideAngle(value: number) {
-        this.landslideAngle = value;
+    setSiltLandslideAngle(value: number) {
+        this.siltLandslideAngle = value;
+    }
+    setRockLandslideAngle(value: number) {
+        this.rockLandslideAngle = value;
     }
     setWaterHeight(value: number) {
         this.waterHeight = value;
@@ -58,6 +62,8 @@ export class Eroder {
             this.tiles.vegetation[i] += this.tiles.water[i];
             if (this.tiles.water[i] < 0) {
                 this.tiles.water[i] = 0;
+            } else {
+                this.simpleErode(i, this.tiles.water[i]*0.1);
             }
         }
     }
@@ -76,7 +82,7 @@ export class Eroder {
                 break;
             }
             const transfer = Math.min(
-                0.02* multiplier*delta,
+                0.01* multiplier*delta,
                 this.tiles.soft[current]
             );
             this.tiles.soft[current] -= transfer;
@@ -142,7 +148,7 @@ export class Eroder {
                 continue;
             }
 
-            const pressure = 0.03*this.tiles.river[source]*(0.5 - this.tiles.soft[source]);
+            const pressure = 0.03*this.tiles.river[source]*(0.2 - this.tiles.soft[source]);
             const erosion = clamp(Math.min(pressure, this.tiles.hard[source]), 0, 1);
             this.tiles.hard[source] -= erosion;
             this.tiles.soft[source] += erosion;
@@ -171,14 +177,14 @@ export class Eroder {
         for (let source = 0; source < this.tiles.count; ++source) {
             const target = this.tiles.downhills[source];
             const delta = this.tiles.rockElevation(source) - this.tiles.rockElevation(target);
-            if (delta > this.landslideAngle) {
-                const transfer = Math.min((delta - this.landslideAngle) * 0.1, this.tiles.soft[source]);
+            if (delta > this.siltLandslideAngle) {
+                const transfer = Math.min((delta - this.siltLandslideAngle) * 0.1, this.tiles.soft[source]);
 
                 this.tiles.soft[source] -= transfer;
                 this.tiles.soft[target] += transfer;
             }
-            if (delta > this.landslideAngle*1.5) {
-                const transfer = Math.min((delta - this.landslideAngle*1.5) * 0.1, this.tiles.hard[source]);
+            if (delta > this.rockLandslideAngle) {
+                const transfer = Math.min((delta - this.rockLandslideAngle) * 0.1, this.tiles.hard[source]);
 
                 this.tiles.hard[source] -= transfer;
                 this.tiles.hard[target] += transfer;
