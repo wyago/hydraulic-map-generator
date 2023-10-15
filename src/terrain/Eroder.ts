@@ -76,7 +76,7 @@ export class Eroder {
                 break;
             }
             const transfer = Math.min(
-                0.01* multiplier*delta,
+                0.02* multiplier*delta,
                 this.tiles.soft[current]
             );
             this.tiles.soft[current] -= transfer;
@@ -172,13 +172,13 @@ export class Eroder {
             const target = this.tiles.downhills[source];
             const delta = this.tiles.rockElevation(source) - this.tiles.rockElevation(target);
             if (delta > this.landslideAngle) {
-                const transfer = Math.min(delta * 0.1, this.tiles.soft[source]);
+                const transfer = Math.min((delta - this.landslideAngle) * 0.1, this.tiles.soft[source]);
 
                 this.tiles.soft[source] -= transfer;
                 this.tiles.soft[target] += transfer;
             }
             if (delta > this.landslideAngle*1.5) {
-                const transfer = Math.min(delta * 0.1, this.tiles.hard[source]);
+                const transfer = Math.min((delta - this.landslideAngle*1.5) * 0.1, this.tiles.hard[source]);
 
                 this.tiles.hard[source] -= transfer;
                 this.tiles.hard[target] += transfer;
@@ -282,7 +282,6 @@ export class Eroder {
                     if (this.showWind && this.tiles.fog[target] < 1 - humidity) {
                         this.tiles.fog[target] += humidity*0.3;
                     }
-
                 }
 
 
