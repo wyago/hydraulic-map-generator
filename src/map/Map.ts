@@ -239,7 +239,7 @@ export class Map {
                 }
 
                 const air = sumBy(region, x => this.tiles.air(x))/region.length;
-                let soak = sumBy(region, x => this.tiles.surfaceWater(x) > 0 ? 0 : 1)/region.length * 0.000005;
+                let soak = sumBy(region, x => this.tiles.surfaceWater(x) > 0 ? 0 : 1 - this.tiles.vegetation[x]*0.5)/region.length * 0.000005;
                 if (humidity > air) {
                     soak = humidity - air;
                 }
@@ -275,7 +275,7 @@ export class Map {
                         humidity -= hit;
                         this.river(target, hit);
                         if (hit > 0 && this.tiles.vegetation[target] < 1 - humidity) {
-                            const transfer = humidity*0.08;
+                            const transfer = hit*0.1;
                             this.tiles.vegetation[target] += transfer;
                         }
                     }
