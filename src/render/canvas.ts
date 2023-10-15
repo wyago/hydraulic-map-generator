@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { setupInputs } from './inputs';
 
 export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
     const scene = new THREE.Scene();
@@ -22,48 +23,33 @@ export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
 
     camera!.scale.setScalar(Math.pow(zoom, 2));
 
-    window.addEventListener("wheel", e => {
-        if (e.deltaY > 0) {
-            zoom *= 1.1;
-        } else {
-            zoom *= 0.9;
-        }
-        if (zoom < 4) {
-            zoom = 4;
-        }
-        camera.scale.setScalar(Math.pow(zoom, 2));
+    setupInputs(renderer.domElement, {
+        move(position, delta) {
+            if (delta) {
+                const v = new THREE.Vector3(
+                    (delta.x / window.innerHeight) * 2,
+                    (delta.y / window.innerHeight) * 2, 0.5);
+                camera.translateX(-v.x * Math.pow(zoom, 2));
+                camera.translateY(v.y * Math.pow(zoom, 2));
+            }
+            const v = new THREE.Vector3(
+                (position.x / window.innerHeight) / aspect * 2 - 1,
+                -(position.y / window.innerHeight) * 2 + 1, 0.5);
+            v.unproject(camera);
+
+            clientmove?.({
+                x: v.x,
+                y: v.y
+            }) 
+        },
+        zoom(multiplier) {
+            zoom *= multiplier;
+            if (zoom < 4) {
+                zoom = 4;
+            }
+            camera.scale.setScalar(Math.pow(zoom, 2));
+        },
     });
-
-    let down: {x:number,y:number} | undefined;
-    renderer.domElement.addEventListener("mousedown", e => {
-        e.preventDefault();
-        down = { x: e.x, y: e.y };
-    });
-
-    renderer.domElement.addEventListener("mousemove", e => {
-        e.preventDefault();
-        if (down) {
-            const dx = e.x - down.x;
-            const dy = e.y - down.y;
-            down = { x: e.x, y: e.y };
-            const v = new THREE.Vector3((dx / window.innerHeight) * 2,
-                (dy / window.innerHeight) * 2, 0.5);
-            camera.translateX(-v.x * Math.pow(zoom, 2));
-            camera.translateY(v.y * Math.pow(zoom, 2));
-        }
-        const v = new THREE.Vector3((e.pageX / window.innerHeight ) / aspect * 2 - 1,
-            - ( e.pageY / window.innerHeight ) * 2 + 1, 0.5);
-        v.unproject(camera);
-
-        clientmove?.({
-            x: v.x,
-            y: v.y
-        })
-    })
-
-    renderer.domElement.addEventListener("mouseup", e => { down = undefined});
-    renderer.domElement.addEventListener("mouseleave", e => { down = undefined});
-    renderer.domElement.addEventListener("mouseout", e => { down = undefined});
 
     window.addEventListener("resize", sizeWatcher);
 
