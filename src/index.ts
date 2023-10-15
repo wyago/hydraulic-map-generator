@@ -9,6 +9,7 @@ import { createDiscSampler } from "./map/discSampler";
 import { byMin, clamp } from "./math";
 import { createCanvas } from "./render/canvas";
 import { pointsMesh, riverMesh } from "./render/mesher";
+import { createCodeLink } from "./ui/codeLink";
 import { createConfigurator } from "./ui/configurator";
 import { createControls } from "./ui/controls";
 import { createInfoPanel } from "./ui/infoPanel";
@@ -232,8 +233,10 @@ function eroder() {
     }
 
     setupLoading(map, updateMeshes);
+
+    const codeLink = createCodeLink();
     
-    const root = createUi({ panels: [controls, windSelector, configurator, info] });
+    const root = createUi({ panels: [controls, windSelector, configurator, info, codeLink] });
     globalProjector.append(document.body, () => root.realize());
 
     function frame() {

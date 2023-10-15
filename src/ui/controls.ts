@@ -13,7 +13,8 @@ export type CreateProps = {
 export function createControls({options, actions}: CreateProps) {
     return {
         realize()  {
-            return h("div.modal",  [
+            return h("details.modal", {open: ""}, [
+                h("summary", ["Controls"]),
                 (options ?? []).map(o => h("div.pair", {
                     key: o.name
                 }, [
