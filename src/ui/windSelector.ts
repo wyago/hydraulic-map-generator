@@ -17,11 +17,22 @@ export function createWindSelector() {
     };
     const onmouseleave = e => isMouseDown = false;
     const onmouseup = e => isMouseDown = false;
-
+    
     const onmousemove = e => {
         if (isMouseDown) {
             windX = e.offsetX / 100 - 1;
             windY = e.offsetY / 100 - 1;
+        }
+    }
+
+    const ontouch = (e: TouchEvent) => {
+        const touches = [...e.touches];
+        if (touches.length === 1) {
+            const bcr = (e.target as HTMLElement).getBoundingClientRect();
+            const x = touches[0].clientX - bcr.x;
+            const y = touches[0].clientY - bcr.y;
+            windX = x / 100 - 1;
+            windY = y / 100 - 1;
         }
     }
 
@@ -48,13 +59,15 @@ export function createWindSelector() {
                         onmousedown,
                         onmouseleave,
                         onmouseup,
-                        onmousemove
+                        onmousemove,
                     }, [
                         h("circle", {
                             cx: "0.5",
                             cy: "0.5",
                             r: "0.5",
                             fill: "#fff2",
+                            ontouchdown: ontouch,
+                            ontouchmove: ontouch,
                         }),
                         h("line", {
                             x1: 0.5,
