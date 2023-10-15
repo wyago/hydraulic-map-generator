@@ -2,11 +2,10 @@ import * as THREE from "three";
 import { byMin, clamp, lerp, sumBy } from "../math";
 import { TileSet } from "./TileSet";
 
-export class Map {
+export class Eroder {
     readonly tiles: TileSet;
 
     constructor(tiles: TileSet) {
-
         this.tiles = tiles;
         
         for (let i = 0; i < tiles.count; ++i) {

@@ -1,5 +1,5 @@
 import { SimplexNoise } from "ts-perlin-simplex";
-import { Map } from "../../map/Map";
+import { Eroder } from "../../map/Eroder";
 import { TileSet } from "../../map/TileSet";
 import { createDiscSampler } from "../../map/discSampler";
 import { byMin, clamp } from "../../math";
@@ -21,12 +21,12 @@ function generate() {
     const vs = gen.vertices();
     const tiles = new TileSet(vs);
 
-    const map = new Map(tiles);
+    const map = new Eroder(tiles);
     initialState(map);
     return map;
 }
 
-function setupLoading(map: Map, updateMeshes: () => void) {
+function setupLoading(map: Eroder, updateMeshes: () => void) {
     const preventer = (e: DragEvent) => e.preventDefault();
     const dropper = (e: DragEvent) => {
         e.preventDefault();
@@ -62,7 +62,7 @@ function setupLoading(map: Map, updateMeshes: () => void) {
 }
 
 
-function initialState(map: Map) {
+function initialState(map: Eroder) {
     const noise = new SimplexNoise();
     const noiseX = new SimplexNoise();
     const noiseY = new SimplexNoise();
