@@ -219,8 +219,8 @@ export class Eroder {
             let humidity = Math.min(this.tiles.surfaceWater(source) * 0.1 + 0.01, this.tiles.water[source]);
             this.tiles.water[source] -= humidity;
 
-            let x = this.tiles.vertices.xs[source];
-            let y = this.tiles.vertices.ys[source];
+            let x = this.tiles.x(source);
+            let y = this.tiles.y(source);
 
             this.fogI += 1;
             let vx = nwind.x*radius*1;

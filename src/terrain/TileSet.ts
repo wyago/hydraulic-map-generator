@@ -1,29 +1,6 @@
 import Delaunator from "delaunator";
 import RBush from "rbush";
-
-export type BushVertex = {
-    readonly index: number;
-
-    readonly minX: number;
-    readonly minY: number;
-    readonly maxX: number;
-    readonly maxY: number;
-}
-
-export type Vertices = {
-    points: RBush<BushVertex>;
-    count: number;
-    xs: Float32Array;
-    ys: Float32Array;
-}
-
-function mapVertices<T>(vertices: Vertices, f: (x: number, y: number, i: number) => T) {
-    let result = new Array<T>(vertices.count);
-    for (let i = 0; i < vertices.count; ++i) {
-        result[i] = f(vertices.xs[i], vertices.ys[i], i);
-    }
-    return result;
-}
+import { BushVertex, Vertices, mapVertices } from "./Graph";
 
 export class TileSet {
     air(i: number) {
@@ -79,31 +56,31 @@ export class TileSet {
             }
         }
 
-        this.adjacents = source.map(s => []);
+        this.adjacents = source.map(_ => []);
         forEachTriangleEdge((p, q) => {
             this.adjacents[p].push(q);
             this.adjacents[q].push(p);
         });
 
         this.adjacents = this.adjacents.map((a,i) => {
-            const sourcex = this.vertices.xs[i];
-            const sourcey = this.vertices.ys[i];
+            const sourcex = this.vertices.xys[i*2];
+            const sourcey = this.vertices.xys[i*2+1];
             return a.sort((x, y) => {
-                const leftx = this.vertices.xs[x];
-                const lefty = this.vertices.ys[x];
-                const rightx = this.vertices.xs[y];
-                const righty = this.vertices.ys[y];
+                const leftx = this.vertices.xys[x*2];
+                const lefty = this.vertices.xys[x*2+1];
+                const rightx = this.vertices.xys[y*2];
+                const righty = this.vertices.xys[y*2+1];
                 return Math.atan2(lefty - sourcey, leftx - sourcex) > Math.atan2(righty - sourcey, rightx - sourcex) ? 1 : -1;
             })
         });
     }
 
     x(i: number) {
-        return this.vertices.xs[i];
+        return this.vertices.xys[i*2];
     }
 
     y(i: number) {
-        return this.vertices.ys[i];
+        return this.vertices.xys[i*2+1];
     }
 
     downhill(source: number) {
@@ -128,9 +105,8 @@ export class TileSet {
 
     marshal() {
         return `{
-            "istileset": true,
-            "xs": [${[...this.vertices.xs].map(x => x.toFixed(1)).join(",")}],
-            "ys": [${[...this.vertices.ys].map(x => x.toFixed(1)).join(",")}],
+            "tilesetversion": 0,
+            "xys": [${[...this.vertices.xys].map(x => x.toFixed(1)).join(",")}],
             "hard": [${[...this.hard].map(x => x.toFixed(3)).join(",")}],
             "soft": [${[...this.soft].map(x => x.toFixed(3)).join(",")}],
             "water": [${[...this.water].map(x => x.toFixed(3)).join(",")}],
@@ -142,8 +118,7 @@ export class TileSet {
         this.vertices = {
             count: json.xs.length,
             points: new RBush<BushVertex>(),
-            xs: new Float32Array(json.xs),
-            ys: new Float32Array(json.ys),
+            xys: new Float32Array(json.xys),
         };
         this.count = this.vertices.count;
         this.hard = new Float32Array(json.hard);
@@ -157,8 +132,8 @@ export class TileSet {
             index: i,
             maxX: x,
             minX: x,
-            maxY: this.vertices.ys[i],
-            minY: this.vertices.ys[i],
+            maxY: this.vertices.xys[i*2],
+            minY: this.vertices.xys[i*2+1],
         })))
 
         this.downhills = json.xs.map(i => 0);
@@ -184,13 +159,13 @@ export class TileSet {
         });
 
         this.adjacents = this.adjacents.map((a,i) => {
-            const sourcex = this.vertices.xs[i];
-            const sourcey = this.vertices.ys[i];
+            const sourcex = this.vertices.xys[i*2];
+            const sourcey = this.vertices.xys[i*2+1];
             return a.sort((x, y) => {
-                const leftx = this.vertices.xs[x];
-                const lefty = this.vertices.ys[x];
-                const rightx = this.vertices.xs[y];
-                const righty = this.vertices.ys[y];
+                const leftx = this.vertices.xys[x*2];
+                const lefty = this.vertices.xys[x*2+1];
+                const rightx = this.vertices.xys[y*2];
+                const righty = this.vertices.xys[y*2+1];
                 return Math.atan2(lefty - sourcey, leftx - sourcex) > Math.atan2(righty - sourcey, rightx - sourcex) ? 1 : -1;
             })
         }); 

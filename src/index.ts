@@ -1,8 +1,9 @@
 import { globalProjector } from "./projector";
+import { root, setRoot } from "./root";
 import { createGenerationUi } from "./ui/generation/generationUi";
 
 window.addEventListener("load", () => {
-    const generator = createGenerationUi();
+    setRoot(createGenerationUi());
 
-    globalProjector.replace(document.body, () => generator.realize());
+    globalProjector.replace(document.body, () => root.realize());
 });

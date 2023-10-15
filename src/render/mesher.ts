@@ -211,10 +211,10 @@ export function riverMesh() {
 
     function offset(tiles: TileSet, source: number, amount: number) {
         const target = tiles.uphill[source];
-        const sx = tiles.vertices.xs[source];
-        const sy = tiles.vertices.ys[source];
-        const tx = tiles.vertices.xs[target];
-        const ty = tiles.vertices.ys[target];
+        const sx = tiles.vertices.xys[source*2];
+        const sy = tiles.vertices.xys[source*2+1];
+        const tx = tiles.vertices.xys[target*2];
+        const ty = tiles.vertices.xys[target*2+1];
 
         const tv = new THREE.Vector2(tx - sx, ty - sy);
 
@@ -262,8 +262,8 @@ export function riverMesh() {
                     const {dx: sx, dy: sy} = offset(tiles, i, 0.1);
                     const {dx: tx, dy: ty} = offset(tiles, target, 0.1);
 
-                    const sv = new THREE.Vector2(tiles.vertices.xs[i], tiles.vertices.ys[i]);
-                    const tv = new THREE.Vector2(tiles.vertices.xs[target], tiles.vertices.ys[target]);
+                    const sv = new THREE.Vector2(tiles.vertices.xys[i*2], tiles.vertices.xys[i*2+1]);
+                    const tv = new THREE.Vector2(tiles.vertices.xys[target*2], tiles.vertices.xys[target*2+1]);
 
                     const te = tiles.totalElevation(target)*-50;
                     const se = tiles.totalElevation(i)*-50;

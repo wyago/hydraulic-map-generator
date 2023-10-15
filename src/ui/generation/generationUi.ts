@@ -12,6 +12,8 @@ import { createInfoPanel } from "./infoPanel";
 import { createWindSelector } from "./windSelector";
 
 import { VNodeProperties, h } from "maquette";
+import { setRoot } from "../../root";
+import { createDetailingUi } from "../detailing/detailingUi";
 import "../ui.css";
 
 function generate() {
@@ -107,15 +109,15 @@ function initialState(map: Eroder) {
 }
 
 export function createGenerationUi() {
-    const map = generate();
+    const eroder = generate();
     let mesh = pointsMesh();
     let rivers = riverMesh();
     let informId = -1;
 
 
-    map.deriveUphills();
-    mesh.update(map.tiles);
-    rivers.update(map.tiles);
+    eroder.deriveUphills();
+    mesh.update(eroder.tiles);
+    rivers.update(eroder.tiles);
     rivers.object.visible = false;
 
     let eroding = false;
@@ -127,23 +129,23 @@ export function createGenerationUi() {
         options: [{
             name: "Rainfall erosion multiplier",
             start: 1,
-            onchange: value => map.setRiverMultiplier(value)
+            onchange: value => eroder.setRiverMultiplier(value)
         }, {
             name: "Wind erosion multiplier",
             start: 1,
-            onchange: value => map.setWindMultiplier(value)
+            onchange: value => eroder.setWindMultiplier(value)
         }, {
             name: "Landslide angle",
             start: 0.08,
-            onchange: value => map.setLandslideAngle(value)
+            onchange: value => eroder.setLandslideAngle(value)
         }, {
             name: "Water height",
             start: 0.25,
-            onchange: value => map.setWaterHeight(value)
+            onchange: value => eroder.setWaterHeight(value)
         }]
     });
     const info = createInfoPanel();
-    info.inform(map.tiles, 0);
+    info.inform(eroder.tiles, 0);
 
     const windSelector = createWindSelector();
     const controls = createControls({
@@ -156,7 +158,7 @@ export function createGenerationUi() {
         }, {
             name: "Show wind",
             start: true,
-            onchange: e => map.showWind = e,
+            onchange: e => eroder.showWind = e,
         }, {
             name: "Show watersheds",
             onchange: e => {
@@ -167,18 +169,18 @@ export function createGenerationUi() {
         actions: [{
             name: "Clear wind",
             onclick: () => {
-                for (let i = 0; i < map.tiles.count; ++i) {
-                    map.tiles.fog[i] = 0;
+                for (let i = 0; i < eroder.tiles.count; ++i) {
+                    eroder.tiles.fog[i] = 0;
                 }
-                mesh.update(map.tiles);
+                mesh.update(eroder.tiles);
             }
         }, {
             name: "Generate new terrain",
             onclick: () => {
-                initialState(map);
-                mesh.update(map.tiles);
+                initialState(eroder);
+                mesh.update(eroder.tiles);
                 if (watersheds) {
-                    rivers.update(map.tiles);
+                    rivers.update(eroder.tiles);
                 }
             }
         }, {
@@ -192,11 +194,16 @@ export function createGenerationUi() {
                 mesh.mode(0);
             }
         }, {
+            name: "Take to detailing",
+            onclick: () => {
+                setRoot(createDetailingUi(eroder.tiles));
+            }
+        }, {
             name: "Export",
             onclick: () => {
                 var element = document.createElement('a');
 
-                element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(map.tiles.marshal()));
+                element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(eroder.tiles.marshal()));
                 element.setAttribute('download', "map.json");
 
                 element.style.display = 'none';
@@ -210,17 +217,18 @@ export function createGenerationUi() {
     });
 
     function updateMeshes() {
-        mesh.update(map.tiles);
+        mesh.update(eroder.tiles);
         if (watersheds) {
-            rivers.update(map.tiles);
+            rivers.update(eroder.tiles);
         }
     }
 
-    const destructors = [setupLoading(map, updateMeshes)];
+    const destructors = [setupLoading(eroder, updateMeshes)];
 
     const codeLink = createCodeLink();
 
     const properties: VNodeProperties = {
+        key: "generationcanvas",
         afterCreate(element: Element) {
             destructors.push(setupCanvas(element as HTMLCanvasElement));
         },
@@ -230,8 +238,8 @@ export function createGenerationUi() {
     };
     
     function setupCanvas(element: HTMLCanvasElement) {
-        const {scene, render} = createCanvas(element, ({x, y}) => {
-            const region = map.tiles.vertices.points.search({
+        const {scene, render, renderer} = createCanvas(element, ({x, y}) => {
+            const region = eroder.tiles.vertices.points.search({
                 maxX: x + 10,
                 minX: x - 10,
                 maxY: y + 10,
@@ -260,31 +268,31 @@ export function createGenerationUi() {
         function frame() {
             j += 1;
             if (eroding || passTime) {
-                map.passTime();
+                eroder.passTime();
             }
 
             if (eroding) {
-                map.fog(8, windSelector.getPreferredWind());
-                map.iterateRivers();
-                map.fixWater();
-                map.landslide();
+                eroder.fog(8, windSelector.getPreferredWind());
+                eroder.iterateRivers();
+                eroder.fixWater();
+                eroder.landslide();
             }
 
             if (passTime || eroding) {
                 for (let i = 0; i < 5; ++i) {
-                    map.spreadWater();
+                    eroder.spreadWater();
                 }
 
-                map.deriveUphills();
-                map.deriveDownhills();
-                mesh.update(map.tiles);
+                eroder.deriveUphills();
+                eroder.deriveDownhills();
+                mesh.update(eroder.tiles);
                 if (watersheds) {
-                    rivers.update(map.tiles);
+                    rivers.update(eroder.tiles);
                 }
             }
-            windSelector.showWind(map.getWind());
+            windSelector.showWind(eroder.getWind());
             render();
-            info.inform(map.tiles, informId);
+            info.inform(eroder.tiles, informId);
             if (!cancelled) {
                 requestAnimationFrame(frame);
             }
@@ -294,6 +302,7 @@ export function createGenerationUi() {
         document.body.append(element);
         return () => {
             element.remove();
+            renderer.dispose();
             cancelled = true;
         };
     }
