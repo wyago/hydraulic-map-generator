@@ -7,3 +7,11 @@ export type Component = {
 export type TopComponent = {
     realize(): VNode;
 }
+
+export function simpleComponent(v: VNode): TopComponent {
+    return {
+        realize() {
+            return v;
+        }
+    }
+}

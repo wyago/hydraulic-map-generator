@@ -3,6 +3,11 @@ import RBush from "rbush";
 import { BushVertex, Vertices, mapVertices } from "./Graph";
 
 export class TileSet {
+    clearWind(): void {
+        for (let i = 0; i < this.count; ++i) {
+            this.fog[i] = 0;
+        }
+    }
     air(i: number) {
         return 0.7 - this.totalElevation(i);
     }

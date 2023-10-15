@@ -2,28 +2,28 @@ import { SimplexNoise } from "ts-perlin-simplex";
 import { byMin, clamp } from "../../math";
 import { createCanvas } from "../../render/canvas";
 import { pointsMesh, riverMesh } from "../../render/mesher";
-import { Eroder } from "../../terrain/Eroder";
+import { Eroder, EroderConfiguration } from "../../terrain/Eroder";
 import { TileSet } from "../../terrain/PointSet";
 import { createDiscSampler } from "../../terrain/discSampler";
 import { createCodeLink } from "../codeLink";
-import { createConfigurator } from "../configurator";
-import { createControls } from "../controls";
 import { createInfoPanel } from "./infoPanel";
 import { createWindSelector } from "./windSelector";
 
 import { VNodeProperties, h } from "maquette";
-import { setRoot } from "../../root";
-import { createDetailingUi } from "../detailing/detailingUi";
+import { createBooleanInput } from "../booleanInput";
+import { createButton } from "../button";
+import { createNumberInput } from "../numberInput";
+import { createPanel } from "../panel";
 import "../ui.css";
 
-function generate() {
+function generate(configuration: EroderConfiguration) {
     const gen = createDiscSampler(8, (x, y) => x*x + y*y*2 < 1100*1100);
     while (gen.step());
 
     const vs = gen.vertices();
     const tiles = new TileSet(vs);
 
-    const map = new Eroder(tiles);
+    const map = new Eroder(tiles, configuration);
     initialState(map);
     return map;
 }
@@ -109,123 +109,137 @@ function initialState(map: Eroder) {
 }
 
 export function createGenerationUi() {
-    const eroder = generate();
+
+    const configuration = {
+        rainfall: createNumberInput({
+            name: "Rainfall erosion multiplier",
+            start: 1,
+        }),
+        wind: createNumberInput({
+            name: "Wind erosion multiplier",
+            start: 1,
+        }),
+        siltAngle: createNumberInput({
+            name: "Silt maximum elevation difference",
+            start: 0.08,
+        }),
+        rockAngle: createNumberInput({
+            name: "Rock maximum elevation difference",
+            start: 0.1,
+        }),
+        water: createNumberInput({
+            name: "Water height",
+            start: 0.25,
+        }),
+
+        showWind: createBooleanInput({
+            name: "showWind",
+            start: true,
+        })
+    }
+
+    const eroder = generate(configuration);
     let mesh = pointsMesh();
     let rivers = riverMesh();
     let informId = -1;
-
 
     eroder.deriveUphills();
     mesh.update(eroder.tiles);
     rivers.update(eroder.tiles);
     rivers.object.visible = false;
 
-    let eroding = false;
-    let passTime = false;
-    let watersheds = false;
     let j = 0;
 
-    const configurator = createConfigurator({
-        options: [{
-            name: "Rainfall erosion multiplier",
-            start: 1,
-            onchange: value => eroder.setRiverMultiplier(value)
-        }, {
-            name: "Wind erosion multiplier",
-            start: 1,
-            onchange: value => eroder.setWindMultiplier(value)
-        }, {
-            name: "Silt landslide angle",
-            start: 0.12,
-            onchange: value => eroder.setSiltLandslideAngle(value)
-        }, {
-            name: "Rock landslide angle",
-            start: 0.2,
-            onchange: value => eroder.setRockLandslideAngle(value)
-        }, {
-            name: "Water height",
-            start: 0.25,
-            onchange: value => eroder.setWaterHeight(value)
-        }]
+    const configurator = createPanel({
+        title: "Tuning parameters",
+        children: [
+            configuration.rainfall,
+            configuration.wind,
+            configuration.siltAngle,
+            configuration.rockAngle,
+            configuration.water
+        ]
     });
+
     const info = createInfoPanel();
     info.inform(eroder.tiles, 0);
 
-    const windSelector = createWindSelector();
-    const controls = createControls({
-        options: [{
+    const controls = {
+        erode: createBooleanInput({
             name: "Erode (& pass time)",
-            onchange: e => eroding = e,
-        }, {
+        }),
+        passTime: createBooleanInput({
             name: "Pass time",
-            onchange: e => passTime = e,
-        }, {
-            name: "Show wind",
-            start: true,
-            onchange: e => eroder.showWind = e,
-        }, {
-            name: "Show watersheds",
-            onchange: e => {
-                watersheds = e
-                rivers.object.visible = e;
-            },
-        }],
-        actions: [{
-            name: "Clear wind",
-            onclick: () => {
-                for (let i = 0; i < eroder.tiles.count; ++i) {
-                    eroder.tiles.fog[i] = 0;
-                }
-                mesh.update(eroder.tiles);
-            }
-        }, {
-            name: "Generate new terrain",
-            onclick: () => {
-                initialState(eroder);
-                mesh.update(eroder.tiles);
-                if (watersheds) {
-                    rivers.update(eroder.tiles);
-                }
-            }
-        }, {
-            name: "Height rendering",
-            onclick: () => {
-                mesh.mode(1);
-            }
-        }, {
-            name: "Normal rendering",
-            onclick: () => {
-                mesh.mode(0);
-            }
-        }, {
-            name: "Take to detailing",
-            onclick: () => {
-                setRoot(createDetailingUi(eroder.tiles));
-            }
-        }, {
-            name: "Export",
-            onclick: () => {
-                var element = document.createElement('a');
+        }),
+        showWatersheds: createBooleanInput({
+            name: "Show watersheds"
+        }),
+    }
 
-                element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(eroder.tiles.marshal()));
-                element.setAttribute('download', "map.json");
+    const exportTerrain = () => {
+        var element = document.createElement('a');
 
-                element.style.display = 'none';
-                document.body.appendChild(element);
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(eroder.tiles.marshal()));
+        element.setAttribute('download', "map.json");
 
-                element.click();
+        element.style.display = 'none';
+        document.body.appendChild(element);
 
-                document.body.removeChild(element);
-            }
-        }]
-    });
+        element.click();
+
+        document.body.removeChild(element);
+    };
 
     function updateMeshes() {
         mesh.update(eroder.tiles);
-        if (watersheds) {
+        if (controls.showWatersheds.get()) {
             rivers.update(eroder.tiles);
         }
     }
+
+    const controlPanel = createPanel({
+        title: "Controls",
+        defaultOpen: true,
+        children: [
+            controls.erode,
+            controls.passTime,
+            configuration.showWind,
+            controls.showWatersheds,
+
+            createButton({
+                text: "Clear wind",
+                onclick: () => {
+                    eroder.tiles.clearWind();
+                    mesh.update(eroder.tiles);
+                }
+            }),
+
+            createButton({
+                text: "Generate new terrain",
+                onclick: () => {
+                    initialState(eroder);
+                    updateMeshes();
+                }
+            }),
+
+            createButton({
+                text: "Height rendering",
+                onclick: () => mesh.mode(1)
+            }),
+
+            createButton({
+                text: "Normal rendering",
+                onclick: () => mesh.mode(0),
+            }),
+
+            createButton({
+                text: "Export",
+                onclick: exportTerrain
+            })
+        ]
+    });
+
+    const windSelector = createWindSelector();
 
     const destructors = [setupLoading(eroder, updateMeshes)];
 
@@ -271,28 +285,25 @@ export function createGenerationUi() {
         
         function frame() {
             j += 1;
-            if (eroding || passTime) {
+            if (controls.erode.get() || controls.passTime.get()) {
                 eroder.passTime();
             }
 
-            if (eroding) {
+            if (controls.erode.get()) {
                 eroder.fog(8, windSelector.getPreferredWind());
                 eroder.iterateRivers();
                 eroder.fixWater();
                 eroder.landslide();
             }
 
-            if (passTime || eroding) {
+            if (controls.erode.get() || controls.passTime.get()) {
                 for (let i = 0; i < 5; ++i) {
                     eroder.spreadWater();
                 }
 
                 eroder.deriveUphills();
                 eroder.deriveDownhills();
-                mesh.update(eroder.tiles);
-                if (watersheds) {
-                    rivers.update(eroder.tiles);
-                }
+                updateMeshes();
             }
             windSelector.showWind(eroder.getWind());
             render();
@@ -316,7 +327,7 @@ export function createGenerationUi() {
             return h("body", [
                 h("canvas", properties),
                 h("div#ui", [
-                    controls, windSelector, configurator, info, codeLink
+                    controlPanel, windSelector, configurator, info, codeLink
                 ].map(c => c.realize()))
             ]);
         }
