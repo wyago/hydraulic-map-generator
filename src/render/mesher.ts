@@ -46,14 +46,14 @@ function rockNormal(tiles: TileSet, i: number) {
     let v = new THREE.Vector3(0,0,1);
     const adjacents = tiles.adjacents[i];
     if (adjacents.length > 0) {
-        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*150);
+        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*250);
         let avg = new THREE.Vector3(0,0,0);
         for (let a = 0; a < adjacents.length; ++a) {
             const i1 = adjacents[a];
             const i2 = adjacents[(a + 1)%adjacents.length];
 
-            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.rockElevation(i1)*150);
-            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.rockElevation(i2)*150);
+            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.rockElevation(i1)*250);
+            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.rockElevation(i2)*250);
             first.sub(center);
             second.sub(center);
 
@@ -73,13 +73,13 @@ function totalNormal(tiles: TileSet, i: number) {
     let v = new THREE.Vector3(0,0,1);
     const adj = tiles.adjacents[i].filter(a => tiles.surfaceWater(a) > 0);
     if (adj.length > 0) {
-        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*150);
+        const center = new THREE.Vector3(tiles.x(i), tiles.y(i), -tiles.rockElevation(i)*250);
         let avg = new THREE.Vector3(0,0,0);
         for (let a = 0; a <adj.length; ++a) {
             const i1 = adj[a];
             const i2 = adj[(a + 1)%adj.length];
-            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.totalElevation(i1)*150);
-            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.totalElevation(i2)*150);
+            const first = new THREE.Vector3(tiles.x(i1), tiles.y(i1), -tiles.totalElevation(i1)*250);
+            const second = new THREE.Vector3(tiles.x(i2), tiles.y(i2), -tiles.totalElevation(i2)*250);
             first.sub(center);
             second.sub(center);
 
@@ -101,11 +101,11 @@ export function pointsMesh() {
     const positions = new Float32Array(1024*3);
     geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
     geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
+    geometry.setAttribute( 'occlusion', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
     geometry.setAttribute( 'rocknormal', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
     geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
     geometry.setAttribute( 'water', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
     geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
-    geometry.setAttribute( 'fog', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
     geometry.setDrawRange(0,0);
     const material = new THREE.ShaderMaterial( {
         uniforms: {
@@ -165,10 +165,9 @@ export function pointsMesh() {
                 geometry.setAttribute( 'rocknormal', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
                 geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
                 geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
-                geometry.setAttribute( 'fog', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
+                geometry.setAttribute( 'occlusion', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
                 geometry.setAttribute( 'index', new THREE.BufferAttribute( new Int32Array(tiles.count), 1 ) );
                 geometry.attributes.position.needsUpdate = true;
-                geometry.setDrawRange(0, tiles.count);
             }
 
             for (let j = 0; j < tiles.count; ++j) {
@@ -181,10 +180,11 @@ export function pointsMesh() {
                 geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
                 geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
                 geometry.attributes.water.setX(i, tiles.surfaceWater(i));
-                geometry.attributes.fog.setX(i, tiles.fog[i]);
                 geometry.attributes.height.setX(i, tiles.totalElevation(i));
+                geometry.attributes.occlusion.setX(i, tiles.occlusion[i]);
                 geometry.attributes.index.setX(i, i);
             }
+            geometry.setDrawRange(0, tiles.count);
             
             start += ~~(tiles.count/20);
             if (start > tiles.count) {
@@ -198,7 +198,7 @@ export function pointsMesh() {
             geometry.attributes.rocknormal.needsUpdate = true;
             geometry.attributes.waternormal.needsUpdate = true;
             geometry.attributes.height.needsUpdate = true;
-            geometry.attributes.fog.needsUpdate = true;
+            geometry.attributes.occlusion.needsUpdate = true;
             geometry.attributes.index.needsUpdate = true;
         }
     };

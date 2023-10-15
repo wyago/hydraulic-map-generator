@@ -2,6 +2,7 @@ attribute vec3 albedo;
 attribute float water;
 attribute float height;
 attribute float fog;
+attribute float occlusion;
 attribute int index;
 
 attribute vec3 rocknormal;
@@ -24,9 +25,9 @@ void main() {
         vec3 ambient = vec3(0.2, 0.2, 0.25);
 
         if (water > 0.0) {
-            float depth = water * 11.0;
+            float depth = water * 13.0;
 
-            float reflect = 0.6;
+            float reflect = 0.7;
             vec3 subtractor = vec3(0.18, 0.13, 0.12) * depth;
             vec3 transit = sunColor * (1.0 - reflect) - subtractor;
 
@@ -44,11 +45,13 @@ void main() {
     } else if (mode == 1) {
         vColor = vec3(height);
 
-        float depth = (water * 11.0 + 0.5)*height;
+        float depth = (water * 12.0 + 1.0)*height;
 
         float reflect = 0.6;
         vec3 subtractor = vec3(0.18, 0.13, 0.12) * depth;
         vColor -= subtractor;
+    } else if (mode == 2) {
+        vColor = vec3(occlusion);
     }
 
     vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );

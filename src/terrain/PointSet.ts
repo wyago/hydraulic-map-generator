@@ -1,13 +1,9 @@
 import Delaunator from "delaunator";
 import RBush from "rbush";
+import * as THREE from "three";
 import { BushVertex, Vertices, mapVertices } from "./Graph";
 
 export class TileSet {
-    clearWind(): void {
-        for (let i = 0; i < this.count; ++i) {
-            this.fog[i] = 0;
-        }
-    }
     air(i: number) {
         return 0.7 - this.totalElevation(i);
     }
@@ -19,7 +15,7 @@ export class TileSet {
     water: Float32Array;
     river: Float32Array;
     vegetation: Float32Array;
-    fog: Float32Array;
+    occlusion: Float32Array;
 
     downhills: number[];
     uphill: number[];
@@ -31,7 +27,9 @@ export class TileSet {
         this.water = new Float32Array(vertices.count);
         this.river = new Float32Array(vertices.count);
         this.vegetation = new Float32Array(vertices.count);
-        this.fog = new Float32Array(vertices.count);
+        this.occlusion = new Float32Array(vertices.count);
+
+        this.occlusion.fill(1, 0, vertices.count);
 
         this.count = vertices.count;
         this.vertices = vertices;
@@ -108,6 +106,24 @@ export class TileSet {
         return this.hard[i] + this.water[i];
     }
 
+    byDirection(i: number, v: THREE.Vector2, result: number[], angle = 0.5): number {
+        const adjacents = this.adjacents[i];
+        const center = new THREE.Vector2(this.x(i), this.y(i));
+
+        let c = 0;
+        for (let j = 0; j < adjacents.length; ++j) {
+            const d = new THREE.Vector2(this.x(adjacents[j]), this.y(adjacents[j]));
+            d.sub(center);
+            d.normalize();
+            const dot = d.dot(v);
+            if (dot > angle) {
+                result[c] = adjacents[j];
+                c += 1;
+            }
+        }
+        return c;
+    }
+
     marshal() {
         return `{
             "tilesetversion": 0,
@@ -121,7 +137,7 @@ export class TileSet {
 
     unmarshal(json: any) {
         this.vertices = {
-            count: json.xs.length,
+            count: json.xys.length/2,
             points: new RBush<BushVertex>(),
             xys: new Float32Array(json.xys),
         };
@@ -133,18 +149,26 @@ export class TileSet {
         this.river = new Float32Array(this.count);
         this.uphill = new Array<number>(this.count);
 
-        this.vertices.points.load(json.xs.map((x, i) => ({
-            index: i,
-            maxX: x,
-            minX: x,
-            maxY: this.vertices.xys[i*2],
-            minY: this.vertices.xys[i*2+1],
-        })))
+        const points = new Array<any>(this.vertices.count);
+        const source = new Array<any>(this.vertices.count);
+        for (let i = 0; i < this.vertices.count; ++i) {
+            points[i] = {
+                index: i,
+                maxX: this.vertices.xys[i*2],
+                minX: this.vertices.xys[i*2],
+                maxY: this.vertices.xys[i*2+1],
+                minY: this.vertices.xys[i*2+1], 
+            }
 
-        this.downhills = json.xs.map(i => 0);
+            source[i] = [
+                this.vertices.xys[i*2],
+                this.vertices.xys[i*2+1]];
+        }
+
+        this.vertices.points.load(points);
+
+        this.downhills = new Array<number>(this.count);
         
-        const source = json.xs.map((x, i) => ([x, json.ys[i]]));
-
         function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
         const delaunay = Delaunator.from(source);
         function forEachTriangleEdge(callback: (p: number, q: number) => void) {

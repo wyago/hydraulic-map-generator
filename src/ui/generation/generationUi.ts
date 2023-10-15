@@ -40,7 +40,7 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
             if (file) {
                 file.text().then(text => {
                     const model = JSON.parse(text);
-                    if (model.istileset) {
+                    if (model.tilesetversion < 1) {
                         map.tiles.unmarshal(model);
                         updateMeshes();
                     }
@@ -48,18 +48,18 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
             }
         }
     }
-    document.body.addEventListener("dragenter", preventer);
-    document.body.addEventListener("dragover", preventer);
-    document.body.addEventListener("dragleave", preventer);
-    document.body.addEventListener("dragstart", preventer);
-    document.body.addEventListener("drop", dropper);
+    window.addEventListener("dragenter", preventer);
+    window.addEventListener("dragover", preventer);
+    window.addEventListener("dragleave", preventer);
+    window.addEventListener("dragstart", preventer);
+    window.addEventListener("drop", dropper);
 
     return () => {
-        document.body.removeEventListener("dragenter", preventer);
-        document.body.removeEventListener("dragover", preventer);
-        document.body.removeEventListener("dragleave", preventer);
-        document.body.removeEventListener("dragstart", preventer);
-        document.body.removeEventListener("drop", dropper);
+        window.removeEventListener("dragenter", preventer);
+        window.removeEventListener("dragover", preventer);
+        window.removeEventListener("dragleave", preventer);
+        window.removeEventListener("dragstart", preventer);
+        window.removeEventListener("drop", dropper);
     }
 }
 
@@ -96,11 +96,10 @@ function initialState(map: Eroder) {
         const x = map.tiles.x(i);
         const y = map.tiles.y(i);
 
-        const plateau = clamp(0.6 - Math.sqrt(x*x*0.7 + y*y*2.5) * 0.0008, -0.3, 0.6);
+        const plateau = clamp(0.6 - Math.sqrt(x*x*0.7 + y*y*2.5) / 1300, -0.3, 0.6);
         const elevation = clamp(clamp(plateau + wavy(x,y)*0.5, 0.01, 0.8) + wavy(x,y)*0.1 + 0.1, 0, 1);
         map.tiles.hard[i] = elevation;
         map.tiles.soft[i] = 0;
-        map.tiles.fog[i] = 0;
         map.tiles.vegetation[i] = 0;
         map.tiles.river[i] = 0;
     }
@@ -121,20 +120,15 @@ export function createGenerationUi() {
         }),
         siltAngle: createNumberInput({
             name: "Silt maximum elevation difference",
-            start: 0.08,
+            start: 0.1,
         }),
         rockAngle: createNumberInput({
             name: "Rock maximum elevation difference",
-            start: 0.1,
+            start: 0.13,
         }),
         water: createNumberInput({
             name: "Water height",
             start: 0.25,
-        }),
-
-        showWind: createBooleanInput({
-            name: "showWind",
-            start: true,
         })
     }
 
@@ -203,16 +197,7 @@ export function createGenerationUi() {
         children: [
             controls.erode,
             controls.passTime,
-            configuration.showWind,
             controls.showWatersheds,
-
-            createButton({
-                text: "Clear wind",
-                onclick: () => {
-                    eroder.tiles.clearWind();
-                    mesh.update(eroder.tiles);
-                }
-            }),
 
             createButton({
                 text: "Generate new terrain",
@@ -220,6 +205,11 @@ export function createGenerationUi() {
                     initialState(eroder);
                     updateMeshes();
                 }
+            }),
+
+            createButton({
+                text: "Occlusion rendering",
+                onclick: () => mesh.mode(2)
             }),
 
             createButton({
@@ -290,7 +280,8 @@ export function createGenerationUi() {
             }
 
             if (controls.erode.get()) {
-                eroder.fog(8, windSelector.getPreferredWind());
+                eroder.deriveOcclusion(8, windSelector.getPreferredWind());
+                eroder.globalRivers();
                 eroder.iterateRivers();
                 eroder.fixWater();
                 eroder.landslide();

@@ -20,6 +20,7 @@ export function createInfoPanel() {
                 h("p", ["Id: " + i]),
                 h("p", ["X: " + tiles.vertices.xys[i*2].toFixed(0)]),
                 h("p", ["Y: " + tiles.vertices.xys[i*2+1].toFixed(0)]),
+                h("p", ["Degree: " + tiles.adjacents[i].length]),
                 h("p", ["Elevation: " + totalElevation.toFixed(2)]),
                 h("details", [
                     h("summary", ["Ground: " + tiles.rockElevation(i).toFixed(2)]),
