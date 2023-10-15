@@ -167,7 +167,8 @@ export function createGenerationUi() {
             name: "Pass time",
         }),
         showWatersheds: createBooleanInput({
-            name: "Show watersheds"
+            name: "Show watersheds",
+            onchange: e => rivers.object.visible = e
         }),
     }
 
