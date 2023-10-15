@@ -1,6 +1,5 @@
 import Delaunator from "delaunator";
 import RBush from "rbush";
-import { clamp } from "../math";
 
 export type BushVertex = {
     readonly index: number;
@@ -28,7 +27,7 @@ function mapVertices<T>(vertices: Vertices, f: (x: number, y: number, i: number)
 
 export class TileSet {
     air(i: number) {
-        return 0.5 - this.totalElevation(i);
+        return 0.7 - this.totalElevation(i);
     }
     vertices: Vertices;
     count: number;
@@ -121,10 +120,6 @@ export class TileSet {
 
     surfaceWater(i: number) {
         return Math.max(0, this.water[i] - this.soft[i]);
-    }
-
-    surfaceRock(i: number) {
-        return clamp(this.hard[i] + this.soft[i] - this.water[i], 0, 1);
     }
 
     waterTable(i: number) {

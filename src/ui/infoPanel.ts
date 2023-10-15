@@ -26,7 +26,6 @@ export function createInfoPanel() {
                     h("p", ["Rock: " + tiles.rockElevation(i).toFixed(2)]),
                     h("p", ["Soft: " + tiles.soft[i].toFixed(2)]),
                     h("p", ["Hard: " + tiles.hard[i].toFixed(2)]),
-                    h("p", ["Surface rock: " + tiles.surfaceRock(i).toFixed(2)]),
                 ]),
                 h("details", [
                     h("summary", ["Water: " + tiles.water[i].toFixed(2)]),

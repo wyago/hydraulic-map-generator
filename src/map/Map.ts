@@ -68,9 +68,9 @@ export class Map {
         const surface = this.tiles.surfaceWater(current)*0.1;
         amount += surface;
         this.tiles.water[current] -= surface;
-        let multiplier = amount*500*this.riverMultiplier;
+        let multiplier = amount*800*this.riverMultiplier;
 
-        for (let j = 0; j < 400; ++j) {
+        for (let j = 0; j < 200; ++j) {
             let target = this.tiles.downhills[current];
             const delta = this.tiles.totalElevation(current) - this.tiles.totalElevation(target);
             if (delta < 0) {
@@ -158,7 +158,8 @@ export class Map {
             if (delta < 0) {
                 continue;
             }
-            let transfer = Math.min(delta * 0.5, this.tiles.water[source]);
+            const friction = clamp(1 - this.tiles.soft[source] - this.tiles.soft[target]*2, 0.01, 1);
+            let transfer = Math.min(delta * 0.5 * friction, this.tiles.water[source]);
 
             this.tiles.water[source] -= transfer;
             this.tiles.water[target] += transfer;
@@ -202,7 +203,12 @@ export class Map {
 
         this.wind.x += lerp(Math.cos(angle)*0.04, windInfluence.x, Math.pow(wind, 4));
         this.wind.y -= lerp(Math.sin(angle)*0.04, windInfluence.y, Math.pow(wind, 4));
-        this.wind.normalize();
+
+        if (this.wind.length() > 1) {
+            this.wind.normalize();
+        }
+
+        const nwind = this.wind.clone().normalize();
         this.deriveDownhills();
 
         for (let i = 0; i < 100; ++i) {
@@ -218,8 +224,8 @@ export class Map {
             let y = this.tiles.vertices.ys[source];
 
             this.fogI += 1;
-            let vx = this.wind.x*radius*1;
-            let vy = this.wind.y*radius*1;
+            let vx = nwind.x*radius*1;
+            let vy = nwind.y*radius*1;
 
             for (let iter = 0; iter < 100 && humidity > 0; ++iter) {
                 const region = this.tiles.vertices.points.search({
@@ -233,7 +239,7 @@ export class Map {
                 }
 
                 const air = sumBy(region, x => this.tiles.air(x))/region.length;
-                let soak = 0;
+                let soak = sumBy(region, x => this.tiles.surfaceWater(x) > 0 ? 0 : 1)/region.length * 0.000005;
                 if (humidity > air) {
                     soak = humidity - air;
                 }
@@ -244,7 +250,7 @@ export class Map {
                 for (let i = 0; i < region.length; ++i) {
                     const target = region[i];
 
-                    if (this.tiles.surfaceRock(i) > 0.05) {
+                    if (this.tiles.surfaceWater(i) < 0.01) {
                         const deflector = region[0];
                         const deflectordown = this.tiles.downhill(deflector);
                         let d = new THREE.Vector2(
@@ -257,9 +263,9 @@ export class Map {
 
                         const opposition = d.dot(normV);
 
-                        if (opposition < 0.5) {
-                            vx -= d.x * factor * 2 / region.length;
-                            vy -= d.y * factor * 2 / region.length; 
+                        if (opposition < 0) {
+                            vx -= d.x * factor * 3 / region.length;
+                            vy -= d.y * factor * 3 / region.length; 
                         } else {
                             vx += d.x * factor * 3 / region.length;
                             vy += d.y * factor * 3 / region.length; 
@@ -268,16 +274,16 @@ export class Map {
                         const hit = clamp(soak, 0, humidity);
                         humidity -= hit;
                         this.river(target, hit);
+                        if (hit > 0 && this.tiles.vegetation[target] < 1 - humidity) {
+                            const transfer = humidity*0.08;
+                            this.tiles.vegetation[target] += transfer;
+                        }
                     }
 
                     if (this.showWind && this.tiles.fog[target] < 1 - humidity) {
                         this.tiles.fog[target] += humidity*0.3;
                     }
 
-                    if (this.tiles.vegetation[target] < 1 - humidity) {
-                        const transfer = humidity*0.08;
-                        this.tiles.vegetation[target] += transfer;
-                    }
                 }
 
 
