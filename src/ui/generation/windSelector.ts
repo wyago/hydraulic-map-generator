@@ -1,5 +1,5 @@
 import { h } from "maquette";
-import { globalProjector } from "../projector";
+import { globalProjector } from "../../projector";
 import "./windSelector.css";
 
 export function createWindSelector() {

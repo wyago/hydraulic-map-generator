@@ -1,8 +1,7 @@
 import { VNodeChild, h } from "maquette";
 
-import { TileSet } from "../map/TileSet";
-import { globalProjector } from "../projector";
-import "./ui.css";
+import { TileSet } from "../../map/TileSet";
+import { globalProjector } from "../../projector";
 
 export function createInfoPanel() {
     let info: VNodeChild = [];

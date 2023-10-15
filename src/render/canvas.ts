@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { setupInputs } from './inputs';
 
-export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
+export function createCanvas(canvas: HTMLCanvasElement, clientmove?: (e: {x: number, y: number}) => void) {
     const scene = new THREE.Scene();
     let camera: THREE.OrthographicCamera;
     let aspect: number;
 
     let zoom = 30;
-    const renderer = new THREE.WebGLRenderer();
+    const renderer = new THREE.WebGLRenderer({ canvas });
     renderer.setClearColor(new THREE.Color(
         Math.pow(6/255,2),
         Math.pow(17/255, 2),
