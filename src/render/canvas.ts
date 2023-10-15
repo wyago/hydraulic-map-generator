@@ -28,6 +28,9 @@ export function createCanvas(clientmove?: (e: {x: number, y: number}) => void) {
         } else {
             zoom *= 0.9;
         }
+        if (zoom < 4) {
+            zoom = 4;
+        }
         camera.scale.setScalar(Math.pow(zoom, 2));
     });
 
