@@ -1,5 +1,5 @@
 import { h } from "maquette";
-import { TileSet } from "../../map/TileSet";
+import { TileSet } from "../../terrain/TileSet";
 
 export function createDetailingUi(original: TileSet) {
     

@@ -1,10 +1,10 @@
 import { SimplexNoise } from "ts-perlin-simplex";
-import { Eroder } from "../../map/Eroder";
-import { TileSet } from "../../map/TileSet";
-import { createDiscSampler } from "../../map/discSampler";
 import { byMin, clamp } from "../../math";
 import { createCanvas } from "../../render/canvas";
 import { pointsMesh, riverMesh } from "../../render/mesher";
+import { Eroder } from "../../terrain/Eroder";
+import { TileSet } from "../../terrain/TileSet";
+import { createDiscSampler } from "../../terrain/discSampler";
 import { createCodeLink } from "../codeLink";
 import { createConfigurator } from "../configurator";
 import { createControls } from "../controls";
