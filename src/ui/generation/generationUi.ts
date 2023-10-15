@@ -6,8 +6,8 @@ import { byMin, clamp } from "../../math";
 import { createCanvas } from "../../render/canvas";
 import { pointsMesh, riverMesh } from "../../render/mesher";
 import { createCodeLink } from "../codeLink";
-import { createConfigurator } from "./configurator";
-import { createControls } from "./controls";
+import { createConfigurator } from "../configurator";
+import { createControls } from "../controls";
 import { createInfoPanel } from "./infoPanel";
 import { createWindSelector } from "./windSelector";
 

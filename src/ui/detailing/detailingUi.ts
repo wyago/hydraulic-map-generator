@@ -1,7 +1,8 @@
 import { h } from "maquette";
-import { Eroder } from "../../map/Eroder";
+import { TileSet } from "../../map/TileSet";
 
-export function createDetailingUi(original: Eroder) {
+export function createDetailingUi(original: TileSet) {
+    
     
     return {
         realize() {
