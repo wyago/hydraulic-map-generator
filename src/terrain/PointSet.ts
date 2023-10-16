@@ -16,6 +16,9 @@ export class TileSet {
     river: Float32Array;
     vegetation: Float32Array;
     occlusion: Float32Array;
+    snow: Float32Array;
+    vx: Float32Array;
+    vy: Float32Array;
 
     downhills: number[];
     uphill: number[];
@@ -28,6 +31,9 @@ export class TileSet {
         this.river = new Float32Array(vertices.count);
         this.vegetation = new Float32Array(vertices.count);
         this.occlusion = new Float32Array(vertices.count);
+        this.snow = new Float32Array(vertices.count);
+        this.vx = new Float32Array(vertices.count);
+        this.vy = new Float32Array(vertices.count);
 
         this.occlusion.fill(1, 0, vertices.count);
 
@@ -132,6 +138,7 @@ export class TileSet {
             "soft": [${[...this.soft].map(x => x.toFixed(3)).join(",")}],
             "water": [${[...this.water].map(x => x.toFixed(3)).join(",")}],
             "vegetation": [${[...this.vegetation].map(x => x.toFixed(3)).join(",")}]
+            "snow": [${[...this.snow].map(x => x.toFixed(3)).join(",")}]
         }`
     }
 
@@ -146,7 +153,10 @@ export class TileSet {
         this.soft = new Float32Array(json.soft);
         this.water = new Float32Array(json.water);
         this.vegetation = new Float32Array(json.vegetation);
+        this.snow = json.snow ? new Float32Array(json.snow) : new Float32Array(this.count);
         this.river = new Float32Array(this.count);
+        this.vx = new Float32Array(this.count);
+        this.vy = new Float32Array(this.count);
         this.uphill = new Array<number>(this.count);
 
         const points = new Array<any>(this.vertices.count);

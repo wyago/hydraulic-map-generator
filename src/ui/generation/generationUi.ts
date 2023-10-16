@@ -18,7 +18,7 @@ import { createPanel } from "../panel";
 import "../ui.css";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(8, (x, y) => x*x + y*y*2 < 1100*1100);
+    const gen = createDiscSampler(8, (x, y) => x*x + y*y*2 < 1300*1300);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -74,7 +74,7 @@ function initialState(map: Eroder) {
     
         let mul = 0.5;
         let div = 0.5;
-        for (let i = 0; i < 30; ++i) {
+        for (let i = 0; i < 10; ++i) {
             result += noise.noise(x * mul, y * mul) * div;
             mul *= 2;
             div *= 0.5;
@@ -83,12 +83,12 @@ function initialState(map: Eroder) {
     }
     
     function wavy(x: number, y: number) {
-        x = x * 0.003;
-        y = y * 0.003;
+        x = x * 0.002;
+        y = y * 0.002;
         x += 0.5;
         y += 0.5;
-        x = x + fbm(noiseX, x*0.1, y*0.1)*3;
-        y = y + fbm(noiseY, x*0.1, y*0.1)*3;
+        x = x + fbm(noiseX, x*0.1, y*0.1)*5;
+        y = y + fbm(noiseY, x*0.1, y*0.1)*5;
     
         return fbm(noise, x, y);
     }
@@ -97,19 +97,20 @@ function initialState(map: Eroder) {
         const x = map.tiles.x(i);
         const y = map.tiles.y(i);
 
-        const plateau = clamp(0.6 - Math.sqrt(x*x*0.7 + y*y*2.5) / 1300, -0.3, 0.6);
-        const elevation = clamp(clamp(plateau + wavy(x,y)*0.5, 0.01, 0.8) + wavy(x,y)*0.1 + 0.1, 0, 1);
+        const plateau = clamp(0.6 - Math.sqrt(x*x + y*y*2) / 1500, -0.3, 0.6);
+        const elevation = clamp(clamp(plateau + wavy(x,y)*0.4, 0.01, 0.8) + wavy(x,y)*0.1 + 0.1, 0, 1);
         map.tiles.hard[i] = elevation;
-        map.tiles.soft[i] = 0;
-        map.tiles.vegetation[i] = 0;
-        map.tiles.river[i] = 0;
+        map.tiles.soft.fill(0)
+        map.tiles.vegetation.fill(0);
+        map.tiles.river.fill(0);
+        map.tiles.snow.fill(0);
+        map.tiles.occlusion.fill(0);
     }
 
     map.resetWater();
 }
 
 export function createGenerationUi() {
-
     const configuration = {
         rainfall: createNumberInput({
             name: "Rainfall erosion multiplier",
@@ -121,11 +122,11 @@ export function createGenerationUi() {
         }),
         siltAngle: createNumberInput({
             name: "Silt maximum elevation difference",
-            start: 0.1,
+            start: 0.05,
         }),
         rockAngle: createNumberInput({
             name: "Rock maximum elevation difference",
-            start: 0.13,
+            start: 0.07,
         }),
         water: createNumberInput({
             name: "Water height",
@@ -161,10 +162,20 @@ export function createGenerationUi() {
 
     const controls = {
         erode: createBooleanInput({
-            name: "Erode (& pass time)",
+            name: "Erode",
+            onchange: e => {
+                if (!e) {
+                    updateMeshes(false);
+                }
+            }
         }),
         passTime: createBooleanInput({
-            name: "Pass time",
+            name: "Flow standing water",
+            onchange: e => {
+                if (!e) {
+                    updateMeshes(false);
+                }
+            }
         }),
         showWatersheds: createBooleanInput({
             name: "Show watersheds",
@@ -186,8 +197,8 @@ export function createGenerationUi() {
         document.body.removeChild(element);
     };
 
-    function updateMeshes() {
-        mesh.update(eroder.tiles);
+    function updateMeshes(incremental = false) {
+        mesh.update(eroder.tiles, incremental);
         if (controls.showWatersheds.get()) {
             rivers.update(eroder.tiles);
         }
@@ -280,26 +291,24 @@ export function createGenerationUi() {
         
         function frame() {
             j += 1;
-            if (controls.erode.get() || controls.passTime.get()) {
-                eroder.passTime();
-            }
-
             if (controls.erode.get()) {
+                eroder.passTime();
                 eroder.deriveOcclusion(8, windSelector.getPreferredWind());
                 eroder.globalRivers();
-                eroder.iterateRivers();
+                //eroder.iterateRivers();
                 eroder.fixWater();
                 eroder.landslide();
-            }
-
-            if (controls.erode.get() || controls.passTime.get()) {
                 for (let i = 0; i < 5; ++i) {
                     eroder.spreadWater();
                 }
 
                 eroder.deriveUphills();
-                eroder.deriveDownhills();
-                updateMeshes();
+                updateMeshes(false);
+            } else if (controls.passTime.get()) {
+                for (let i = 0; i < 5; ++i) {
+                    eroder.spreadWater();
+                }
+                updateMeshes(false);
             }
             windSelector.showWind(eroder.getWind());
             render();

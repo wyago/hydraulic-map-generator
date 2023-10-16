@@ -1,42 +1,39 @@
 import * as THREE from "three";
 
 
+import { rockAlbedo, siltAlbedo, softRockAlbedo, vegetationAlbedo } from "../colors";
 import { clamp, lerp } from "../math";
 import { TileSet } from "../terrain/PointSet";
 import voronoiFragment from "./voronoiFragment.glsl";
 import voronoiVertex from "./voronoiVertex.glsl";
 
-const siltAlbedo = {
-    r: 0.69,
-    g: 0.43,
-    b: 0.2,
-};
-
-const vegetationAlbedo = {
-    r: 0.16,
-    g: 0.26,
-    b: 0.12,
-};
-
-const rockAlbedo = {
-    r: 0.49,
-    g: 0.38,
-    b: 0.36,
-};
 
 function albedo(tiles: TileSet, i: number) {
     const result = new THREE.Vector3();
 
+    const height = (tiles.rockElevation(i) - 0.28)*4;
+    const siltColor = {
+        r: lerp(siltAlbedo.r, softRockAlbedo.r, height),
+        g: lerp(siltAlbedo.g, softRockAlbedo.g, height),
+        b: lerp(siltAlbedo.b, softRockAlbedo.b, height),
+    };
+
     const softness = (tiles.soft[i] / tiles.rockElevation(i)) * 3;
     const siltPortion = Math.max(softness, 0);
-    result.x = lerp(rockAlbedo.r, siltAlbedo.r, siltPortion);
-    result.y = lerp(rockAlbedo.g, siltAlbedo.g, siltPortion);
-    result.z = lerp(rockAlbedo.b, siltAlbedo.b, siltPortion);
+    result.x = lerp(rockAlbedo.r, siltColor.r, siltPortion);
+    result.y = lerp(rockAlbedo.g, siltColor.g, siltPortion);
+    result.z = lerp(rockAlbedo.b, siltColor.b, siltPortion);
 
-    if (tiles.surfaceWater(i) < 0.01) {
+    if (tiles.waterTable(i) > 0.27) {
         result.x = lerp(result.x, vegetationAlbedo.r, Math.min(tiles.vegetation[i], softness + 0.7));
         result.y = lerp(result.y, vegetationAlbedo.g, Math.min(tiles.vegetation[i], softness + 0.7));
         result.z = lerp(result.z, vegetationAlbedo.b, Math.min(tiles.vegetation[i], softness + 0.7));
+    }
+
+    if (tiles.snow[i] > 0) {
+        result.x = lerp(result.x, 1, tiles.snow[i]);
+        result.y = lerp(result.y, 1, tiles.snow[i]);
+        result.z = lerp(result.z, 1, tiles.snow[i]);
     }
 
     return result;
@@ -151,13 +148,15 @@ export function pointsMesh() {
             material.uniforms.mode.value = i;
             material.uniformsNeedUpdate = true;
         },
-        update(tiles: TileSet) {
+        update(tiles: TileSet, incremental = false) {
             if (tiles.count > geometry.attributes.albedo.array.length / 3) {
                 const positions = new Float32Array(tiles.count*3);
+                const indices = new Int32Array(tiles.count);
                 for (let i = 0; i < tiles.count; ++i) {
                     positions[i*3+0] = tiles.x(i);
                     positions[i*3+1] = tiles.y(i);
                     positions[i*3+2] = -tiles.rockElevation(i)*50;
+                    indices[i] = i;
                 }
                 geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
                 geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
@@ -166,33 +165,41 @@ export function pointsMesh() {
                 geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
                 geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
                 geometry.setAttribute( 'occlusion', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
-                geometry.setAttribute( 'index', new THREE.BufferAttribute( new Int32Array(tiles.count), 1 ) );
+                geometry.setAttribute( 'index', new THREE.BufferAttribute( indices, 1 ) );
                 geometry.attributes.position.needsUpdate = true;
+                geometry.attributes.index.needsUpdate = true;
             }
 
-            for (let j = 0; j < tiles.count; ++j) {
+            let chunk = ~~(tiles.count/20);
+            if (!incremental) {
+                start = 0;
+                chunk = tiles.count;
+            }
+
+            for (let j = start; j < start + chunk; ++j) {
                 const i = j % tiles.count;
                 const a = albedo(tiles, i).multiplyScalar(tiles.totalElevation(i)*0.6 + 0.4);
                 const rock = rockNormal(tiles, i);
                 const water = totalNormal(tiles, i);
 
+                geometry.attributes.position.setXYZ(i, tiles.x(i), tiles.y(i), 0);
                 geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
                 geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
                 geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
                 geometry.attributes.water.setX(i, tiles.surfaceWater(i));
                 geometry.attributes.height.setX(i, tiles.totalElevation(i));
                 geometry.attributes.occlusion.setX(i, tiles.occlusion[i]);
-                geometry.attributes.index.setX(i, i);
             }
             geometry.setDrawRange(0, tiles.count);
             
-            start += ~~(tiles.count/20);
+            start += chunk;
             if (start > tiles.count) {
                 start = 0;
             }
 
             updateUniforms();
 
+            geometry.attributes.position.needsUpdate = true;
             geometry.attributes.albedo.needsUpdate = true;
             geometry.attributes.water.needsUpdate = true;
             geometry.attributes.rocknormal.needsUpdate = true;
