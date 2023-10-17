@@ -258,7 +258,7 @@ export function riverMesh() {
                 let g = 0.1;
                 let b = 0.05;
 
-                if (tiles.surfaceWater(i) === 0)
+                if (tiles.surfaceWater(i) <= 0.002)
                 {
                     const target = tiles.uphill[i];
                     const sourceAmount = 1;//Math.min(Math.log(tiles.river(i)*1 + 1), 2.9);
