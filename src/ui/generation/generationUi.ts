@@ -16,9 +16,10 @@ import { createDropdown } from "../dropdown";
 import { createNumberInput } from "../numberInput";
 import { createPanel } from "../panel";
 import "../ui.css";
+import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(8, (x, y) => x*x + y*y*2 < 1300*1300);
+    const gen = createDiscSampler(8, (x, y) => x*x + y*y*3 < 2200*2200);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -97,8 +98,8 @@ function initialState(map: Eroder) {
         const x = map.tiles.x(i);
         const y = map.tiles.y(i);
 
-        const plateau = clamp(0.6 - Math.sqrt(x*x + y*y*2) / 1500, -0.3, 0.6);
-        const elevation = clamp(clamp(plateau + wavy(x,y)*0.4, 0.01, 0.8) + wavy(x,y)*0.1 + 0.1, 0, 1);
+        const plateau = clamp(0.6 - Math.sqrt(x*x + y*y*3) / 3000, -0.3, 0.6);
+        const elevation = clamp(clamp(plateau + wavy(x,y)*0.6, 0.01, 0.8) + wavy(x,y)*0.1 + 0.1, 0, 1);
         map.tiles.hard[i] = elevation;
         map.tiles.soft.fill(0)
         map.tiles.vegetation.fill(0);
@@ -122,11 +123,11 @@ export function createGenerationUi() {
         }),
         siltAngle: createNumberInput({
             name: "Silt maximum elevation difference",
-            start: 0.05,
+            start: 0.09,
         }),
         rockAngle: createNumberInput({
             name: "Rock maximum elevation difference",
-            start: 0.07,
+            start: 0.12,
         }),
         water: createNumberInput({
             name: "Water height",
@@ -245,6 +246,8 @@ export function createGenerationUi() {
         ]
     });
 
+    const diagram = createDiagramPanel();
+
     const windSelector = createWindSelector();
 
     const destructors = [setupLoading(eroder, updateMeshes)];
@@ -298,14 +301,14 @@ export function createGenerationUi() {
                 //eroder.iterateRivers();
                 eroder.fixWater();
                 eroder.landslide();
-                for (let i = 0; i < 5; ++i) {
+                for (let i = 0; i < 20; ++i) {
                     eroder.spreadWater();
                 }
 
                 eroder.deriveUphills();
                 updateMeshes(false);
             } else if (controls.passTime.get()) {
-                for (let i = 0; i < 5; ++i) {
+                for (let i = 0; i < 20; ++i) {
                     eroder.spreadWater();
                 }
                 updateMeshes(false);
@@ -313,6 +316,7 @@ export function createGenerationUi() {
             windSelector.showWind(eroder.getWind());
             render();
             info.inform(eroder.tiles, informId);
+            diagram.inform(eroder.tiles, informId);
             if (!cancelled) {
                 requestAnimationFrame(frame);
             }
@@ -332,7 +336,7 @@ export function createGenerationUi() {
             return h("body", [
                 h("canvas", properties),
                 h("div#ui", [
-                    controlPanel, windSelector, configurator, info, codeLink
+                    controlPanel, windSelector, diagram, configurator, info, codeLink
                 ].map(c => c.realize()))
             ]);
         }

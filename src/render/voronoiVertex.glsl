@@ -24,7 +24,7 @@ void main() {
         vec3 sunColor = sunlight * rockDot;
         vec3 ambient = vec3(0.2, 0.2, 0.25);
 
-        if (water > 0.001) {
+        if (water > 0.002) {
             float depth = water * 13.0;
 
             float reflect = 0.7;

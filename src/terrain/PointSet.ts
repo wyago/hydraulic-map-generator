@@ -20,7 +20,6 @@ export class TileSet {
     vx: Float32Array;
     vy: Float32Array;
 
-    downhills: number[];
     uphill: number[];
     adjacents: number[][];
 
@@ -49,7 +48,6 @@ export class TileSet {
             minY: y,
         })))
 
-        this.downhills = new Array<number>(vertices.count);
         
         const source = mapVertices(vertices, (x,y) => [x, y]);
 
@@ -92,8 +90,19 @@ export class TileSet {
         return this.vertices.xys[i*2+1];
     }
 
-    downhill(source: number) {
-        return this.downhills[source];
+    downhill(i: number) {
+        let min = Number.MAX_VALUE;
+        const adjacents = this.adjacents[i];
+        let result = 0;
+        for (let j = 0; j < adjacents.length; ++j) {
+            const target = adjacents[j];
+            const e = this.totalElevation(target);
+            if (e < min) {
+                min = e;
+                result = target;
+            }
+        }
+        return result;
     }
 
     totalElevation(i: number) {
@@ -137,7 +146,7 @@ export class TileSet {
             "hard": [${[...this.hard].map(x => x.toFixed(3)).join(",")}],
             "soft": [${[...this.soft].map(x => x.toFixed(3)).join(",")}],
             "water": [${[...this.water].map(x => x.toFixed(3)).join(",")}],
-            "vegetation": [${[...this.vegetation].map(x => x.toFixed(3)).join(",")}]
+            "vegetation": [${[...this.vegetation].map(x => x.toFixed(3)).join(",")}],
             "snow": [${[...this.snow].map(x => x.toFixed(3)).join(",")}]
         }`
     }
@@ -177,7 +186,6 @@ export class TileSet {
 
         this.vertices.points.load(points);
 
-        this.downhills = new Array<number>(this.count);
         
         function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
         const delaunay = Delaunator.from(source);
