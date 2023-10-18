@@ -61,3 +61,15 @@ export function sumBy<T>(x: T[], f: (t: T) => number) {
     }
     return sum;
 }
+
+export function sum(x: number[]) {
+    let sum = 0;
+    for (let i = 0; i < x.length; ++i) {
+        sum += x[i];
+    }
+    return sum;
+}
+
+export function id<T>(t: T): T {
+    return t;
+}

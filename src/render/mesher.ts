@@ -29,9 +29,9 @@ function albedo(tiles: TileSet, i: number) {
     result.z = lerp(result.z, vegetationAlbedo.b, Math.min(tiles.vegetation[i], softness + 0.7));
 
     if (tiles.snow[i] > 0) {
-        result.x = lerp(result.x, 1, tiles.snow[i]);
-        result.y = lerp(result.y, 1, tiles.snow[i]);
-        result.z = lerp(result.z, 1, tiles.snow[i]);
+        result.x = lerp(result.x, 1, tiles.snow[i]*0.7);
+        result.y = lerp(result.y, 1, tiles.snow[i]*0.7);
+        result.z = lerp(result.z, 1, tiles.snow[i]*0.7);
     }
 
     return result;
@@ -168,7 +168,7 @@ export function pointsMesh() {
                 geometry.attributes.index.needsUpdate = true;
             }
 
-            let chunk = ~~(tiles.count/20);
+            let chunk = ~~(tiles.count/5);
             if (!incremental) {
                 start = 0;
                 chunk = tiles.count;
@@ -258,9 +258,9 @@ export function riverMesh() {
                 let g = 0.1;
                 let b = 0.05;
 
-                if (tiles.surfaceWater(i) <= 0.002)
+                const target = tiles.uphill[i];
+                if (tiles.river[target] > 0.1)
                 {
-                    const target = tiles.uphill[i];
                     const sourceAmount = 1;//Math.min(Math.log(tiles.river(i)*1 + 1), 2.9);
                     const targetAmount = 1;//Math.min(Math.log(tiles.river(target)*1 + 1), 2.9);
 

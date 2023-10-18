@@ -78,38 +78,48 @@ export class Eroder {
                 this.simpleErode(current, clamp(0.1 - this.tiles.water[current], 0, 1)*0.1);
             }
 
-            if (this.tiles.snow[current]) {
+            if (this.tiles.snow[current] > 0) {
                 let target = this.tiles.downhill(current);
                 const snowDelta = this.tiles.snow[current] - this.tiles.snow[target];
-                const slide = Math.min(this.tiles.snow[current]*0.05, snowDelta * 0.5);
+                const slide = snowDelta * 0.2;
                 this.tiles.snow[current] -= slide;
                 this.tiles.snow[target] += slide;
 
                 const delta = this.tiles.rockElevation(current) - this.tiles.rockElevation(target);
                 if (delta > 0) {
-                    const scrape = Math.min(slide*0.01, this.tiles.hard[current], delta*0.5);
+                    const scrape = Math.min(slide*slide, this.tiles.hard[current], delta*0.5);
                     this.tiles.hard[current] -= scrape;
                     this.tiles.hard[target] += scrape;
                 }
 
                 if (this.tiles.rockElevation(current) < 0.7) {
-                    const melt = Math.min((0.7 - this.tiles.rockElevation(current)) * 0.6, this.tiles.snow[current]);
+                    const melt = Math.min((0.8 - this.tiles.rockElevation(current)) * 0.6, this.tiles.snow[current]);
                     this.tiles.snow[current] -= melt;
-                    this.tiles.water[target] += melt*0.1;
+                    this.tiles.water[target] += melt*0.5;
                 }
+                this.tiles.snow[current] = clamp(this.tiles.snow[current], 0, 1);
             }
         }
     }
 
     globalRivers() {
+        let aquiferCapacity = 0;
+        const waterHeight = this.configuration.water.get();
+        for (let i = 0; i < this.tiles.count; ++i) {
+            if (this.tiles.rockElevation(i) > waterHeight)
+            aquiferCapacity += this.tiles.soft[i];
+        }
+        const rain = aquiferCapacity/this.tiles.count;
         for (let i = 0; i < this.tiles.count; ++i) {
             const occlusion = this.tiles.totalElevation(i) - this.tiles.occlusion[i];
-            const factor = occlusion > -0 ? 1 : 0.01;
-            //this.river(i,  0.002);
-            this.tiles.vegetation[i] += 0.01*factor;
-            this.tiles.water[i] += 0.008*factor*this.tiles.totalElevation(i);
-            if (this.tiles.rockElevation(i) > 0.9) {
-                this.tiles.snow[i] = clamp(this.tiles.snow[i] += 0.05*factor, 0, 1);
+            let occlusionFactor = occlusion > -0 ? 1 : 0.001;
+            const capture = rain*this.tiles.rockElevation(i)  * 7
+            const base = 0.05*this.tiles.rockElevation(i) + 0.0001;
+            this.tiles.water[i] += Math.max(base, capture)*occlusionFactor;
+
+            this.tiles.vegetation[i] = clamp(this.tiles.vegetation[i] + 0.001, 0, 1);
+            if (this.tiles.rockElevation(i) > 0.9 && occlusion > -0) {
+                this.tiles.snow[i] = clamp(this.tiles.snow[i] + 0.2, 0, 1);
             }
         }
     }
@@ -160,9 +170,7 @@ export class Eroder {
         const hardFactor = clamp(amount*0.1*this.tiles.hard[center]*(0.1 - this.tiles.soft[center]), 0, this.tiles.hard[center]);
         this.tiles.hard[center] -= hardFactor;
         this.tiles.soft[center] += hardFactor;
-        this.tiles.water[center] += hardFactor;
     }
-   
 
     getWind() {
         return {
@@ -200,7 +208,7 @@ export class Eroder {
             const length = this.tiles.byDirection(source, nwind, targets, 0.5);
             for (let j = 0; j < length; ++j) {
                 const target = targets[j];
-                this.tiles.occlusion[target] =  Math.max(this.tiles.totalElevation(source), this.tiles.totalElevation(target), this.tiles.occlusion[source])*0.9999;
+                this.tiles.occlusion[target] =  Math.max(this.tiles.totalElevation(source), this.tiles.totalElevation(target), this.tiles.occlusion[source]);
             }
         }
 
@@ -220,7 +228,7 @@ export class Eroder {
             let highest = Number.MIN_VALUE;
             for (let j = 0; j < this.tiles.adjacents[source].length; ++j) {
                 const target = this.tiles.adjacents[source][j];
-                const factor = this.tiles.totalElevation(target);
+                const factor = this.tiles.waterTable(target);
                 if (factor > highest) {
                     next = target;
                     highest = factor;
@@ -271,24 +279,28 @@ export class Eroder {
             if (this.tiles.water[source] <= 0.001) {
                 continue;
             }
-            const adjacents = this.tiles.adjacents[source];
-            for (let j = 0; j < adjacents.length; ++j) {
-                const target = adjacents[j];
-                const delta = this.tiles.waterTable(source) - this.tiles.waterTable(target);
-                const rockDelta = this.tiles.rockElevation(source) - this.tiles.rockElevation(target);
-                if (delta < 0) {
-                    continue;
-                }
-                const friction = clamp(1 - this.tiles.soft[source] + this.tiles.surfaceWater(source), 0.5, 1);
-                let transfer = Math.min(delta * 0.4 * friction, this.tiles.water[source]);
-    
-                this.tiles.water[source] -= transfer;
-                this.tiles.water[target] += transfer;
-    
-                this.simpleErode(source, transfer*4);
-                transfer = clamp(Math.min(transfer*0.01, this.tiles.soft[source], rockDelta*0.1), 0, 1);
-                this.tiles.soft[source] -= transfer;
-                this.tiles.soft[target] += transfer;
+            const target = this.tiles.waterTableDownhill(source);
+            const delta = this.tiles.waterTable(source) - this.tiles.waterTable(target);
+            const rockDelta = this.tiles.rockElevation(source) - this.tiles.rockElevation(target);
+            if (delta < 0) {
+                continue;
+            }
+            
+            const friction = clamp(1 - this.tiles.soft[source]*2 + this.tiles.surfaceWater(source)*2, 0.1, 1);
+            let transfer = Math.min(delta * 0.5 * friction, this.tiles.water[source]);
+
+            this.tiles.water[source] -= transfer;
+            this.tiles.water[target] += transfer;
+
+            this.tiles.river[source] += transfer;
+
+            if (transfer > 0) {
+                const square = clamp(transfer - this.tiles.surfaceWater(source), 0, 1);
+                this.simpleErode(source, square*2);
+
+                const erosion = clamp(Math.min(square*rockDelta*0.6, this.tiles.soft[source], rockDelta*0.5), 0, 1);
+                this.tiles.soft[source] -= erosion;
+                this.tiles.soft[target] += erosion;
             }
         }
     }
@@ -297,14 +309,17 @@ export class Eroder {
         const siltAngle = this.configuration.siltAngle.get();
         const rockAngle = this.configuration.rockAngle.get();
         for (let source = 0; source < this.tiles.count; ++source) {
-            const target = this.tiles.downhill(source);
-            const delta = this.tiles.rockElevation(source) - this.tiles.rockElevation(target);
-            if (delta > siltAngle) {
-                const transfer = Math.min((delta - siltAngle) * 0.1, this.tiles.soft[source]);
+            let target = this.tiles.downhill(source);
+            let delta = this.tiles.rockElevation(source) - this.tiles.rockElevation(target);
+            let sagAngle = clamp(siltAngle * clamp(1 - this.tiles.soak(source), 0.5, 1), 0.001, 1);
+            if (delta > sagAngle) {
+                const transfer = Math.min((delta - sagAngle) * 0.1, this.tiles.soft[source]);
 
                 this.tiles.soft[source] -= transfer;
                 this.tiles.soft[target] += transfer;
             }
+            target = this.tiles.downhill(source);
+            delta = this.tiles.rockElevation(source) - this.tiles.rockElevation(target);
             if (delta > rockAngle) {
                 const transfer = Math.min((delta - rockAngle) * 0.1, this.tiles.hard[source]);
 

@@ -1,6 +1,7 @@
 import Delaunator from "delaunator";
 import RBush from "rbush";
 import * as THREE from "three";
+import { clamp } from "../math";
 import { BushVertex, Vertices, mapVertices } from "./Graph";
 
 export class TileSet {
@@ -34,7 +35,7 @@ export class TileSet {
         this.vx = new Float32Array(vertices.count);
         this.vy = new Float32Array(vertices.count);
 
-        this.occlusion.fill(1, 0, vertices.count);
+        this.occlusion.fill(1);
 
         this.count = vertices.count;
         this.vertices = vertices;
@@ -105,6 +106,21 @@ export class TileSet {
         return result;
     }
 
+    waterTableDownhill(i: number) {
+        let min = Number.MAX_VALUE;
+        const adjacents = this.adjacents[i];
+        let result = 0;
+        for (let j = 0; j < adjacents.length; ++j) {
+            const target = adjacents[j];
+            const e = this.waterTable(target);
+            if (e < min) {
+                min = e;
+                result = target;
+            }
+        }
+        return result;
+    }
+
     totalElevation(i: number) {
         return this.hard[i] + Math.max(this.soft[i], this.water[i]);
     }
@@ -119,6 +135,13 @@ export class TileSet {
 
     waterTable(i: number) {
         return this.hard[i] + this.water[i];
+    }
+
+    soak(i: number) {
+        if (this.soft[i] === 0) {
+            return 1;
+        }
+        return clamp(this.water[i] / (this.soft[i]), 0, 1);
     }
 
     byDirection(i: number, v: THREE.Vector2, result: number[], angle = 0.5): number {

@@ -19,7 +19,7 @@ import "../ui.css";
 import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(8, (x, y) => x*x + y*y*3 < 1200*1200);
+    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 1200*1200);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -74,22 +74,22 @@ function initialState(map: Eroder) {
         let result = 0;
     
         let mul = 0.5;
-        let div = 0.5;
-        for (let i = 0; i < 10; ++i) {
+        let div = 0.51;
+        for (let i = 0; i < 30; ++i) {
             result += noise.noise(x * mul, y * mul) * div;
             mul *= 2;
-            div *= 0.5;
+            div *= 0.51;
         }
         return result;
     }
     
     function wavy(x: number, y: number) {
-        x = x * 0.001;
-        y = y * 0.001;
+        x = x * 0.0015 ;
+        y = y * 0.0015;
         x += 0.5;
         y += 0.5;
-        x = x + fbm(noiseX, x*0.1, y*0.1)*5;
-        y = y + fbm(noiseY, x*0.1, y*0.1)*5;
+        x = x + fbm(noiseX, x*0.1, y*0.1)*3;
+        y = y + fbm(noiseY, x*0.1, y*0.1)*3;
     
         return fbm(noise, x, y);
     }
@@ -98,14 +98,14 @@ function initialState(map: Eroder) {
         const x = map.tiles.x(i);
         const y = map.tiles.y(i);
 
-        const plateau = clamp(0.8 - Math.sqrt(x*x + y*y*3) / 1300, -0.3, 0.8);
-        const elevation = clamp(clamp(plateau + wavy(x,y)*0.3, 0.01, 0.8) + wavy(x,y)*0.1 + 0.1, 0, 1);
+        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y) /1200, -0.3, 0.7);
+        const elevation = clamp(clamp(plateau + wavy(x,y)*0.5, 0.01, 0.9) + wavy(x,y)*0.1 + 0.1, 0, 1);
         map.tiles.hard[i] = elevation;
         map.tiles.soft.fill(0)
         map.tiles.vegetation.fill(0);
         map.tiles.river.fill(0);
         map.tiles.snow.fill(0);
-        map.tiles.occlusion.fill(0);
+        map.tiles.occlusion.fill(1);
     }
 
     map.resetWater();
@@ -123,11 +123,11 @@ export function createGenerationUi() {
         }),
         siltAngle: createNumberInput({
             name: "Silt maximum elevation difference",
-            start: 0.05,
+            start: 0.09,
         }),
         rockAngle: createNumberInput({
             name: "Rock maximum elevation difference",
-            start: 0.1,
+            start: 0.13,
         }),
         water: createNumberInput({
             name: "Water height",
@@ -306,12 +306,14 @@ export function createGenerationUi() {
                 }
 
                 eroder.deriveUphills();
-                updateMeshes(false);
+                updateMeshes();
             } else if (controls.passTime.get()) {
-                for (let i = 0; i < 20; ++i) {
+                eroder.fixWater();
+                eroder.landslide();
+                for (let i = 0; i < 1; ++i) {
                     eroder.spreadWater();
                 }
-                updateMeshes(false);
+                updateMeshes();
             }
             windSelector.showWind(eroder.getWind());
             render();
