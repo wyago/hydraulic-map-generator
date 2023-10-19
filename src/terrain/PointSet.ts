@@ -14,6 +14,7 @@ export class TileSet {
     hard: Float32Array;
     soft: Float32Array;
     water: Float32Array;
+    aquifer: Float32Array;
     river: Float32Array;
     vegetation: Float32Array;
     occlusion: Float32Array;
@@ -28,6 +29,7 @@ export class TileSet {
         this.hard = new Float32Array(vertices.count);
         this.soft = new Float32Array(vertices.count);
         this.water = new Float32Array(vertices.count);
+        this.aquifer = new Float32Array(vertices.count);
         this.river = new Float32Array(vertices.count);
         this.vegetation = new Float32Array(vertices.count);
         this.occlusion = new Float32Array(vertices.count);
@@ -122,7 +124,7 @@ export class TileSet {
     }
 
     totalElevation(i: number) {
-        return this.hard[i] + Math.max(this.soft[i], this.water[i]);
+        return this.hard[i] + this.soft[i] + this.water[i];
     }
 
     rockElevation(i: number) {
@@ -130,18 +132,22 @@ export class TileSet {
     }
 
     surfaceWater(i: number) {
-        return Math.max(0, this.water[i] - this.soft[i]);
+        return this.water[i];
     }
 
     waterTable(i: number) {
-        return this.hard[i] + this.water[i];
+        return this.hard[i] + this.aquifer[i];
     }
 
     soak(i: number) {
         if (this.soft[i] === 0) {
             return 1;
         }
-        return clamp(this.water[i] / (this.soft[i]), 0, 1);
+        return clamp(this.aquifer[i] / (this.soft[i]), 0, 1);
+    }
+
+    aquiferSpace(i: number) {
+        return clamp(this.soft[i] - this.aquifer[i], 0, 1);
     }
 
     byDirection(i: number, v: THREE.Vector2, result: number[], angle = 0.5): number {
@@ -164,11 +170,12 @@ export class TileSet {
 
     marshal() {
         return `{
-            "tilesetversion": 0,
+            "tilesetversion": 1,
             "xys": [${[...this.vertices.xys].map(x => x.toFixed(1)).join(",")}],
             "hard": [${[...this.hard].map(x => x.toFixed(3)).join(",")}],
             "soft": [${[...this.soft].map(x => x.toFixed(3)).join(",")}],
             "water": [${[...this.water].map(x => x.toFixed(3)).join(",")}],
+            "aquifer": [${[...this.aquifer].map(x => x.toFixed(3)).join(",")}],
             "vegetation": [${[...this.vegetation].map(x => x.toFixed(3)).join(",")}],
             "snow": [${[...this.snow].map(x => x.toFixed(3)).join(",")}]
         }`
@@ -184,6 +191,7 @@ export class TileSet {
         this.hard = new Float32Array(json.hard);
         this.soft = new Float32Array(json.soft);
         this.water = new Float32Array(json.water);
+        this.aquifer = new Float32Array(json.aquifer);
         this.vegetation = new Float32Array(json.vegetation);
         this.snow = json.snow ? new Float32Array(json.snow) : new Float32Array(this.count);
         this.river = new Float32Array(this.count);

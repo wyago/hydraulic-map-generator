@@ -16,6 +16,7 @@ export function createDiagramPanel() {
             const soft = tiles.soft[i];
             const hard = tiles.hard[i];
             const water = tiles.water[i];
+            const aquifer = tiles.aquifer[i];
 
             info = h("details.modal", { key: "diagram", open: "" }, [
                 h("summary", ["Tile diagram"]),
@@ -33,9 +34,9 @@ export function createDiagramPanel() {
                         ]),
                     ]),
                     h("rect", { width: "1", height: "1", fill: "#aac"}),
-                    h("rect", { width: "1", height: 1, y: (1 - hard - water).toFixed(4), fill: "#123"}),
+                    h("rect", { width: "1", height: 1, y: (1 - hard - soft - water).toFixed(4), fill: "#123"}),
                     h("rect", { width: "1", height: 1, y: (1 - hard - soft).toFixed(4), fill: "#532"}),
-                    h("rect", { width: "1", height: 1, y: (1 - hard - water).toFixed(4), fill: "url(#diagonalhatch)"}),
+                    h("rect", { width: "1", height: 1, y: (1 - hard - aquifer).toFixed(4), fill: "url(#diagonalhatch)"}),
                     h("rect", { width: "1", height: 1, y: (1 - hard).toFixed(4), fill: "#555" }),
                 ]),
             ])

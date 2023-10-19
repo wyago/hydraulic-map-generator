@@ -5,9 +5,9 @@ export const siltAlbedo = {
 };
 
 export const vegetationAlbedo = {
-    r: 0.16,
-    g: 0.26,
-    b: 0.12,
+    r: 0.13,
+    g: 0.17,
+    b: 0.11,
 };
 
 export const rockAlbedo = {

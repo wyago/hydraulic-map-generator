@@ -24,9 +24,9 @@ function albedo(tiles: TileSet, i: number) {
     result.y = lerp(rockAlbedo.g, siltColor.g, siltPortion);
     result.z = lerp(rockAlbedo.b, siltColor.b, siltPortion);
 
-    result.x = lerp(result.x, vegetationAlbedo.r, Math.min(tiles.vegetation[i], softness + 0.7));
-    result.y = lerp(result.y, vegetationAlbedo.g, Math.min(tiles.vegetation[i], softness + 0.7));
-    result.z = lerp(result.z, vegetationAlbedo.b, Math.min(tiles.vegetation[i], softness + 0.7));
+    result.x = lerp(result.x, vegetationAlbedo.r, Math.min(tiles.vegetation[i], softness + 0.5));
+    result.y = lerp(result.y, vegetationAlbedo.g, Math.min(tiles.vegetation[i], softness + 0.5));
+    result.z = lerp(result.z, vegetationAlbedo.b, Math.min(tiles.vegetation[i], softness + 0.5));
 
     if (tiles.snow[i] > 0) {
         result.x = lerp(result.x, 1, tiles.snow[i]*0.7);

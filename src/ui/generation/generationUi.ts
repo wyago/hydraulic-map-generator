@@ -1,4 +1,3 @@
-import { SimplexNoise } from "ts-perlin-simplex";
 import { byMin, clamp } from "../../math";
 import { createCanvas } from "../../render/canvas";
 import { pointsMesh, riverMesh } from "../../render/mesher";
@@ -10,6 +9,7 @@ import { createInfoPanel } from "./infoPanel";
 import { createWindSelector } from "./windSelector";
 
 import { VNodeProperties, h } from "maquette";
+import { DistortedNoise } from "../../DistortedNoise";
 import { createBooleanInput } from "../booleanInput";
 import { createButton } from "../button";
 import { createDropdown } from "../dropdown";
@@ -42,7 +42,7 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
             if (file) {
                 file.text().then(text => {
                     const model = JSON.parse(text);
-                    if (model.tilesetversion < 1) {
+                    if (model.tilesetversion < 2) {
                         map.tiles.unmarshal(model);
                         updateMeshes();
                     }
@@ -65,41 +65,15 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
     }
 }
 
-
 function initialState(map: Eroder) {
-    const noise = new SimplexNoise();
-    const noiseX = new SimplexNoise();
-    const noiseY = new SimplexNoise();
-    function fbm(noise: SimplexNoise, x: number, y: number) {
-        let result = 0;
-    
-        let mul = 0.5;
-        let div = 0.51;
-        for (let i = 0; i < 30; ++i) {
-            result += noise.noise(x * mul, y * mul) * div;
-            mul *= 2;
-            div *= 0.51;
-        }
-        return result;
-    }
-    
-    function wavy(x: number, y: number) {
-        x = x * 0.0015 ;
-        y = y * 0.0015;
-        x += 0.5;
-        y += 0.5;
-        x = x + fbm(noiseX, x*0.1, y*0.1)*3;
-        y = y + fbm(noiseY, x*0.1, y*0.1)*3;
-    
-        return fbm(noise, x, y);
-    }
+    const noise = new DistortedNoise(0.0019, 40);
 
     for (let i = 0; i < map.tiles.count; ++i) {
         const x = map.tiles.x(i);
         const y = map.tiles.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y) /1200, -0.3, 0.7);
-        const elevation = clamp(clamp(plateau + wavy(x,y)*0.5, 0.01, 0.9) + wavy(x,y)*0.1 + 0.1, 0, 1);
+        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y) /1500, -0.3, 0.7);
+        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.4, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.tiles.hard[i] = elevation;
         map.tiles.soft.fill(0)
         map.tiles.vegetation.fill(0);
@@ -295,22 +269,20 @@ export function createGenerationUi() {
         function frame() {
             j += 1;
             if (controls.erode.get()) {
-                eroder.passTime();
                 eroder.deriveOcclusion(8, windSelector.getPreferredWind());
                 eroder.globalRivers();
-                //eroder.iterateRivers();
+                eroder.passTime();
                 eroder.fixWater();
                 eroder.landslide();
-                for (let i = 0; i < 50; ++i) {
+                for (let i = 0; i < 80; ++i) {
                     eroder.spreadWater();
                 }
 
                 eroder.deriveUphills();
                 updateMeshes();
             } else if (controls.passTime.get()) {
-                eroder.fixWater();
                 eroder.landslide();
-                for (let i = 0; i < 1; ++i) {
+                for (let i = 0; i < 80; ++i) {
                     eroder.spreadWater();
                 }
                 updateMeshes();

@@ -25,9 +25,9 @@ void main() {
         vec3 ambient = vec3(0.2, 0.2, 0.25);
 
         if (water > 0.002) {
-            float depth = water * 13.0;
+            float depth = water * 10.0;
 
-            float reflect = 0.7;
+            float reflect = 0.9;
             vec3 subtractor = vec3(0.18, 0.13, 0.12) * depth;
             vec3 transit = sunColor * (1.0 - reflect) - subtractor;
 
@@ -44,12 +44,6 @@ void main() {
         }
     } else if (mode == 1) {
         vColor = vec3(height);
-
-        float depth = (water * 12.0 + 1.0)*height;
-
-        float reflect = 0.6;
-        vec3 subtractor = vec3(0.18, 0.13, 0.12) * depth;
-        vColor -= subtractor;
     } else if (mode == 2) {
         vColor = vec3(occlusion);
     }
