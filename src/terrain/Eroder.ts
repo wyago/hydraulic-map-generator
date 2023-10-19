@@ -218,9 +218,6 @@ export class Eroder {
         }
     }
 
-    deriveDownhills() {
-    }
-
     deriveUphills() {
         for (let source = 0; source < this.tiles.count; ++source) {
             const original = this.tiles.uphill[source];
@@ -240,7 +237,6 @@ export class Eroder {
     }
 
     iterateRivers() {
-        this.deriveDownhills();
         for (let source = 0; source < this.tiles.count; ++source) {
             const target = this.tiles.downhill(source);
             const delta = (this.tiles.rockElevation(source) - this.tiles.rockElevation(target));
@@ -256,25 +252,6 @@ export class Eroder {
     }
 
     spreadWater() {
-        this.deriveDownhills();
-        /*for (let source = 0; source < this.tiles.count; ++source) {
-            const target = this.tiles.downhill(source);
-            const delta = this.tiles.surfaceWater(source) - this.tiles.surfaceWater(target);
-            const rockDelta = this.tiles.rockElevation(source) - this.tiles.rockElevation(target);
-            if (delta < 0) {
-                continue;
-            }
-            let transfer = Math.min(delta * 0.45, this.tiles.water[source]);
-
-            this.tiles.water[source] -= transfer;
-            this.tiles.water[target] += transfer;
-
-            this.simpleErode(source, transfer*1);
-
-            transfer = clamp(Math.min(transfer*0.3 - this.tiles.surfaceWater(source)*1, this.tiles.soft[source], rockDelta*0.1), 0, 1);
-            this.tiles.soft[source] -= transfer;
-            this.tiles.soft[target] += transfer;
-        }*/
         for (let source = 0; source < this.tiles.count; ++source) {
             if (this.tiles.water[source] <= 0.001) {
                 continue;
@@ -337,7 +314,6 @@ export class Eroder {
     }
 
     rain() {
-        this.deriveDownhills();
         for (let source = 0; source < this.tiles.count; ++source) { 
             let target = this.tiles.downhill[source];
             for (let i = 0; i < 1000 && this.tiles.totalElevation(target) < this.tiles.totalElevation(source); ++i) {
