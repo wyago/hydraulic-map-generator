@@ -97,11 +97,11 @@ export function createGenerationUi() {
         }),
         siltAngle: createNumberInput({
             name: "Silt maximum elevation difference",
-            start: 0.09,
+            start: 0.04,
         }),
         rockAngle: createNumberInput({
             name: "Rock maximum elevation difference",
-            start: 0.13,
+            start: 0.05,
         }),
         water: createNumberInput({
             name: "Water height",
@@ -270,11 +270,11 @@ export function createGenerationUi() {
             j += 1;
             if (controls.erode.get()) {
                 eroder.deriveOcclusion(8, windSelector.getPreferredWind());
-                eroder.globalRivers();
                 eroder.passTime();
                 eroder.fixWater();
                 eroder.landslide();
-                for (let i = 0; i < 80; ++i) {
+                for (let i = 0; i < 20; ++i) {
+                    eroder.globalRivers();
                     eroder.spreadWater();
                 }
 
@@ -282,7 +282,7 @@ export function createGenerationUi() {
                 updateMeshes();
             } else if (controls.passTime.get()) {
                 eroder.landslide();
-                for (let i = 0; i < 80; ++i) {
+                for (let i = 0; i < 20; ++i) {
                     eroder.spreadWater();
                 }
                 updateMeshes();
