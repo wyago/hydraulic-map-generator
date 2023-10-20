@@ -19,8 +19,6 @@ export class TileSet {
     vegetation: Float32Array;
     occlusion: Float32Array;
     snow: Float32Array;
-    vx: Float32Array;
-    vy: Float32Array;
 
     uphill: number[];
     adjacents: number[][];
@@ -34,8 +32,6 @@ export class TileSet {
         this.vegetation = new Float32Array(vertices.count);
         this.occlusion = new Float32Array(vertices.count);
         this.snow = new Float32Array(vertices.count);
-        this.vx = new Float32Array(vertices.count);
-        this.vy = new Float32Array(vertices.count);
 
         this.occlusion.fill(1);
 
@@ -195,8 +191,6 @@ export class TileSet {
         this.vegetation = new Float32Array(json.vegetation);
         this.snow = json.snow ? new Float32Array(json.snow) : new Float32Array(this.count);
         this.river = new Float32Array(this.count);
-        this.vx = new Float32Array(this.count);
-        this.vy = new Float32Array(this.count);
         this.uphill = new Array<number>(this.count);
 
         const points = new Array<any>(this.vertices.count);
