@@ -176,7 +176,7 @@ export function pointsMesh() {
 
             for (let j = start; j < start + chunk; ++j) {
                 const i = j % tiles.count;
-                const a = albedo(tiles, i).multiplyScalar(tiles.totalElevation(i)*0.6 + 0.4);
+                const a = albedo(tiles, i).multiplyScalar(tiles.rockElevation(i)*0.6 + 0.4);
                 const rock = rockNormal(tiles, i);
                 const water = totalNormal(tiles, i);
 
@@ -185,7 +185,7 @@ export function pointsMesh() {
                 geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
                 geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
                 geometry.attributes.water.setX(i, tiles.surfaceWater(i));
-                geometry.attributes.height.setX(i, tiles.totalElevation(i));
+                geometry.attributes.height.setX(i, tiles.rockElevation(i));
                 geometry.attributes.occlusion.setX(i, tiles.occlusion[i]);
             }
             geometry.setDrawRange(0, tiles.count);

@@ -19,7 +19,7 @@ import "../ui.css";
 import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 1200*1200);
+    const gen = createDiscSampler(8, (x, y) => x*x*0.3 + y*y < 1200*1200);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -66,21 +66,22 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
 }
 
 function initialState(map: Eroder) {
-    const noise = new DistortedNoise(0.0019, 40);
+    const noise = new DistortedNoise(0.0019, 20);
 
     for (let i = 0; i < map.tiles.count; ++i) {
         const x = map.tiles.x(i);
         const y = map.tiles.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y) /1500, -0.3, 0.7);
+        const plateau = clamp(0.7 - Math.sqrt(x*x*0.3 + y*y) /1500, -0.3, 0.7);
         const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.4, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.tiles.hard[i] = elevation;
-        map.tiles.soft.fill(0)
-        map.tiles.vegetation.fill(0);
-        map.tiles.river.fill(0);
-        map.tiles.snow.fill(0);
-        map.tiles.occlusion.fill(1);
     }
+    map.tiles.soft.fill(0)
+    map.tiles.vegetation.fill(0);
+    map.tiles.river.fill(0);
+    map.tiles.snow.fill(0);
+    map.tiles.aquifer.fill(0);
+    map.tiles.occlusion.fill(1);
 
     map.resetWater();
 }
@@ -97,11 +98,11 @@ export function createGenerationUi() {
         }),
         siltAngle: createNumberInput({
             name: "Silt maximum elevation difference",
-            start: 0.04,
+            start: 0.06,
         }),
         rockAngle: createNumberInput({
             name: "Rock maximum elevation difference",
-            start: 0.05,
+            start: 0.07,
         }),
         water: createNumberInput({
             name: "Water height",
@@ -273,7 +274,7 @@ export function createGenerationUi() {
                 eroder.passTime();
                 eroder.fixWater();
                 eroder.landslide();
-                for (let i = 0; i < 20; ++i) {
+                for (let i = 0; i < 5; ++i) {
                     eroder.globalRivers();
                     eroder.spreadWater();
                 }
@@ -282,7 +283,7 @@ export function createGenerationUi() {
                 updateMeshes();
             } else if (controls.passTime.get()) {
                 eroder.landslide();
-                for (let i = 0; i < 20; ++i) {
+                for (let i = 0; i < 5; ++i) {
                     eroder.spreadWater();
                 }
                 updateMeshes();

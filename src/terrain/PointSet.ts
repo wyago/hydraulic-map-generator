@@ -1,6 +1,7 @@
 import Delaunator from "delaunator";
 import RBush from "rbush";
 import * as THREE from "three";
+import { Vector2 } from "three";
 import { clamp } from "../math";
 import { BushVertex, Vertices, mapVertices } from "./Graph";
 
@@ -22,6 +23,7 @@ export class TileSet {
 
     uphill: number[];
     adjacents: number[][];
+    invertLengths: number[][];
 
     constructor(vertices: Vertices) {
         this.hard = new Float32Array(vertices.count);
@@ -79,6 +81,15 @@ export class TileSet {
                 return Math.atan2(lefty - sourcey, leftx - sourcex) > Math.atan2(righty - sourcey, rightx - sourcex) ? 1 : -1;
             })
         });
+
+        this.invertLengths = this.adjacents.map((a,i) => {
+            const center = new Vector2(this.x(i), this.y(i));
+            return a.map(j => {
+                const target = new Vector2(this.x(j), this.y(j));
+                target.sub(center);
+                return 1/target.length();
+            })
+        })
     }
 
     x(i: number) {
@@ -99,6 +110,21 @@ export class TileSet {
             if (e < min) {
                 min = e;
                 result = target;
+            }
+        }
+        return result;
+    }
+
+    downhillIndex(i: number) {
+        let min = Number.MAX_VALUE;
+        const adjacents = this.adjacents[i];
+        let result = 0;
+        for (let j = 0; j < adjacents.length; ++j) {
+            const target = adjacents[j];
+            const e = this.totalElevation(target);
+            if (e < min) {
+                min = e;
+                result = j;
             }
         }
         return result;
@@ -241,6 +267,14 @@ export class TileSet {
                 return Math.atan2(lefty - sourcey, leftx - sourcex) > Math.atan2(righty - sourcey, rightx - sourcex) ? 1 : -1;
             })
         }); 
+        this.invertLengths = this.adjacents.map((a,i) => {
+            const center = new Vector2(this.x(i), this.y(i));
+            return a.map(j => {
+                const target = new Vector2(this.x(j), this.y(j));
+                target.sub(center);
+                return target.length();
+            })
+        })
         return this;
     }
 }
