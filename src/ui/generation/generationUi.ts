@@ -1,6 +1,6 @@
 import { byMin, clamp } from "../../math";
 import { createCanvas } from "../../render/canvas";
-import { pointsMesh, riverMesh } from "../../render/mesher";
+import { riverMesh } from "../../render/riverMesh";
 import { Eroder, EroderConfiguration } from "../../terrain/Eroder";
 import { TileSet } from "../../terrain/PointSet";
 import { createDiscSampler } from "../../terrain/discSampler";
@@ -10,6 +10,7 @@ import { createWindSelector } from "./windSelector";
 
 import { VNodeProperties, h } from "maquette";
 import { DistortedNoise } from "../../DistortedNoise";
+import { implicitVoronoi } from "../../render/implicitVoronoi";
 import { createBooleanInput } from "../booleanInput";
 import { createButton } from "../button";
 import { createDropdown } from "../dropdown";
@@ -111,7 +112,7 @@ export function createGenerationUi() {
     }
 
     const eroder = generate(configuration);
-    let mesh = pointsMesh();
+    let mesh = implicitVoronoi();
     let rivers = riverMesh();
     let informId = -1;
 
@@ -270,12 +271,12 @@ export function createGenerationUi() {
         function frame() {
             j += 1;
             if (controls.erode.get()) {
-                eroder.deriveOcclusion(8, windSelector.getPreferredWind());
+                eroder.deriveOcclusion(windSelector.getPreferredWind());
                 eroder.passTime();
                 eroder.fixWater();
                 eroder.landslide();
                 for (let i = 0; i < 5; ++i) {
-                    eroder.globalRivers();
+                    eroder.rain();
                     eroder.spreadWater();
                 }
 

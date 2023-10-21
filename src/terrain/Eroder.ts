@@ -36,23 +36,52 @@ export class Eroder {
         }
     }
 
+    spreadVegetation(current: number) {
+        this.tiles.vegetation[current] += this.tiles.aquifer[current]*0.2;
+        this.tiles.vegetation[current] = clamp(this.tiles.vegetation[current] - 0.005, 0, 1);
+
+        const adjs = this.tiles.adjacents[current];
+        for (let i = 0; i < adjs.length; ++i) {
+            const target = adjs[i];
+            const transfer = (this.tiles.vegetation[current] - this.tiles.vegetation[target])*0.05/adjs.length;
+            this.tiles.vegetation[current] -= transfer;
+            this.tiles.vegetation[target] += transfer;
+        }
+
+        if (this.tiles.water[current] > 0.01) {
+            this.tiles.vegetation[current] -= this.tiles.water[current] - 0.01;
+        }
+    }
+
+    spreadSnow(current: number) {
+        if (this.tiles.snow[current] > 0) {
+            let target = this.tiles.downhill(current);
+            const snowDelta = this.tiles.snow[current] - this.tiles.snow[target];
+            const slide = snowDelta * 0.1;
+            this.tiles.snow[current] -= slide;
+            this.tiles.snow[target] += slide;
+
+            const delta = this.tiles.rockElevation(current) - this.tiles.rockElevation(target);
+            if (delta > 0) {
+                const scrape = Math.min(slide*slide, this.tiles.hard[current], delta*0.2);
+                this.tiles.hard[current] -= scrape;
+                this.tiles.hard[target] += scrape;
+            }
+
+            if (this.tiles.rockElevation(current) < 0.7) {
+                const melt = Math.min((0.8 - this.tiles.rockElevation(current)) * 0.05, this.tiles.snow[current]);
+                this.tiles.snow[current] -= melt;
+                this.tiles.water[target] += melt*0.5;
+            }
+            this.tiles.snow[current] = clamp(this.tiles.snow[current], 0, 1);
+        }
+    }
+
     passTime() {
         for (let current = 0; current < this.tiles.count; ++current) {
             this.tiles.river[current] *= 0.98;
-            this.tiles.vegetation[current] += this.tiles.aquifer[current]*0.2;
-            this.tiles.vegetation[current] = clamp(this.tiles.vegetation[current] - 0.005, 0, 1);
-
-            const adjs = this.tiles.adjacents[current];
-            for (let i = 0; i < adjs.length; ++i) {
-                const target = adjs[i];
-                const transfer = (this.tiles.vegetation[current] - this.tiles.vegetation[target])*0.05/adjs.length;
-                this.tiles.vegetation[current] -= transfer;
-                this.tiles.vegetation[target] += transfer;
-            }
-
-            if (this.tiles.water[current] > 0.01) {
-                this.tiles.vegetation[current] -= this.tiles.water[current] - 0.01;
-            }
+            this.spreadVegetation(current);
+            this.spreadSnow(current);
 
             if (this.tiles.water[current] < 0) {
                 this.tiles.water[current] = 0;
@@ -60,32 +89,10 @@ export class Eroder {
             } else if (this.tiles.water[current] > 0.01 && this.tiles.water[current] < 0.08) {
                 this.simpleErode(current, clamp(0.2 - this.tiles.water[current], 0, 1)*0.2);
             }
-
-            if (this.tiles.snow[current] > 0) {
-                let target = this.tiles.downhill(current);
-                const snowDelta = this.tiles.snow[current] - this.tiles.snow[target];
-                const slide = snowDelta * 0.1;
-                this.tiles.snow[current] -= slide;
-                this.tiles.snow[target] += slide;
-
-                const delta = this.tiles.rockElevation(current) - this.tiles.rockElevation(target);
-                if (delta > 0) {
-                    const scrape = Math.min(slide*slide, this.tiles.hard[current], delta*0.2);
-                    this.tiles.hard[current] -= scrape;
-                    this.tiles.hard[target] += scrape;
-                }
-
-                if (this.tiles.rockElevation(current) < 0.7) {
-                    const melt = Math.min((0.8 - this.tiles.rockElevation(current)) * 0.05, this.tiles.snow[current]);
-                    this.tiles.snow[current] -= melt;
-                    this.tiles.water[target] += melt*0.5;
-                }
-                this.tiles.snow[current] = clamp(this.tiles.snow[current], 0, 1);
-            }
         }
     }
 
-    globalRivers() {
+    rain() {
         for (let i = 0; i < this.tiles.count; ++i) {
             const occlusion = this.tiles.totalElevation(i) - this.tiles.occlusion[i] + Number.EPSILON*10;
             let occlusionFactor = occlusion > -0 ? 1 : 0.001;
@@ -113,7 +120,7 @@ export class Eroder {
 
     wind = new THREE.Vector2(); 
     start = 0;
-    deriveOcclusion(radius: number, windInfluence: { x: number, y: number }) {
+    deriveOcclusion(windInfluence: { x: number, y: number }) {
         const angle = Math.random() * 2 * Math.PI;
 
         const wind = Math.sqrt(windInfluence.x*windInfluence.x + windInfluence.y*windInfluence.y);
@@ -284,20 +291,6 @@ export class Eroder {
         const waterHeight = this.configuration.water.get();
         for (let source = 0; source < this.tiles.count; ++source) { 
             this.tiles.water[source] = Math.max(waterHeight - this.tiles.hard[source], 0) + this.tiles.soft[source];
-        }
-    }
-
-    rain() {
-        for (let source = 0; source < this.tiles.count; ++source) { 
-            let target = this.tiles.downhill[source];
-            for (let i = 0; i < 1000 && this.tiles.totalElevation(target) < this.tiles.totalElevation(source); ++i) {
-                source = target;
-                target = this.tiles.downhill[source];
-            }
-
-            if (this.tiles.rockElevation(source) > 0.2 && this.tiles.surfaceWater(source) < 0.1) {
-                this.tiles.water[source] += 0.01;
-            }
         }
     }
 }
