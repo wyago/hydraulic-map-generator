@@ -11,8 +11,10 @@ import { createWindSelector } from "./windSelector";
 import { VNodeProperties, h } from "maquette";
 import { DistortedNoise } from "../../DistortedNoise";
 import { implicitVoronoi } from "../../render/implicitVoronoi";
+import { setRoot } from "../../root";
 import { createBooleanInput } from "../booleanInput";
 import { createButton } from "../button";
+import { createDetailingUi } from "../detailing/detailingUi";
 import { createDropdown } from "../dropdown";
 import { createNumberInput } from "../numberInput";
 import { createPanel } from "../panel";
@@ -44,7 +46,7 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
                 file.text().then(text => {
                     const model = JSON.parse(text);
                     if (model.tilesetversion < 2) {
-                        map.tiles.unmarshal(model);
+                        map.points.unmarshal(model);
                         updateMeshes();
                     }
                 });
@@ -69,20 +71,20 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
 function initialState(map: Eroder) {
     const noise = new DistortedNoise(0.0019, 20);
 
-    for (let i = 0; i < map.tiles.count; ++i) {
-        const x = map.tiles.x(i);
-        const y = map.tiles.y(i);
+    for (let i = 0; i < map.points.count; ++i) {
+        const x = map.points.x(i);
+        const y = map.points.y(i);
 
         const plateau = clamp(0.7 - Math.sqrt(x*x*0.3 + y*y) /1500, -0.3, 0.7);
         const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.4, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
-        map.tiles.hard[i] = elevation;
+        map.points.hard[i] = elevation;
     }
-    map.tiles.soft.fill(0)
-    map.tiles.vegetation.fill(0);
-    map.tiles.river.fill(0);
-    map.tiles.snow.fill(0);
-    map.tiles.aquifer.fill(0);
-    map.tiles.occlusion.fill(1);
+    map.points.soft.fill(0)
+    map.points.vegetation.fill(0);
+    map.points.river.fill(0);
+    map.points.snow.fill(0);
+    map.points.aquifer.fill(0);
+    map.points.occlusion.fill(1);
 
     map.resetWater();
 }
@@ -117,8 +119,8 @@ export function createGenerationUi() {
     let informId = -1;
 
     eroder.deriveUphills();
-    mesh.update(eroder.tiles);
-    rivers.update(eroder.tiles);
+    mesh.update(eroder.points);
+    rivers.update(eroder.points);
     rivers.object.visible = false;
 
     let j = 0;
@@ -135,7 +137,7 @@ export function createGenerationUi() {
     });
 
     const info = createInfoPanel();
-    info.inform(eroder.tiles, 0);
+    info.inform(eroder.points, 0);
 
     const controls = {
         erode: createBooleanInput({
@@ -163,7 +165,7 @@ export function createGenerationUi() {
     const exportTerrain = () => {
         var element = document.createElement('a');
 
-        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(eroder.tiles.marshal()));
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(eroder.points.marshal()));
         element.setAttribute('download', "map.json");
 
         element.style.display = 'none';
@@ -175,9 +177,9 @@ export function createGenerationUi() {
     };
 
     function updateMeshes(incremental = false) {
-        mesh.update(eroder.tiles, incremental);
+        mesh.update(eroder.points, incremental);
         if (controls.showWatersheds.get()) {
-            rivers.update(eroder.tiles);
+            rivers.update(eroder.points);
         }
     }
 
@@ -218,6 +220,13 @@ export function createGenerationUi() {
             createButton({
                 text: "Export",
                 onclick: exportTerrain
+            }),
+
+            createButton({
+                text: "Switch to detailing",
+                onclick: () => {
+                    setRoot(createDetailingUi(eroder.points))
+                }
             })
         ]
     });
@@ -242,7 +251,7 @@ export function createGenerationUi() {
     
     function setupCanvas(element: HTMLCanvasElement) {
         const {scene, render, renderer} = createCanvas(element, ({x, y}) => {
-            const region = eroder.tiles.vertices.points.search({
+            const region = eroder.points.vertices.points.search({
                 maxX: x + 10,
                 minX: x - 10,
                 maxY: y + 10,
@@ -291,8 +300,8 @@ export function createGenerationUi() {
             }
             windSelector.showWind(eroder.getWind());
             render();
-            info.inform(eroder.tiles, informId);
-            diagram.inform(eroder.tiles, informId);
+            info.inform(eroder.points, informId);
+            diagram.inform(eroder.points, informId);
             if (!cancelled) {
                 requestAnimationFrame(frame);
             }

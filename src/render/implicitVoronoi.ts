@@ -122,7 +122,6 @@ export function implicitVoronoi() {
 
     function updateUniforms() {
         globalSunlight.set(0.9,0.9, 0.85);
-        const rad = Date.now() * 0.001;
         const light = new THREE.Vector3(
             0.5,
             0.5,
