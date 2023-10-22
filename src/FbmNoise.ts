@@ -18,7 +18,7 @@ export class FbmNoise {
         for (let i = 0; i < this.iterations; ++i) {
             result += this.internal.noise(x * mul, y * mul) * div;
             mul *= 2;
-            div *= 0.6;
+            div *= 0.5;
         }
         return result;
     }

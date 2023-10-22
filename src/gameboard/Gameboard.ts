@@ -1,7 +1,7 @@
-import { pointRenderer } from "../src/render/pointRenderer";
-import { Vertices } from "../src/terrain/Graph";
-import { TileSet } from "../src/terrain/PointSet";
-import { createDiscSampler } from "../src/terrain/discSampler";
+import { pointRenderer } from "../render/pointRenderer";
+import { Vertices } from "../terrain/Graph";
+import { TileSet } from "../terrain/PointSet";
+import { createDiscSampler } from "../terrain/discSampler";
 
 export class Gameboard {
     vertices: Vertices;

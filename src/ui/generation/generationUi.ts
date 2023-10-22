@@ -23,7 +23,7 @@ import "../ui.css";
 import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 1200*1200);
+    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 1000*1000);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -70,13 +70,13 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
 }
 
 function initialState(map: Eroder) {
-    const noise = new DistortedNoise(0.0019, 20);
+    const noise = new DistortedNoise(0.005, 30);
 
     for (let i = 0; i < map.points.count; ++i) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y) /1300, -0.3, 0.7);
+        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y) /1000, -0.3, 0.7);
         const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.4, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
