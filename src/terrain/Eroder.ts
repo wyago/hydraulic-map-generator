@@ -37,8 +37,8 @@ export class Eroder {
     }
 
     spreadVegetation(current: number) {
-        this.points.vegetation[current] += this.points.aquifer[current]*0.2;
-        this.points.vegetation[current] = clamp(this.points.vegetation[current] - 0.005, 0, 1);
+        this.points.vegetation[current] += this.points.aquifer[current]*0.1;
+        this.points.vegetation[current] *= 0.99;
 
         const adjs = this.points.adjacents[current];
         for (let i = 0; i < adjs.length; ++i) {
@@ -97,7 +97,7 @@ export class Eroder {
             const occlusion = this.points.totalElevation(i) - this.points.occlusion[i] + Number.EPSILON*10;
             let occlusionFactor = occlusion > -0 ? 1 : 0.001;
             const base = 0.002*this.points.rockElevation(i) + 0.001;
-            this.points.water[i] += base*occlusionFactor/10;
+            this.points.water[i] += base*occlusionFactor/15;
 
             if (this.points.rockElevation(i) > 0.9 && occlusion > -0) {
                 this.points.snow[i] = clamp(this.points.snow[i] + 0.2, 0, 1);
@@ -244,7 +244,7 @@ export class Eroder {
                 continue;
             }
             
-            let transfer = Math.min(delta * 0.5, this.points.water[source]);
+            let transfer = Math.min(delta * 0.45, this.points.water[source]);
 
             this.points.water[source] -= transfer;
             this.points.water[target] += transfer;

@@ -11,6 +11,7 @@ import { createWindSelector } from "./windSelector";
 import { VNodeProperties, h } from "maquette";
 import { DistortedNoise } from "../../DistortedNoise";
 import { implicitVoronoi } from "../../render/implicitVoronoi";
+import { starfield } from "../../render/starfield";
 import { setRoot } from "../../root";
 import { createBooleanInput } from "../booleanInput";
 import { createButton } from "../button";
@@ -22,7 +23,7 @@ import "../ui.css";
 import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(8, (x, y) => x*x*0.3 + y*y < 1200*1200);
+    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 1200*1200);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -75,7 +76,7 @@ function initialState(map: Eroder) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x*0.3 + y*y) /1500, -0.3, 0.7);
+        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y) /1300, -0.3, 0.7);
         const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.4, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
@@ -116,6 +117,7 @@ export function createGenerationUi() {
     const eroder = generate(configuration);
     let mesh = implicitVoronoi();
     let rivers = riverMesh();
+    let stars = starfield();
     let informId = -1;
 
     eroder.deriveUphills();
@@ -274,6 +276,7 @@ export function createGenerationUi() {
     
         scene.add(mesh.object);
         scene.add(rivers.object);
+        scene.add(stars);
 
         let cancelled = false;
         

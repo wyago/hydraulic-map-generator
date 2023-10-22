@@ -100,6 +100,7 @@ export function implicitVoronoi() {
     geometry.setAttribute( 'waternormal', new THREE.BufferAttribute( new Float32Array(1024*3), 3 ) );
     geometry.setAttribute( 'water', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
     geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
+    geometry.setAttribute( 'index', new THREE.BufferAttribute( new Float32Array(1024), 1 ) );
     geometry.setDrawRange(0,0);
     const material = new THREE.ShaderMaterial( {
         uniforms: {
@@ -177,11 +178,11 @@ export function implicitVoronoi() {
                 const a = albedo(tiles, i).multiplyScalar(tiles.rockElevation(i)*0.6 + 0.4);
                 const rock = rockNormal(tiles, i);
                 const water = totalNormal(tiles, i);
+                geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
+                geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
 
                 geometry.attributes.position.setXYZ(i, tiles.x(i), tiles.y(i), 0);
                 geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
-                geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
-                geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
                 geometry.attributes.water.setX(i, tiles.surfaceWater(i));
                 geometry.attributes.height.setX(i, tiles.rockElevation(i));
                 geometry.attributes.occlusion.setX(i, tiles.occlusion[i]);

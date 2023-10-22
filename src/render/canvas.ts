@@ -8,11 +8,6 @@ export function createCanvas(canvas: HTMLCanvasElement, clientmove?: (e: {x: num
 
     let zoom = 30;
     const renderer = new THREE.WebGLRenderer({ canvas });
-    renderer.setClearColor(new THREE.Color(
-        Math.pow(6/255,2),
-        Math.pow(17/255, 2),
-        Math.pow(27/255, 2)
-    ));
     const sizeWatcher = () => {
         renderer.setSize( window.innerWidth, window.innerHeight );
         aspect = document.body.clientWidth / document.body.clientHeight;
@@ -46,6 +41,8 @@ export function createCanvas(canvas: HTMLCanvasElement, clientmove?: (e: {x: num
             zoom *= multiplier;
             if (zoom < 4) {
                 zoom = 4;
+            } else if (zoom > 100) {
+                zoom = 100;
             }
             camera.scale.setScalar(Math.pow(zoom, 2));
         },

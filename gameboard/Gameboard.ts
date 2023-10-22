@@ -15,7 +15,6 @@ export class Gameboard {
                 minY: y - searchRadius,
             });
         });
-
         while (sampler.step());
 
         this.vertices = sampler.vertices();

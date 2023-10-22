@@ -11,20 +11,20 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
     xys[0] = Math.random() * radius*2 - radius;
     xys[1] = Math.random() * radius*2 - radius;
 
+    const r2 = radius/2;
     function near(nx: number, ny: number) {
-        const r = radius;
         const region = points.search({
-            minX: nx - r,
-            minY: ny - r,
-            maxX: nx + r,
-            maxY: ny + r,
+            minX: nx - r2,
+            minY: ny - r2,
+            maxX: nx + r2,
+            maxY: ny + r2,
         });
 
         for (let i = 0; i < region.length; ++i) {
             const target = region[i];
             const dx = xys[target.index*2] - nx;
             const dy = xys[target.index*2+1] - ny;
-            if (dx*dx + dy*dy < r*r) {
+            if (dx*dx + dy*dy < radius*radius) {
                 return true;
             }
         }
@@ -32,7 +32,7 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
     }
 
     let sample = {x:0,y:0};
-    function makeSample(r: number, index) {
+    function makeSample(r: number, index: number) {
         const angle = Math.random() * 2 * Math.PI;
         let l = Math.random() * r + r;
         const dx = Math.cos(angle) * l;
@@ -45,9 +45,11 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
         if (actives.length === 0) {
             return false;
         }
-        const i = ~~(Math.random() * actives.length);
-        const active = actives[i];
+        const activeIndex = ~~(Math.random() * actives.length);
+        const active = actives[activeIndex];
         const r = radius;
+
+        let first = true;
 
         for (let i = 0; i < 7; ++i) {
             makeSample(r, active);
@@ -69,23 +71,31 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
                     maxY: sample.y + r,
                 });
 
-                actives.push(count);
+                if (first) {
+                    first = false;
+                    actives[activeIndex] = count;
+                } else {
+                    actives.push(count);
+                }
                 count += 1;
             }
         }
 
-        actives.splice(i, 1);
+        if (first) {
+            actives.splice(activeIndex, 1);
+        }
         return true;
     }
 
     return {
         step,
         vertices(): Vertices {
-            count -= 1;
+            const realxys = new Float32Array(count * 2);
+            realxys.set(xys.subarray(0, count * 2));
             return {
                 points,
-                count,
-                xys: xys.subarray(0, count*2),
+                count: count - 1,
+                xys: realxys,
             }
         }
     };
