@@ -146,7 +146,7 @@ export function implicitVoronoi() {
             material.uniformsNeedUpdate = true;
         },
         update(tiles: TileSet, incremental = false) {
-            if (tiles.count > geometry.attributes.albedo.array.length / 3) {
+            if (tiles.count !== geometry.attributes.albedo.array.length / 3) {
                 const positions = new Float32Array(tiles.count*3);
                 const indices = new Int32Array(tiles.count);
                 for (let i = 0; i < tiles.count; ++i) {

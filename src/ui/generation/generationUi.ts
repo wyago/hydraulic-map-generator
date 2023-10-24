@@ -23,7 +23,7 @@ import "../ui.css";
 import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 1000*1000);
+    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 2000*2000);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -48,6 +48,7 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
                     const model = JSON.parse(text);
                     if (model.tilesetversion < 2) {
                         map.points.unmarshal(model);
+                        map.initializeOcclusion({ x: 1, y: 0 });
                         updateMeshes();
                     }
                 });
@@ -70,14 +71,14 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
 }
 
 function initialState(map: Eroder) {
-    const noise = new DistortedNoise(0.005, 30);
+    const noise = new DistortedNoise(0.0012, 50);
 
     for (let i = 0; i < map.points.count; ++i) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y) /1000, -0.3, 0.7);
-        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.4, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
+        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y)/2000, -0.3, 0.5);
+        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.5, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
     map.points.soft.fill(0)
@@ -85,7 +86,7 @@ function initialState(map: Eroder) {
     map.points.river.fill(0);
     map.points.snow.fill(0);
     map.points.aquifer.fill(0);
-    map.points.occlusion.fill(1);
+    map.initializeOcclusion({ x: 1, y: 0 });
 
     map.resetWater();
 }
@@ -120,6 +121,7 @@ export function createGenerationUi() {
     let stars = starfield();
     let informId = -1;
 
+    eroder.initializeOcclusion({ x: 1, y: 0 });
     eroder.deriveUphills();
     mesh.update(eroder.points);
     rivers.update(eroder.points);
@@ -162,6 +164,10 @@ export function createGenerationUi() {
             name: "Show watersheds",
             onchange: e => rivers.object.visible = e
         }),
+        update: createBooleanInput({
+            name: "Update render",
+            start: true,
+        }),
     }
 
     const exportTerrain = () => {
@@ -179,6 +185,9 @@ export function createGenerationUi() {
     };
 
     function updateMeshes(incremental = false) {
+        if (!controls.update.get()) {
+            return;
+        }
         mesh.update(eroder.points, incremental);
         if (controls.showWatersheds.get()) {
             rivers.update(eroder.points);
@@ -192,6 +201,7 @@ export function createGenerationUi() {
             controls.erode,
             controls.passTime,
             controls.showWatersheds,
+            controls.update,
 
             createDropdown({
                 label: "Rendering mode",
@@ -279,15 +289,14 @@ export function createGenerationUi() {
         scene.add(stars);
 
         let cancelled = false;
-        
         function frame() {
             j += 1;
             if (controls.erode.get()) {
-                eroder.deriveOcclusion(windSelector.getPreferredWind());
+                eroder.updateOcclusion(windSelector.getPreferredWind());
                 eroder.passTime();
                 eroder.fixWater();
                 eroder.landslide();
-                for (let i = 0; i < 5; ++i) {
+                for (let i = 0; i < 20; ++i) {
                     eroder.rain();
                     eroder.spreadWater();
                 }
@@ -296,7 +305,7 @@ export function createGenerationUi() {
                 updateMeshes();
             } else if (controls.passTime.get()) {
                 eroder.landslide();
-                for (let i = 0; i < 5; ++i) {
+                for (let i = 0; i < 20; ++i) {
                     eroder.spreadWater();
                 }
                 updateMeshes();

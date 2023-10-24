@@ -20,6 +20,7 @@ export class TileSet {
     vegetation: Float32Array;
     occlusion: Float32Array;
     snow: Float32Array;
+    silt: Float32Array;
 
     uphill: number[];
     adjacents: number[][];
@@ -34,6 +35,7 @@ export class TileSet {
         this.vegetation = new Float32Array(vertices.count);
         this.occlusion = new Float32Array(vertices.count);
         this.snow = new Float32Array(vertices.count);
+        this.silt = new Float32Array(vertices.count);
 
         this.occlusion.fill(1);
 
@@ -158,7 +160,7 @@ export class TileSet {
     }
 
     waterTable(i: number) {
-        return this.hard[i] + this.aquifer[i];
+        return this.hard[i] + this.aquifer[i] + this.water[i];
     }
 
     soak(i: number) {
@@ -170,6 +172,10 @@ export class TileSet {
 
     aquiferSpace(i: number) {
         return clamp(this.soft[i] - this.aquifer[i], 0, 1);
+    }
+
+    siltSpace(i: number) {
+        return clamp(this.water[i] - this.silt[i], 0, 1);
     }
 
     byDirection(i: number, v: THREE.Vector2, result: number[], angle = 0.5): number {
@@ -194,12 +200,12 @@ export class TileSet {
         return `{
             "tilesetversion": 1,
             "xys": [${[...this.vertices.xys].map(x => x.toFixed(1)).join(",")}],
-            "hard": [${[...this.hard].map(x => x.toFixed(3)).join(",")}],
-            "soft": [${[...this.soft].map(x => x.toFixed(3)).join(",")}],
-            "water": [${[...this.water].map(x => x.toFixed(3)).join(",")}],
-            "aquifer": [${[...this.aquifer].map(x => x.toFixed(3)).join(",")}],
-            "vegetation": [${[...this.vegetation].map(x => x.toFixed(3)).join(",")}],
-            "snow": [${[...this.snow].map(x => x.toFixed(3)).join(",")}]
+            "hard": [${[...this.hard].map(x => x.toFixed(5)).join(",")}],
+            "soft": [${[...this.soft].map(x => x.toFixed(5)).join(",")}],
+            "water": [${[...this.water].map(x => x.toFixed(5)).join(",")}],
+            "aquifer": [${[...this.aquifer].map(x => x.toFixed(5)).join(",")}],
+            "vegetation": [${[...this.vegetation].map(x => x.toFixed(5)).join(",")}],
+            "snow": [${[...this.snow].map(x => x.toFixed(5)).join(",")}]
         }`
     }
 
@@ -209,7 +215,7 @@ export class TileSet {
             points: new RBush<BushVertex>(),
             xys: new Float32Array(json.xys),
         };
-        this.count = this.vertices.count;
+        this.count = json.hard.length;
         this.hard = new Float32Array(json.hard);
         this.soft = new Float32Array(json.soft);
         this.water = new Float32Array(json.water);
@@ -218,10 +224,12 @@ export class TileSet {
         this.snow = json.snow ? new Float32Array(json.snow) : new Float32Array(this.count);
         this.river = new Float32Array(this.count);
         this.uphill = new Array<number>(this.count);
+        this.silt = new Float32Array(this.count);
+        this.occlusion = new Float32Array(this.count);
 
-        const points = new Array<any>(this.vertices.count);
-        const source = new Array<any>(this.vertices.count);
-        for (let i = 0; i < this.vertices.count; ++i) {
+        const points = new Array<any>(this.count);
+        const source = new Array<any>(this.count);
+        for (let i = 0; i < this.count; ++i) {
             points[i] = {
                 index: i,
                 maxX: this.vertices.xys[i*2],
@@ -236,7 +244,6 @@ export class TileSet {
         }
 
         this.vertices.points.load(points);
-
         
         function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
         const delaunay = Delaunator.from(source);

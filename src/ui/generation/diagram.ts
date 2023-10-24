@@ -17,6 +17,7 @@ export function createDiagramPanel() {
             const hard = tiles.hard[i];
             const water = tiles.water[i];
             const aquifer = tiles.aquifer[i];
+            const silt = tiles.silt[i];
 
             info = h("details.modal", { key: "diagram", open: "" }, [
                 h("summary", ["Tile diagram"]),
@@ -29,14 +30,18 @@ export function createDiagramPanel() {
                     viewBox: "0 0 1 1"
                 }, [
                     h("defs", [
-                        h("pattern", { id: "diagonalhatch", patternUnits: "userSpaceOnUse", width: "0.1", height: "0.1", patternTransform: "rotate(45)" }, [
+                        h("pattern", { id: "bluehatch", patternUnits: "userSpaceOnUse", width: "0.1", height: "0.1", patternTransform: "rotate(45)" }, [
                             h("rect", { width: "0.1", height: "0.05", fill: "#123" })
+                        ]),
+                        h("pattern", { id: "brownhatch", patternUnits: "userSpaceOnUse", width: "0.1", height: "0.1" }, [
+                            h("circle", { r: "0.02", cx: "0.05", cy: "0.05", fill: "#532" })
                         ]),
                     ]),
                     h("rect", { width: "1", height: "1", fill: "#aac"}),
                     h("rect", { width: "1", height: 1, y: (1 - hard - soft - water).toFixed(4), fill: "#123"}),
+                    h("rect", { width: "1", height: 1, y: (1 - hard - soft - silt).toFixed(4), fill: "url(#brownhatch)"}),
                     h("rect", { width: "1", height: 1, y: (1 - hard - soft).toFixed(4), fill: "#532"}),
-                    h("rect", { width: "1", height: 1, y: (1 - hard - aquifer).toFixed(4), fill: "url(#diagonalhatch)"}),
+                    h("rect", { width: "1", height: 1, y: (1 - hard - aquifer).toFixed(4), fill: "url(#bluehatch)"}),
                     h("rect", { width: "1", height: 1, y: (1 - hard).toFixed(4), fill: "#555" }),
                 ]),
             ])
