@@ -24,18 +24,17 @@ void main() {
         vec3 sunColor = sunlight * rockDot;
         vec3 ambient = vec3(0.2, 0.2, 0.25);
 
-        if (water > 0.002) {
-            float depth = water * 10.0;
+        float depth = water * 10.0;
 
-            float reflect = 0.9;
-            vec3 subtractor = vec3(0.18, 0.13, 0.12) * depth;
-            vec3 transit = sunColor * (1.0 - reflect) - subtractor;
-
-            vec3 bounceLight = sunlight * reflect * pow(totalDot, 20.0)*0.01;
-            vColor = bounceLight + (transit + ambient)*albedo + vec3(0,0.05,0.12)*water;
-        } else {
-            vColor = (sunColor + ambient) * albedo;
+        float reflect = 0.7;
+        if (water < 0.002) {
+            reflect = mix(0.0, 0.7, water/0.002);
         }
+        vec3 subtractor = vec3(0.18, 0.13, 0.12) * depth;
+        vec3 transit = sunColor * (1.0 - reflect) - subtractor;
+
+        vec3 bounceLight = sunlight * reflect * pow(totalDot, 1.0)*0.01;
+        vColor = bounceLight + (transit + ambient)*albedo + vec3(0,0.05,0.12)*water;
 
         vColor = mix(vColor, vec3(0.7), fog*0.5) * 1.7;
 

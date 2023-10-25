@@ -77,10 +77,10 @@ export class Eroder {
                 this.points.hard[target] += scrape;
             }
 
-            if (this.points.rockElevation(current) < this.maxElevation - 0.1) {
-                const melt = Math.min((this.maxElevation - 0.1 - this.points.rockElevation(current)) * 0.01, this.points.snow[current]);
+            if (this.points.rockElevation(current) < this.maxElevation - 0.2) {
+                const melt = Math.min((this.maxElevation - 0.2 - this.points.rockElevation(current)) * 0.01, this.points.snow[current]);
                 this.points.snow[current] -= melt;
-                this.points.water[target] += melt*0.1;
+                this.points.water[target] += melt*0.01;
             }
             this.points.snow[current] = clamp(this.points.snow[current], 0, 1);
         }
@@ -106,10 +106,10 @@ export class Eroder {
     rain() {
         for (let i = 0; i < this.points.count; ++i) {
             const exposure = clamp(this.points.totalElevation(i) - this.points.occlusion[i], 0, 1);
-            const base = 0.02*this.points.rockElevation(i);
+            const base = 0.004*this.points.rockElevation(i) + this.points.aquiferSpace(i)*0.001;
             this.points.water[i] += base*exposure;
 
-            if (this.points.rockElevation(i) > 0.9 && exposure > 0.012) {
+            if (this.points.rockElevation(i) > 0.8 && exposure > 0.012) {
                 this.points.snow[i] = clamp(this.points.snow[i] + 0.2, 0, 1);
             }
         }
@@ -244,8 +244,9 @@ export class Eroder {
     };
 
     extractPacket(source: number, delta: number, rockDelta: number) {
-        const transfer = Math.min(delta * 0.3, this.points.water[source]);
+        const transfer = Math.min(delta * 0.5, this.points.water[source]);
         const siltTransfer = Math.min(transfer / this.points.water[source] * this.points.silt[source], this.points.silt[source]);
+        this.simpleErode(source, transfer*80);
         this.packet.water = transfer;
         this.waterBuffer[source] -= transfer;
         this.siltBuffer[source] -= siltTransfer;
@@ -253,7 +254,7 @@ export class Eroder {
         this.packet.soft = 0;
 
         if (rockDelta > 0) {
-            const erosion = clamp(Math.min(transfer*transfer*5/(this.points.water[source] + 0.1), this.points.soft[source], rockDelta*0.5), 0, 1);
+            const erosion = clamp(Math.min(transfer*0.2/(this.points.water[source] + 1), this.points.soft[source], rockDelta*0.5, delta * 0.1), 0, 1);
             this.softBuffer[source] -= erosion;
             this.packet.selfSilt = erosion;
         }
@@ -289,12 +290,18 @@ export class Eroder {
                 this.points.aquifer[i] += soak;
                 this.points.water[i] -= soak;
             }
+            
 
             //this.spreadSilt(i);
         }
+        
+        this.softBuffer.fill(0);
+        this.siltBuffer.fill(0);
+        this.waterBuffer.fill(0);
+        this.points.river.fill(0);
 
         for (let source = 0; source < this.points.count; ++source) {
-            if (this.points.water[source] <= 0.001) {
+            if (this.points.water[source] <= 0) {
                 continue;
             }
             const target = this.points.waterTableDownhill(source);
@@ -305,39 +312,27 @@ export class Eroder {
             
             let release = this.points.aquifer[source] - this.points.aquiferCapacity(source);
             if (release > 0) {
-                this.points.water[target] += release;
+                this.waterBuffer[target] += release;
                 this.points.aquifer[source] -= release;
-
-                const rockDelta = this.points.rockElevation(source) - this.points.rockElevation(target);
-                if (rockDelta > 0) {
-                    const erosion = clamp(Math.min(0.1, this.points.soft[source], rockDelta*0.5), 0, 1);
-                    this.softBuffer[source] -= erosion;
-                    this.siltBuffer[target] += erosion;
-                }
             }
             
-            let transfer = Math.min(delta * 0.05, this.points.aquifer[source]);
+            let transfer = Math.min(delta * 0.01, this.points.aquifer[source]);
             this.points.aquifer[source] -= transfer;
             this.points.aquifer[target] += transfer;
         }
 
-        this.softBuffer.fill(0);
-        this.siltBuffer.fill(0);
-        this.waterBuffer.fill(0);
-
         for (let source = 0; source < this.points.count; ++source) {
-            if (this.points.water[source] <= 0.001) {
+            if (this.points.water[source] <= 0) {
                 continue;
             }
-            const targetIndex = this.points.downhillIndex(source);
-            const target = this.points.adjacents[source][targetIndex];
+            const target= this.points.downhill(source);
             const delta = this.points.totalElevation(source) - this.points.totalElevation(target);
+            this.points.river[source] = delta;
             if (delta < 0) {
                 continue;
             }
 
             const rockDelta = this.points.rockElevation(source) - this.points.rockElevation(target);
-            this.simpleErode(source, delta*6);
             this.extractPacket(source, delta, rockDelta);
             this.placePacket(source, target);
         }
@@ -347,16 +342,16 @@ export class Eroder {
             this.points.soft[i] += this.softBuffer[i];
             this.points.silt[i] += this.siltBuffer[i];
             
-            const adjs = this.points.adjacents[i];
-            const releaseFactor = 0.05;
+            //const adjs = this.points.adjacents[i];
+            const releaseFactor = 0.5 * clamp(0.2 - this.points.river[i], 0, 0.2);
             const release = this.points.silt[i]*releaseFactor;
-            this.points.soft[i] += release*45/(adjs.length + 45);
+            this.points.soft[i] += release//45/(adjs.length + 45);
             this.points.silt[i] -= release;
 
-            for (let i = 0; i < adjs.length; ++i) {
-                const target = adjs[i];
-                this.points.soft[target] += release/(adjs.length + 45);
-            }
+            ///for (let i = 0; i < adjs.length; ++i) {
+                //const target = adjs[i];
+                //this.points.soft[target] += release/(adjs.length + 45);
+            //}
         }
     }
 
