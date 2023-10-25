@@ -10,6 +10,7 @@ import { createWindSelector } from "./windSelector";
 
 import { VNodeProperties, h } from "maquette";
 import { DistortedNoise } from "../../DistortedNoise";
+import { PointLike } from "../../PointLike";
 import { implicitVoronoi } from "../../render/implicitVoronoi";
 import { starfield } from "../../render/starfield";
 import { setRoot } from "../../root";
@@ -30,11 +31,11 @@ function generate(configuration: EroderConfiguration) {
     const tiles = new TileSet(vs);
 
     const map = new Eroder(tiles, configuration);
-    initialState(map);
+    initialState(map, { x: 1, y: 0 });
     return map;
 }
 
-function setupLoading(map: Eroder, updateMeshes: () => void) {
+function setupLoading(map: Eroder, wind: () => PointLike, updateMeshes: () => void) {
     const preventer = (e: DragEvent) => e.preventDefault();
     const dropper = (e: DragEvent) => {
         e.preventDefault();
@@ -48,7 +49,7 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
                     const model = JSON.parse(text);
                     if (model.tilesetversion < 2) {
                         map.points.unmarshal(model);
-                        map.initializeOcclusion({ x: 1, y: 0 });
+                        map.initializeOcclusion(wind());
                         updateMeshes();
                     }
                 });
@@ -70,15 +71,15 @@ function setupLoading(map: Eroder, updateMeshes: () => void) {
     }
 }
 
-function initialState(map: Eroder) {
-    const noise = new DistortedNoise(0.0012, 50);
+function initialState(map: Eroder, wind: PointLike) {
+    const noise = new DistortedNoise(0.0009, 50);
 
     for (let i = 0; i < map.points.count; ++i) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y)/2000, -0.3, 0.5);
-        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.5, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
+        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y)/1800, -0.5, 0.7);
+        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.7, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
     map.points.soft.fill(0)
@@ -86,9 +87,9 @@ function initialState(map: Eroder) {
     map.points.river.fill(0);
     map.points.snow.fill(0);
     map.points.aquifer.fill(0);
-    map.initializeOcclusion({ x: 1, y: 0 });
-
+    
     map.resetWater();
+    map.initializeOcclusion(wind);
 }
 
 export function createGenerationUi() {
@@ -103,7 +104,7 @@ export function createGenerationUi() {
         }),
         siltAngle: createNumberInput({
             name: "Silt maximum elevation difference",
-            start: 0.06,
+            start: 0.02,
         }),
         rockAngle: createNumberInput({
             name: "Rock maximum elevation difference",
@@ -121,7 +122,6 @@ export function createGenerationUi() {
     let stars = starfield();
     let informId = -1;
 
-    eroder.initializeOcclusion({ x: 1, y: 0 });
     eroder.deriveUphills();
     mesh.update(eroder.points);
     rivers.update(eroder.points);
@@ -190,6 +190,7 @@ export function createGenerationUi() {
         }
         mesh.update(eroder.points, incremental);
         if (controls.showWatersheds.get()) {
+            eroder.deriveUphills();
             rivers.update(eroder.points);
         }
     }
@@ -224,7 +225,7 @@ export function createGenerationUi() {
             createButton({
                 text: "Generate new terrain",
                 onclick: () => {
-                    initialState(eroder);
+                    initialState(eroder, windSelector.getPreferredWind());
                     updateMeshes();
                 }
             }),
@@ -245,9 +246,12 @@ export function createGenerationUi() {
 
     const diagram = createDiagramPanel();
 
-    const windSelector = createWindSelector();
+    const windSelector = createWindSelector(wind => {
+        eroder.initializeOcclusion(wind);
+        updateMeshes();
+    });
 
-    const destructors = [setupLoading(eroder, updateMeshes)];
+    const destructors = [setupLoading(eroder, () => windSelector.getPreferredWind(), updateMeshes)];
 
     const codeLink = createCodeLink();
 

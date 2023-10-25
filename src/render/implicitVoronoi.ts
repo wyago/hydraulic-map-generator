@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 
 import { rockAlbedo, siltAlbedo, softRockAlbedo, vegetationAlbedo } from "../colors";
-import { lerp } from "../math";
+import { clamp, lerp } from "../math";
 import { TileSet } from "../terrain/PointSet";
 import voronoiFragment from "./voronoiFragment.glsl";
 import voronoiVertex from "./voronoiVertex.glsl";
@@ -185,7 +185,7 @@ export function implicitVoronoi() {
                 geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
                 geometry.attributes.water.setX(i, tiles.surfaceWater(i));
                 geometry.attributes.height.setX(i, tiles.rockElevation(i));
-                geometry.attributes.occlusion.setX(i, tiles.occlusion[i]);
+                geometry.attributes.occlusion.setX(i, clamp((tiles.totalElevation(i) - tiles.occlusion[i])*30, 0, 1));
             }
             geometry.setDrawRange(0, tiles.count);
             

@@ -1,8 +1,9 @@
 import { h } from "maquette";
+import { PointLike } from "../../PointLike";
 import { globalProjector } from "../../projector";
 import "./windSelector.css";
 
-export function createWindSelector() {
+export function createWindSelector(onchange?: (direction: PointLike) => void) {
     let windX = 1;
     let windY = 0;
 
@@ -10,13 +11,18 @@ export function createWindSelector() {
     let actualWindY = 0;
 
     let isMouseDown = false;
+    const end = () => {
+        isMouseDown = false;
+        onchange?.({ x: windX, y: -windY });
+    }
+
     const onmousedown = e => {
         windX = e.offsetX / 100 - 1;
         windY = e.offsetY / 100 - 1;
         isMouseDown = true;
     };
-    const onmouseleave = e => isMouseDown = false;
-    const onmouseup = e => isMouseDown = false;
+    const onmouseleave = end;
+    const onmouseup = end;
     
     const onmousemove = e => {
         if (isMouseDown) {

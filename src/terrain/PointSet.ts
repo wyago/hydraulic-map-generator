@@ -171,7 +171,11 @@ export class TileSet {
     }
 
     aquiferSpace(i: number) {
-        return clamp(this.soft[i] - this.aquifer[i], 0, 1);
+        return clamp(this.aquiferCapacity(i) - this.aquifer[i], 0, 1);
+    }
+    
+    aquiferCapacity(i: number) {
+        return clamp(this.soft[i] - 0.01, 0, 1);
     }
 
     siltSpace(i: number) {

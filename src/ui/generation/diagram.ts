@@ -33,8 +33,8 @@ export function createDiagramPanel() {
                         h("pattern", { id: "bluehatch", patternUnits: "userSpaceOnUse", width: "0.1", height: "0.1", patternTransform: "rotate(45)" }, [
                             h("rect", { width: "0.1", height: "0.05", fill: "#123" })
                         ]),
-                        h("pattern", { id: "brownhatch", patternUnits: "userSpaceOnUse", width: "0.1", height: "0.1" }, [
-                            h("circle", { r: "0.02", cx: "0.05", cy: "0.05", fill: "#532" })
+                        h("pattern", { id: "brownhatch", patternUnits: "userSpaceOnUse", width: "0.04", height: "0.04" }, [
+                            h("circle", { r: "0.01", cx: "0.02", cy: "0.02", fill: "#532" })
                         ]),
                     ]),
                     h("rect", { width: "1", height: "1", fill: "#aac"}),

@@ -53,7 +53,7 @@ export function riverMesh() {
                 let b = 0.05;
 
                 const target = tiles.uphill[i];
-                if (tiles.river[target] > 0.1)
+                if (tiles.river[i] > 0.01)
                 {
                     const sourceAmount = 1;//Math.min(Math.log(tiles.river(i)*1 + 1), 2.9);
                     const targetAmount = 1;//Math.min(Math.log(tiles.river(target)*1 + 1), 2.9);
