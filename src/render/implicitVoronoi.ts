@@ -185,7 +185,7 @@ export function implicitVoronoi() {
                 geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
                 geometry.attributes.water.setX(i, tiles.surfaceWater(i));
                 geometry.attributes.height.setX(i, tiles.rockElevation(i));
-                geometry.attributes.occlusion.setX(i, clamp((tiles.totalElevation(i) - tiles.occlusion[i])*30, 0, 1));
+                geometry.attributes.occlusion.setX(i, clamp((tiles.totalElevation(i) - tiles.occlusion[i])*150, 0, 1));
             }
             geometry.setDrawRange(0, tiles.count);
             

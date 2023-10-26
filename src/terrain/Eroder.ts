@@ -46,7 +46,7 @@ export class Eroder {
     }
 
     spreadVegetation(current: number) {
-        this.points.vegetation[current] = clamp(this.points.aquifer[current]*6, 0, 1);
+        this.points.vegetation[current] = clamp(Math.log(this.points.aquifer[current]*10 + 1), 0, 1);
         
         const adjs = this.points.adjacents[current];
         for (let i = 0; i < adjs.length; ++i) {
@@ -62,27 +62,29 @@ export class Eroder {
         }
     }
 
-    spreadSnow(current: number) {
-        if (this.points.snow[current] > 0) {
-            let target = this.points.downhill(current);
-            const snowDelta = this.points.snow[current] - this.points.snow[target];
-            const slide = snowDelta * 0.1;
-            this.points.snow[current] -= slide;
-            this.points.snow[target] += slide;
+    spreadSnow() {
+        for (let current = 0; current < this.points.count; ++current) {
+            if (this.points.snow[current] > 0) {
+                let target = this.points.downhill(current);
+                const snowDelta = this.points.snow[current] - this.points.snow[target];
+                const delta = this.points.rockElevation(current) - this.points.rockElevation(target);
+                const slide = Math.min(snowDelta * 0.5, delta * 2.5);
+                this.points.snow[current] -= slide;
+                this.points.snow[target] += slide;
 
-            const delta = this.points.rockElevation(current) - this.points.rockElevation(target);
-            if (delta > 0) {
-                const scrape = Math.min(slide*slide*10, this.points.hard[current], delta*0.4);
-                this.points.hard[current] -= scrape;
-                this.points.hard[target] += scrape;
-            }
+                if (delta > 0) {
+                    const scrape = Math.min(slide*slide*10, this.points.hard[current], delta*0.4);
+                    this.points.hard[current] -= scrape;
+                    this.points.hard[target] += scrape;
+                }
 
-            if (this.points.rockElevation(current) < this.maxElevation - 0.2) {
-                const melt = Math.min((this.maxElevation - 0.2 - this.points.rockElevation(current)) * 0.01, this.points.snow[current]);
-                this.points.snow[current] -= melt;
-                this.points.water[target] += melt*0.01;
+                if (this.points.rockElevation(current) < this.maxElevation - 0.3) {
+                    const melt = Math.min(0.001, this.points.snow[current]);
+                    this.points.snow[current] -= melt;
+                    this.points.water[target] += melt*0.01;
+                }
+                this.points.snow[current] = clamp(this.points.snow[current], 0, 1);
             }
-            this.points.snow[current] = clamp(this.points.snow[current], 0, 1);
         }
     }
 
@@ -95,7 +97,6 @@ export class Eroder {
         for (let current = 0; current < this.points.count; ++current) {
             this.points.river[current] *= 0.98;
             this.spreadVegetation(current);
-            this.spreadSnow(current);
 
             if (this.points.water[current] < 0) {
                 this.points.water[current] = 0;
@@ -105,12 +106,13 @@ export class Eroder {
 
     rain() {
         for (let i = 0; i < this.points.count; ++i) {
-            const exposure = clamp(this.points.totalElevation(i) - this.points.occlusion[i], 0, 1);
-            const base = 0.004*this.points.rockElevation(i) + this.points.aquiferSpace(i)*0.001;
-            this.points.water[i] += base*exposure;
+            const exposure = clamp((this.points.totalElevation(i) - this.points.occlusion[i]), 0, 1);
+            const base = 0.05*this.points.rockElevation(i) + this.points.aquiferSpace(i)*0.02;
+            this.points.water[i] += base*(exposure + 0.0001);
+            this.points.aquifer[i] += Math.min(this.points.aquiferSpace(i)*0.01, 0.05*exposure);
 
-            if (this.points.rockElevation(i) > 0.8 && exposure > 0.012) {
-                this.points.snow[i] = clamp(this.points.snow[i] + 0.2, 0, 1);
+            if (this.points.rockElevation(i) > this.maxElevation - 0.1 && exposure > 0.01) {
+                this.points.snow[i] = 1;
             }
         }
     }
@@ -151,7 +153,7 @@ export class Eroder {
             const length = this.points.byDirection(source, nwind, targets, 0.5);
             for (let j = 0; j < length; ++j) {
                 const target = targets[j];
-                this.points.occlusion[target] =  Math.max(this.points.totalElevation(source), this.points.totalElevation(target), this.points.occlusion[source])*0.99;
+                this.points.occlusion[target] =  Math.max(this.points.totalElevation(source), this.points.totalElevation(target), this.points.occlusion[source])*0.999;
             }
         }
         
@@ -198,7 +200,7 @@ export class Eroder {
             const length = this.points.byDirection(current, this.wind, targets, 0.5);
             for (let j = 0; j < length; ++j) {
                 const target = targets[j];
-                this.points.occlusion[target] =  Math.max(this.points.totalElevation(current), this.points.totalElevation(target), this.points.occlusion[current])*0.99;
+                this.points.occlusion[target] =  Math.max(this.points.totalElevation(current), this.points.totalElevation(target), this.points.occlusion[current])*0.999;
             }
         }
     }
@@ -218,21 +220,6 @@ export class Eroder {
             }
 
             this.points.uphill[source] = next;
-        }
-    }
-
-    iterateRivers() {
-        for (let source = 0; source < this.points.count; ++source) {
-            const target = this.points.downhill(source);
-            const delta = (this.points.rockElevation(source) - this.points.rockElevation(target));
-            if (delta < 0) {
-                continue;
-            }
-
-            const pressure = 0.03*this.points.river[source]*(0.2 - this.points.soft[source]);
-            const erosion = clamp(Math.min(pressure, this.points.hard[source]), 0, 1);
-            this.points.hard[source] -= erosion;
-            this.points.soft[source] += erosion;
         }
     }
 
@@ -295,6 +282,11 @@ export class Eroder {
             //this.spreadSilt(i);
         }
         
+        if (this.points.count > this.softBuffer.length) {
+            this.softBuffer = new Float32Array(this.points.count);
+            this.siltBuffer = new Float32Array(this.points.count);
+            this.waterBuffer = new Float32Array(this.points.count);
+        }
         this.softBuffer.fill(0);
         this.siltBuffer.fill(0);
         this.waterBuffer.fill(0);
