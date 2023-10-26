@@ -10,6 +10,13 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
 
     xys[0] = Math.random() * radius*2 - radius;
     xys[1] = Math.random() * radius*2 - radius;
+    points.insert({
+        index: count,
+        minX: xys[0] - radius,
+        maxX: xys[0] + radius,
+        minY: xys[1] - radius,
+        maxY: xys[1] + radius,
+    });
 
     const r2 = radius/2;
     function near(nx: number, ny: number) {
