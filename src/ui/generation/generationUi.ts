@@ -1,6 +1,5 @@
 import { byMin, clamp } from "../../math";
 import { createCanvas } from "../../render/canvas";
-import { riverMesh } from "../../render/riverMesh";
 import { Eroder, EroderConfiguration } from "../../terrain/Eroder";
 import { TileSet } from "../../terrain/PointSet";
 import { createDiscSampler } from "../../terrain/discSampler";
@@ -120,13 +119,10 @@ export function createGenerationUi() {
 
     const eroder = generate(configuration);
     let mesh = implicitVoronoi();
-    let rivers = riverMesh();
     let stars = starfield();
     let informId = -1;
 
     mesh.update(eroder.points);
-    rivers.update(eroder.points);
-    rivers.object.visible = false;
 
     let j = 0;
 
@@ -161,10 +157,6 @@ export function createGenerationUi() {
                 }
             }
         }),
-        showWatersheds: createBooleanInput({
-            name: "Show watersheds",
-            onchange: e => rivers.object.visible = e
-        }),
         update: createBooleanInput({
             name: "Update render",
             start: true,
@@ -190,9 +182,6 @@ export function createGenerationUi() {
             return;
         }
         mesh.update(eroder.points, incremental);
-        if (controls.showWatersheds.get()) {
-            rivers.update(eroder.points);
-        }
     }
 
     const controlPanel = createPanel({
@@ -201,7 +190,6 @@ export function createGenerationUi() {
         children: [
             controls.erode,
             controls.passTime,
-            controls.showWatersheds,
             controls.update,
 
             createDropdown({
@@ -289,7 +277,6 @@ export function createGenerationUi() {
         });
     
         scene.add(mesh.object);
-        scene.add(rivers.object);
         scene.add(stars);
 
         let cancelled = false;

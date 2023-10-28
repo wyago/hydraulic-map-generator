@@ -304,7 +304,7 @@ export class Eroder {
             this.points.silt[i] += this.siltBuffer[i];
             
             //const adjs = this.points.adjacents[i];
-            const releaseFactor = clamp(0.2 - this.points.river[i]*4, 0.05, 0.2);
+            const releaseFactor = clamp(0.4 - this.points.river[i]*15, 0.05, 0.4);
             const release = this.points.silt[i]*releaseFactor;
             this.points.soft[i] += release//*25/(adjs.length + 25);
             this.points.silt[i] -= release;

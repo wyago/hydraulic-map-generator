@@ -1,11 +1,12 @@
 import * as THREE from "three";
 
 
+import Delaunator from "delaunator";
 import { rockAlbedo, siltAlbedo, softRockAlbedo, vegetationAlbedo } from "../colors";
 import { clamp, lerp } from "../math";
 import { TileSet } from "../terrain/PointSet";
-import voronoiFragment from "./voronoiFragment.glsl";
-import voronoiVertex from "./voronoiVertex.glsl";
+import triangleFragment from "./triangleFragment.glsl";
+import triangleVertex from "./triangleVertex.glsl";
 
 function albedo(tiles: TileSet, i: number) {
     const result = new THREE.Vector3();
@@ -114,13 +115,13 @@ export function triangleMesh() {
     
         depthWrite: true,
         depthTest: true,
-        vertexShader: voronoiVertex,
-        fragmentShader: voronoiFragment,
+        vertexShader: triangleVertex,
+        fragmentShader: triangleFragment,
         blending: THREE.NormalBlending,
     });
 
     const result= new THREE.Object3D();
-    result.add(new THREE.Points( geometry, material ))
+    result.add(new THREE.Mesh( geometry, material ))
 
     function updateUniforms() {
         globalSunlight.set(0.9,0.9, 0.85);
@@ -134,6 +135,8 @@ export function triangleMesh() {
     }
 
     let start = 0;
+    let renderIndices = new Array<number>();
+    result.frustumCulled = false;
 
     return {
         object: result,
@@ -148,6 +151,31 @@ export function triangleMesh() {
         },
         update(tiles: TileSet, incremental = false) {
             if (tiles.count !== geometry.attributes.albedo.array.length / 3) {
+                const source = new Array<any>(tiles.count);
+                for (let i = 0; i < tiles.count; ++i) {
+                    source[i] = [
+                        tiles.vertices.xys[i*2],
+                        tiles.vertices.xys[i*2+1]];
+                }
+
+                const delaunay = Delaunator.from(source);
+                function edgesOfTriangle(t) { return [3 * t, 3 * t + 1, 3 * t + 2]; }
+                function pointsOfTriangle(delaunay, t) {
+                    return edgesOfTriangle(t)
+                        .map(e => delaunay.triangles[e]);
+                }
+                
+                function forEachTriangle(delaunay, callback) {
+                    for (let t = 0; t < delaunay.triangles.length / 3; t++) {
+                        callback(t, pointsOfTriangle(delaunay, t));
+                    }
+                }
+
+                renderIndices = new Array<number>();
+                forEachTriangle(delaunay, (t, ps) => {
+                    renderIndices.push(...ps);
+                });
+
                 const positions = new Float32Array(tiles.count*3);
                 const indices = new Int32Array(tiles.count);
                 for (let i = 0; i < tiles.count; ++i) {
@@ -164,8 +192,11 @@ export function triangleMesh() {
                 geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
                 geometry.setAttribute( 'occlusion', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
                 geometry.setAttribute( 'index', new THREE.BufferAttribute( indices, 1 ) );
+                geometry.setIndex(renderIndices);
+                geometry.index!.needsUpdate = true;
                 geometry.attributes.position.needsUpdate = true;
                 geometry.attributes.index.needsUpdate = true;
+                geometry.setDrawRange(0, renderIndices.length);
             }
 
             let chunk = ~~(tiles.count/5);
@@ -188,7 +219,6 @@ export function triangleMesh() {
                 geometry.attributes.height.setX(i, tiles.rockElevation(i));
                 geometry.attributes.occlusion.setX(i, clamp((tiles.totalElevation(i) - tiles.occlusion[i])*150, 0, 1));
             }
-            geometry.setDrawRange(0, tiles.count);
             
             start += chunk;
             if (start > tiles.count) {
