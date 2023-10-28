@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { Vector2 } from "three";
-import { clamp, lerp } from "../math";
+import { clamp } from "../math";
 import { Packet } from "./Packet";
 import { TileSet } from "./PointSet";
 
@@ -40,13 +40,15 @@ export class Eroder {
         for (let i = 0; i < this.points.count; ++i) {
             if (this.points.rockElevation(i) < waterHeight) {
                 this.points.water[i] = waterHeight - this.points.rockElevation(i);
-                this.points.aquifer[i] = this.points.soft[i];
+            }
+            if (this.points.hard[i] < waterHeight) {
+                this.points.aquifer[i] = Math.min(this.points.soft[i], waterHeight - this.points.hard[i]);
             }
         }
     }
 
     spreadVegetation(current: number) {
-        this.points.vegetation[current] = clamp(Math.log(this.points.aquifer[current]*10 + 1), 0, 1);
+        this.points.vegetation[current] = clamp(Math.log(this.points.aquifer[current]*4 + 1), 0, 1);
         
         const adjs = this.points.adjacents[current];
         for (let i = 0; i < adjs.length; ++i) {
@@ -68,7 +70,7 @@ export class Eroder {
                 let target = this.points.downhill(current);
                 const snowDelta = this.points.snow[current] - this.points.snow[target];
                 const delta = this.points.rockElevation(current) - this.points.rockElevation(target);
-                const slide = Math.min(snowDelta * 0.5, delta * 2.5);
+                const slide = Math.min(snowDelta * 0.5, delta * 0.2);
                 this.points.snow[current] -= slide;
                 this.points.snow[target] += slide;
 
@@ -78,7 +80,7 @@ export class Eroder {
                     this.points.hard[target] += scrape;
                 }
 
-                if (this.points.rockElevation(current) < this.maxElevation - 0.3) {
+                if (this.points.rockElevation(current) < 0.7) {
                     const melt = Math.min(0.001, this.points.snow[current]);
                     this.points.snow[current] -= melt;
                     this.points.water[target] += melt*0.01;
@@ -105,13 +107,27 @@ export class Eroder {
     }
 
     rain() {
+        let count = 0;
+        let supplement = 0;
+        const waterHeight = this.configuration.water.get();
         for (let i = 0; i < this.points.count; ++i) {
-            const exposure = clamp((this.points.totalElevation(i) - this.points.occlusion[i]), 0, 1);
-            const base = 0.05*this.points.rockElevation(i) + this.points.aquiferSpace(i)*0.02;
-            this.points.water[i] += base*(exposure + 0.0001);
-            this.points.aquifer[i] += Math.min(this.points.aquiferSpace(i)*0.01, 0.05*exposure);
+            if (this.points.rockElevation(i) < waterHeight) {
+                continue;
+            }
+            count += 1;
+            supplement += 1;
+        }
 
-            if (this.points.rockElevation(i) > this.maxElevation - 0.1 && exposure > 0.01) {
+        supplement /= count;
+        for (let i = 0; i < this.points.count; ++i) {
+            if (this.points.rockElevation(i) < waterHeight) {
+                continue;
+            }
+            const exposure = clamp((this.points.rockElevation(i) - this.points.occlusion[i]), 0, 0.1);
+            const base = 0.05 + supplement*0.08;
+            this.points.water[i] += base*(exposure);
+
+            if (this.points.rockElevation(i) > 0.8 && exposure > 0.01) {
                 this.points.snow[i] = 1;
             }
         }
@@ -131,64 +147,34 @@ export class Eroder {
     }
 
     wind = new THREE.Vector2();
-    updateOcclusion(windInfluence: { x: number, y: number }) {
-        const angle = Math.random() * 2 * Math.PI;
-
-        const wind = Math.sqrt(windInfluence.x*windInfluence.x + windInfluence.y*windInfluence.y);
-
-        this.wind.x += lerp(Math.cos(angle)*0.04, windInfluence.x, Math.pow(wind, 4));
-        this.wind.y -= lerp(Math.sin(angle)*0.04, windInfluence.y, Math.pow(wind, 4));
-
-        if (this.wind.length() > 1) {
-            this.wind.normalize();
-        }
-
-        const nwind = this.wind.clone().normalize();
-
-        const targets = new Array<number>(100);
-
-        const waterHeight = this.configuration.water.get();
-        for (let i = 0; i < this.points.count; ++i) {
-            const source = i%this.points.count;
-            const length = this.points.byDirection(source, nwind, targets, 0.5);
-            for (let j = 0; j < length; ++j) {
-                const target = targets[j];
-                this.points.occlusion[target] =  Math.max(this.points.totalElevation(source), this.points.totalElevation(target), this.points.occlusion[source])*0.999;
-            }
-        }
-        
-        for (let i = 0; i < this.points.count; ++i) {
-            const source = i%this.points.count;
-            if (this.points.rockElevation(source) < waterHeight) {
-                this.points.occlusion[source] =  this.points.totalElevation(source);
-            }
-        }
-    }
-    
+    occlusionIndices: Int32Array;
     initializeOcclusion(windInfluence: { x: number, y: number }) {
         this.wind.x = windInfluence.x;
-        this.wind.y = windInfluence.y;
+        this.wind.y = -windInfluence.y;
 
         this.wind.normalize();
 
-        const a = new Vector2(0,0);
         const projections = new Float32Array(this.points.count);
-        const indices = new Int32Array(this.points.count);
-
+        const a = new Vector2(0,0);
         for (let i = 0; i < this.points.count; ++i) {
             a.x = this.points.x(i);
             a.y = this.points.y(i);
             const projection = a.dot(this.wind);
             projections[i] = projection;
-            indices[i] = i;
         }
 
+        if (!this.occlusionIndices || this.occlusionIndices.length !== this.points.count) {
+            this.occlusionIndices = new Int32Array(this.points.count);
+            for (let i = 0; i < this.points.count; ++i) {
+                this.occlusionIndices[i] = i;
+            }
+        }
+        const indices = this.occlusionIndices;
         indices.sort((a, b) => projections[a] - projections[b]);
 
         this.points.occlusion.fill(0);
 
         const waterHeight = this.configuration.water.get();
-
         const targets = new Array<number>(100);
         for (let i = 0; i < this.points.count; ++i) {
             const current = indices[i];
@@ -200,26 +186,8 @@ export class Eroder {
             const length = this.points.byDirection(current, this.wind, targets, 0.5);
             for (let j = 0; j < length; ++j) {
                 const target = targets[j];
-                this.points.occlusion[target] =  Math.max(this.points.totalElevation(current), this.points.totalElevation(target), this.points.occlusion[current])*0.999;
+                this.points.occlusion[target] =  Math.max(this.points.totalElevation(current), this.points.totalElevation(target), this.points.occlusion[current]) - 0.002;
             }
-        }
-    }
-
-    deriveUphills() {
-        for (let source = 0; source < this.points.count; ++source) {
-            const original = this.points.uphill[source];
-            let next = original;
-            let highest = Number.MIN_VALUE;
-            for (let j = 0; j < this.points.adjacents[source].length; ++j) {
-                const target = this.points.adjacents[source][j];
-                const factor = this.points.totalElevation(target);
-                if (factor > highest) {
-                    next = target;
-                    highest = factor;
-                }
-            }
-
-            this.points.uphill[source] = next;
         }
     }
 
@@ -278,7 +246,8 @@ export class Eroder {
                 this.points.water[i] -= soak;
             }
             
-
+            this.points.vegetation[i] = clamp(Math.log(this.points.aquifer[i]*8 + 1), 0, 1);
+        
             //this.spreadSilt(i);
         }
         
@@ -308,7 +277,7 @@ export class Eroder {
                 this.points.aquifer[source] -= release;
             }
             
-            let transfer = Math.min(delta * 0.01, this.points.aquifer[source]);
+            let transfer = Math.min(delta * 0.05, this.points.aquifer[source]);
             this.points.aquifer[source] -= transfer;
             this.points.aquifer[target] += transfer;
         }
@@ -335,14 +304,14 @@ export class Eroder {
             this.points.silt[i] += this.siltBuffer[i];
             
             //const adjs = this.points.adjacents[i];
-            const releaseFactor = 0.5 * clamp(0.2 - this.points.river[i], 0, 0.2);
+            const releaseFactor = clamp(0.2 - this.points.river[i]*4, 0.05, 0.2);
             const release = this.points.silt[i]*releaseFactor;
-            this.points.soft[i] += release//45/(adjs.length + 45);
+            this.points.soft[i] += release//*25/(adjs.length + 25);
             this.points.silt[i] -= release;
 
-            ///for (let i = 0; i < adjs.length; ++i) {
+            //for (let i = 0; i < adjs.length; ++i) {
                 //const target = adjs[i];
-                //this.points.soft[target] += release/(adjs.length + 45);
+                //this.points.soft[target] += release/(adjs.length + 25);
             //}
         }
     }

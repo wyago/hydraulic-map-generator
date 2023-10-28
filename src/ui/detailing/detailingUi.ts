@@ -1,14 +1,18 @@
 import { VNodeProperties, h } from "maquette";
 import { Gameboard } from "../../gameboard/Gameboard";
 import { createCanvas } from "../../render/canvas";
+import { implicitVoronoi } from "../../render/implicitVoronoi";
 import { TileSet } from "../../terrain/PointSet";
 
 export function createDetailingUi(original: TileSet) {
-    const board = new Gameboard(original, 1, 16);
+    const board = new Gameboard(original, 2, 12);
    
     function setupCanvas(element: HTMLCanvasElement) {
         const {scene, render, renderer} = createCanvas(element);
     
+        const voronoi = implicitVoronoi();
+        voronoi.update(original);
+        scene.add(voronoi.object);
         scene.add(board.renderObject());
 
         let cancelled = false;

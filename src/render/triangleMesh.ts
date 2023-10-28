@@ -90,7 +90,7 @@ function totalNormal(tiles: TileSet, i: number) {
 
 const globalSunlight = new THREE.Vector3(0.9,0.8, 0.6);
 
-export function implicitVoronoi() {
+export function triangleMesh() {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(1024*3);
     geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );

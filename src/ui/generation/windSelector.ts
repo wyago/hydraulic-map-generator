@@ -13,7 +13,7 @@ export function createWindSelector(onchange?: (direction: PointLike) => void) {
     let isMouseDown = false;
     const end = () => {
         isMouseDown = false;
-        onchange?.({ x: windX, y: -windY });
+        onchange?.({ x: windX, y: windY });
     }
 
     const onmousedown = e => {
@@ -21,7 +21,6 @@ export function createWindSelector(onchange?: (direction: PointLike) => void) {
         windY = e.offsetY / 100 - 1;
         isMouseDown = true;
     };
-    const onmouseleave = end;
     const onmouseup = end;
     
     const onmousemove = e => {
@@ -63,7 +62,6 @@ export function createWindSelector(onchange?: (direction: PointLike) => void) {
                         width: "200",
                         height: "200",
                         onmousedown,
-                        onmouseleave,
                         onmouseup,
                         onmousemove,
                     }, [

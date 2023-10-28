@@ -24,7 +24,7 @@ import "../ui.css";
 import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(8, (x, y) => x*x + y*y < 2000*2000);
+    const gen = createDiscSampler(8, (x, y) => x*x*0.5 + y*y < 1000*1000);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -73,13 +73,13 @@ function setupLoading(map: Eroder, wind: () => PointLike, updateMeshes: () => vo
 
 let noise: DistortedNoise;
 function initialState(map: Eroder, wind: PointLike) {
-    noise = new DistortedNoise(0.0008, 50);
+    noise = new DistortedNoise(0.001, 50);
 
     for (let i = 0; i < map.points.count; ++i) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y)/1900, -0.5, 0.7);
+        const plateau = clamp(0.7 - Math.sqrt(x*x*0.5 + y*y)/900, -0.5, 0.7);
         const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.6, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
@@ -93,16 +93,6 @@ function initialState(map: Eroder, wind: PointLike) {
     map.initializeOcclusion(wind);
 }
 
-function raise(points: TileSet, amount: number) {
-    for (let i = 0; i < points.count; ++i) {
-        const x = points.x(i);
-        const y = points.y(i);
-
-        const plateau = 1 - Math.sqrt(x*x + y*y)/1000;
-        const elevation = clamp(((noise.noise(x,y)*0.5 + 0.5) * plateau)*amount, 0, 1);
-        points.hard[i] += elevation;
-    }
-}
 
 export function createGenerationUi() {
     const configuration = {
@@ -134,7 +124,6 @@ export function createGenerationUi() {
     let stars = starfield();
     let informId = -1;
 
-    eroder.deriveUphills();
     mesh.update(eroder.points);
     rivers.update(eroder.points);
     rivers.object.visible = false;
@@ -202,7 +191,6 @@ export function createGenerationUi() {
         }
         mesh.update(eroder.points, incremental);
         if (controls.showWatersheds.get()) {
-            eroder.deriveUphills();
             rivers.update(eroder.points);
         }
     }
@@ -308,26 +296,23 @@ export function createGenerationUi() {
         function frame() {
             j += 1;
             if (controls.erode.get()) {
-                eroder.updateOcclusion(windSelector.getPreferredWind());
                 eroder.passTime();
-                if (eroder.maxElevation < 1.0) {
-                    raise(eroder.points, (1 - eroder.maxElevation) * 0.1);
-                }
                 eroder.fixWater();
                 eroder.landslide();
+                eroder.spreadSnow();
                 for (let i = 0; i < 20; ++i) {
                     eroder.rain();
                     eroder.spreadWater();
-                    eroder.spreadSnow();
                 }
 
-                eroder.deriveUphills();
+                eroder.initializeOcclusion(windSelector.getPreferredWind());
                 updateMeshes();
             } else if (controls.passTime.get()) {
                 eroder.landslide();
                 for (let i = 0; i < 20; ++i) {
                     eroder.spreadWater();
                 }
+                eroder.initializeOcclusion(windSelector.getPreferredWind());
                 updateMeshes();
             }
             windSelector.showWind(eroder.getWind());

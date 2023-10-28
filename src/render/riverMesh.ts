@@ -27,32 +27,15 @@ export function riverMesh() {
     return {
         object: result,
         update(tiles: TileSet) {
-            const include = new Uint8Array(tiles.count);
             const positions = new Array<number>(0);
             const colors = new Array<number>(0);
-
-            for (let i = 0; i < tiles.count; ++i) {
-                if (include[i] === 0 && tiles.surfaceWater(i) > 0) {
-                    let current = i;
-                    include[current] += 1;
-                    do  {
-                        const next = tiles.uphill[current];
-                        if (tiles.totalElevation(next) <= tiles.totalElevation(current)) {
-                            break;
-                        }
-                        include[current] += 1;
-                        current = next;
-                    } while (true);
-                    include[current] += 1;
-                }
-            }
 
             for (let i = 0; i < tiles.count; ++i) {
                 let r = 0.18;
                 let g = 0.1;
                 let b = 0.05;
 
-                const target = tiles.uphill[i];
+                const target = tiles.downhill(i);
                 if (tiles.river[i] > 0.01)
                 {
                     const sourceAmount = 1;//Math.min(Math.log(tiles.river(i)*1 + 1), 2.9);
@@ -87,11 +70,6 @@ export function riverMesh() {
             if (true || positions.length > geometry.attributes.position.count * 3) {
                 geometry.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(positions), 3 ) );
                 geometry.setAttribute( 'color', new THREE.BufferAttribute( new Float32Array(colors), 3 ) );
-            } else {
-                for (let i = 0; i < positions.length; ++i) {
-                    geometry.attributes.position[i] = positions[i];
-                    geometry.attributes.color[i] = colors[i];
-                }
             }
             geometry.setDrawRange(0, positions.length / 3);
 

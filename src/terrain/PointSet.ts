@@ -22,7 +22,6 @@ export class TileSet {
     snow: Float32Array;
     silt: Float32Array;
 
-    uphill: number[];
     adjacents: number[][];
     invertLengths: number[][];
 
@@ -41,7 +40,6 @@ export class TileSet {
 
         this.count = vertices.count;
         this.vertices = vertices;
-        this.uphill = new Array<number>(vertices.count);
         this.vertices.points = new RBush<BushVertex>();
         this.vertices.points.load(mapVertices(vertices, (x, y, i) => ({
             index: i,
@@ -227,7 +225,6 @@ export class TileSet {
         this.vegetation = new Float32Array(json.vegetation);
         this.snow = json.snow ? new Float32Array(json.snow) : new Float32Array(this.count);
         this.river = new Float32Array(this.count);
-        this.uphill = new Array<number>(this.count);
         this.silt = new Float32Array(this.count);
         this.occlusion = new Float32Array(this.count);
 
