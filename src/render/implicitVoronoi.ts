@@ -153,7 +153,7 @@ export function implicitVoronoi() {
                 for (let i = 0; i < tiles.count; ++i) {
                     positions[i*3+0] = tiles.x(i);
                     positions[i*3+1] = tiles.y(i);
-                    positions[i*3+2] = -tiles.rockElevation(i)*50;
+                    positions[i*3+2] = 0;
                     indices[i] = i;
                 }
                 geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );

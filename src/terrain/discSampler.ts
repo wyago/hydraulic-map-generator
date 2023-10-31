@@ -1,25 +1,26 @@
 import RBush from "rbush";
-import { BushVertex, Vertices } from "./Graph";
+import { BushVertex, Graph } from "./Graph";
 
-export function createDiscSampler(radius: number, filter: (x: number, y: number) => boolean) {
+export function createDiscSampler(radius: (x: number, y: number) => number, filter: (x: number, y: number) => boolean) {
     let count = 1;
     let points = new RBush<BushVertex>(9);
     let xys = new Float32Array(1024*2);
 
     const actives: number[] = [0];
 
-    xys[0] = Math.random() * radius*2 - radius;
-    xys[1] = Math.random() * radius*2 - radius;
+    const r = radius(0,0);
+    xys[0] = Math.random() * r*2 - r;
+    xys[1] = Math.random() * r*2 - r;
     points.insert({
         index: count,
-        minX: xys[0] - radius,
-        maxX: xys[0] + radius,
-        minY: xys[1] - radius,
-        maxY: xys[1] + radius,
+        minX: xys[0] - r,
+        maxX: xys[0] + r,
+        minY: xys[1] - r,
+        maxY: xys[1] + r,
     });
 
-    const r2 = radius/2;
-    function near(nx: number, ny: number) {
+    function near(r: number, nx: number, ny: number) {
+        const r2 = r/2;
         const region = points.search({
             minX: nx - r2,
             minY: ny - r2,
@@ -31,7 +32,7 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
             const target = region[i];
             const dx = xys[target.index*2] - nx;
             const dy = xys[target.index*2+1] - ny;
-            if (dx*dx + dy*dy < radius*radius) {
+            if (dx*dx + dy*dy < r*r) {
                 return true;
             }
         }
@@ -54,13 +55,13 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
         }
         const activeIndex = ~~(Math.random() * actives.length);
         const active = actives[activeIndex];
-        const r = radius;
+        const r = radius(xys[active*2], xys[active*2+1]);
 
         let first = true;
 
-        for (let i = 0; i < 7; ++i) {
+        for (let i = 0; i < 9; ++i) {
             makeSample(r, active);
-            if (filter(sample.x, sample.y) && !near(sample.x, sample.y)) {
+            if (filter(sample.x, sample.y) && !near(r, sample.x, sample.y)) {
                 if (count >= xys.length / 2) {
                     const capacity = xys.length * 2;
                     const newxys = new Float32Array(capacity);
@@ -96,14 +97,10 @@ export function createDiscSampler(radius: number, filter: (x: number, y: number)
 
     return {
         step,
-        vertices(): Vertices {
-            const realxys = new Float32Array(count * 2);
-            realxys.set(xys.subarray(0, count * 2));
-            return {
-                points,
-                count: count - 1,
-                xys: realxys,
-            }
+        vertices(): Graph {
+            const realxys = new Float32Array((count-1) * 2);
+            realxys.set(xys.subarray(0, (count-1) * 2));
+            return new Graph(realxys);
         }
     };
 }

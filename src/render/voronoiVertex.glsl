@@ -15,6 +15,7 @@ uniform int selected;
 uniform int mode;
 
 varying vec3 vColor;
+varying float vSize;
 
 void main() {
     if (mode == 0) {
@@ -27,8 +28,8 @@ void main() {
         float depth = water * 10.0;
 
         float reflect = 0.7;
-        if (water < 0.002) {
-            reflect = mix(0.0, 0.7, water/0.002);
+        if (water < 0.01) {
+            reflect = mix(0.0, 0.1, water/0.02);
         }
         vec3 subtractor = vec3(0.18, 0.13, 0.12) * depth;
         vec3 transit = sunColor * (1.0 - reflect) - subtractor;
@@ -54,7 +55,7 @@ void main() {
         modelViewMatrix[0][1] * modelViewMatrix[0][1] +
         modelViewMatrix[0][2] * modelViewMatrix[0][2]
     );
-    gl_PointSize = 25000.0 * scaling;
-
+    vSize = 15000.0 * scaling;
+    gl_PointSize = vSize;
     gl_Position = projectionMatrix * mvPosition;
 }

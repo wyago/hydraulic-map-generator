@@ -1,4 +1,5 @@
-import RBush from "rbush";
+import KDBush from "kdbush";
+import { byMin } from "../math";
 
 export type BushVertex = {
     readonly index: number;
@@ -9,16 +10,42 @@ export type BushVertex = {
     readonly maxY: number;
 }
 
-export type Vertices = {
-    points: RBush<BushVertex>;
+export class Graph {
+    points: KDBush;
     count: number;
     xys: Float32Array;
-}
 
-export function mapVertices<T>(vertices: Vertices, f: (x: number, y: number, i: number) => T) {
-    let result = new Array<T>(vertices.count);
-    for (let i = 0; i < vertices.count; ++i) {
-        result[i] = f(vertices.xys[i*2], vertices.xys[i*2+1], i);
+    constructor(xys: Float32Array) {
+        this.count = xys.length/2;
+        this.xys = xys;
+        this.points = new KDBush(this.count);
+        for (let i = 0; i < this.count; ++i) {
+            this.points.add(xys[i*2], xys[i*2+1]);
+        }
+        this.points.finish();
     }
-    return result;
+
+    map<T>(f: (x: number, y: number, i: number) => T) {
+        let result = new Array<T>(this.count);
+        for (let i = 0; i < this.count; ++i) {
+            result[i] = f(this.xys[i*2], this.xys[i*2+1], i);
+        }
+        return result;
+    }
+
+    closest(x: number, y: number, searchRadius: number) {
+        return byMin(this.points.within(x,y, searchRadius), i => {
+            const dx = this.x(i) - x;
+            const dy = this.y(i) - y;
+            return dx *dx + dy*dy;
+        });
+    }
+
+    x(i: number) {
+        return this.xys[i * 2];
+    }
+
+    y(i: number) {
+        return this.xys[i * 2 + 1];
+    }
 }

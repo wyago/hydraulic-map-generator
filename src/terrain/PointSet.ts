@@ -1,15 +1,15 @@
 import Delaunator from "delaunator";
-import RBush from "rbush";
 import * as THREE from "three";
 import { Vector2 } from "three";
+import { PointLike } from "../PointLike";
 import { clamp } from "../math";
-import { BushVertex, Vertices, mapVertices } from "./Graph";
+import { Graph } from "./Graph";
 
 export class TileSet {
     air(i: number) {
         return 0.7 - this.totalElevation(i);
     }
-    vertices: Vertices;
+    vertices: Graph;
     count: number;
 
     hard: Float32Array;
@@ -25,7 +25,7 @@ export class TileSet {
     adjacents: number[][];
     invertLengths: number[][];
 
-    constructor(vertices: Vertices) {
+    constructor(vertices: Graph) {
         this.hard = new Float32Array(vertices.count);
         this.soft = new Float32Array(vertices.count);
         this.water = new Float32Array(vertices.count);
@@ -40,17 +40,8 @@ export class TileSet {
 
         this.count = vertices.count;
         this.vertices = vertices;
-        this.vertices.points = new RBush<BushVertex>();
-        this.vertices.points.load(mapVertices(vertices, (x, y, i) => ({
-            index: i,
-            maxX: x,
-            minX: x,
-            maxY: y,
-            minY: y,
-        })))
-
         
-        const source = mapVertices(vertices, (x,y) => [x, y]);
+        const source = vertices.map((x,y) => [x, y]);
 
         function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
         const delaunay = Delaunator.from(source);
@@ -180,6 +171,46 @@ export class TileSet {
         return clamp(this.water[i] - this.silt[i], 0, 1);
     }
 
+    gradient(i: number, output: { x: number, y: number, l: number}) {
+        const cx = this.x(i);
+        const cy = this.y(i);
+
+        const d = this.downhill(i);
+        if (this.totalElevation(d) > this.totalElevation(i)) {
+            output.x = 0;
+            output.y = 0;
+            output.l = 0;
+            return;
+        }
+        let dx = this.x(d) - cx;
+        let dy = this.y(d) - cy;
+
+        const l = Math.sqrt(dx*dx + dy*dy);
+        if (l > 0) {
+            dx /= l;
+            dy /= l;
+        }
+
+        output.x = dx;
+        output.y = dy;
+        output.l = l;
+    }
+
+    fall(pos: PointLike) {
+        let closest = this.vertices.closest(pos.x, pos.y, 12);
+        const output = { x: 0, y: 0, l: 1 };
+        const path = new Array<PointLike>();
+        for (let i = 0; closest && this.water[closest] < 0.01 && output.l > 0 && i < 10000; ++i) {
+            this.gradient(closest, output);
+
+            pos.x += output.x;
+            pos.y += output.y;
+            path.push({ ...pos });
+            closest = this.vertices.closest(pos.x, pos.y, 12);
+        }
+        return path;
+    }
+
     byDirection(i: number, v: THREE.Vector2, result: number[], angle = 0.5): number {
         const adjacents = this.adjacents[i];
         const center = new THREE.Vector2(this.x(i), this.y(i));
@@ -212,11 +243,7 @@ export class TileSet {
     }
 
     unmarshal(json: any) {
-        this.vertices = {
-            count: json.xys.length/2,
-            points: new RBush<BushVertex>(),
-            xys: new Float32Array(json.xys),
-        };
+        this.vertices = new Graph(json.xys);
         this.count = json.hard.length;
         this.hard = new Float32Array(json.hard);
         this.soft = new Float32Array(json.soft);
@@ -228,24 +255,13 @@ export class TileSet {
         this.silt = new Float32Array(this.count);
         this.occlusion = new Float32Array(this.count);
 
-        const points = new Array<any>(this.count);
         const source = new Array<any>(this.count);
         for (let i = 0; i < this.count; ++i) {
-            points[i] = {
-                index: i,
-                maxX: this.vertices.xys[i*2],
-                minX: this.vertices.xys[i*2],
-                maxY: this.vertices.xys[i*2+1],
-                minY: this.vertices.xys[i*2+1], 
-            }
-
             source[i] = [
                 this.vertices.xys[i*2],
                 this.vertices.xys[i*2+1]];
         }
 
-        this.vertices.points.load(points);
-        
         function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
         const delaunay = Delaunator.from(source);
         function forEachTriangleEdge(callback: (p: number, q: number) => void) {

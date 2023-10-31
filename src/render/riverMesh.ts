@@ -75,6 +75,7 @@ export function riverMesh() {
 
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
+            geometry.computeBoundingSphere();
         }
     }
 }

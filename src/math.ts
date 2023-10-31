@@ -13,7 +13,7 @@ export function clamp(x: number, a: number, b: number) {
 
 export function byMin<T>(array: ArrayLike<T>, f: (t: T) => number) {
     let min = Number.MAX_VALUE;
-    let value: T = array[0];
+    let value: T | undefined = undefined;
 
     for (let i = 0; i < array.length; ++i) {
         const v = array[i];

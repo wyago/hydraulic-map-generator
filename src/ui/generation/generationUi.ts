@@ -1,4 +1,4 @@
-import { byMin, clamp } from "../../math";
+import { clamp } from "../../math";
 import { createCanvas } from "../../render/canvas";
 import { Eroder, EroderConfiguration } from "../../terrain/Eroder";
 import { TileSet } from "../../terrain/PointSet";
@@ -11,6 +11,7 @@ import { VNodeProperties, h } from "maquette";
 import { DistortedNoise } from "../../DistortedNoise";
 import { PointLike } from "../../PointLike";
 import { implicitVoronoi } from "../../render/implicitVoronoi";
+import { singleRiver } from "../../render/singleRiver";
 import { starfield } from "../../render/starfield";
 import { setRoot } from "../../root";
 import { createBooleanInput } from "../booleanInput";
@@ -23,7 +24,7 @@ import "../ui.css";
 import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(8, (x, y) => x*x*0.5 + y*y < 1000*1000);
+    const gen = createDiscSampler(() => 8, (x, y) => x*x*0.5 + y*y < 2000*2000);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -72,13 +73,13 @@ function setupLoading(map: Eroder, wind: () => PointLike, updateMeshes: () => vo
 
 let noise: DistortedNoise;
 function initialState(map: Eroder, wind: PointLike) {
-    noise = new DistortedNoise(0.001, 50);
+    noise = new DistortedNoise(0.0007, 50);
 
     for (let i = 0; i < map.points.count; ++i) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x*0.5 + y*y)/900, -0.5, 0.7);
+        const plateau = clamp(0.7 - Math.sqrt(x*x*0.5 + y*y)/1900, -0.5, 0.7);
         const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.6, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
@@ -119,6 +120,7 @@ export function createGenerationUi() {
 
     const eroder = generate(configuration);
     let mesh = implicitVoronoi();
+    let river = singleRiver();
     let stars = starfield();
     let informId = -1;
 
@@ -255,28 +257,20 @@ export function createGenerationUi() {
     
     function setupCanvas(element: HTMLCanvasElement) {
         const {scene, render, renderer} = createCanvas(element, ({x, y}) => {
-            const region = eroder.points.vertices.points.search({
-                maxX: x + 10,
-                minX: x - 10,
-                maxY: y + 10,
-                minY: y - 10,
-            });
-            if (region.length === 0) {
+            const closest = eroder.points.vertices.closest(x,y,10);
+            if (!closest) {
                 mesh.select(-1);
                 return;
             }
+
+            river.update(eroder.points.fall({ x, y }));
     
-            const p = byMin(region, t => {
-                const dx = t.maxX - x;
-                const dy = t.maxY - y;
-                return dx*dx + dy*dy;
-            });
-    
-            informId = p.index;
+            informId = closest;
             mesh.select(informId);
         });
     
         scene.add(mesh.object);
+        scene.add(river.object);
         scene.add(stars);
 
         let cancelled = false;
@@ -296,8 +290,9 @@ export function createGenerationUi() {
                 updateMeshes();
             } else if (controls.passTime.get()) {
                 eroder.landslide();
+                eroder.fixWater();
                 for (let i = 0; i < 20; ++i) {
-                    eroder.spreadWater();
+                    eroder.spreadWater(false);
                 }
                 eroder.initializeOcclusion(windSelector.getPreferredWind());
                 updateMeshes();

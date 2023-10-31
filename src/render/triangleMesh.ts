@@ -117,6 +117,7 @@ export function triangleMesh() {
         depthTest: true,
         vertexShader: triangleVertex,
         fragmentShader: triangleFragment,
+        side: THREE.DoubleSide,
         blending: THREE.NormalBlending,
     });
 
@@ -192,7 +193,7 @@ export function triangleMesh() {
                 geometry.setAttribute( 'height', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
                 geometry.setAttribute( 'occlusion', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
                 geometry.setAttribute( 'index', new THREE.BufferAttribute( indices, 1 ) );
-                geometry.setIndex(renderIndices);
+                geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(renderIndices), 1));
                 geometry.index!.needsUpdate = true;
                 geometry.attributes.position.needsUpdate = true;
                 geometry.attributes.index.needsUpdate = true;

@@ -5,7 +5,7 @@ import { implicitVoronoi } from "../../render/implicitVoronoi";
 import { TileSet } from "../../terrain/PointSet";
 
 export function createDetailingUi(original: TileSet) {
-    const board = new Gameboard(original, 2, 12);
+    const board = new Gameboard(original);
    
     function setupCanvas(element: HTMLCanvasElement) {
         const {scene, render, renderer} = createCanvas(element);
