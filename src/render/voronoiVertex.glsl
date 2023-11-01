@@ -28,8 +28,8 @@ void main() {
         float depth = water * 10.0;
 
         float reflect = 0.7;
-        if (water < 0.01) {
-            reflect = mix(0.0, 0.1, water/0.02);
+        if (water < 0.002) {
+            reflect = mix(0.0, 0.1, water/0.002);
         }
         vec3 subtractor = vec3(0.18, 0.13, 0.12) * depth;
         vec3 transit = sunColor * (1.0 - reflect) - subtractor;

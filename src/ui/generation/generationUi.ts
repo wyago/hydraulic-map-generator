@@ -24,7 +24,7 @@ import "../ui.css";
 import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(() => 8, (x, y) => x*x*0.5 + y*y < 2000*2000);
+    const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 2000*2000);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -73,13 +73,13 @@ function setupLoading(map: Eroder, wind: () => PointLike, updateMeshes: () => vo
 
 let noise: DistortedNoise;
 function initialState(map: Eroder, wind: PointLike) {
-    noise = new DistortedNoise(0.0007, 50);
+    noise = new DistortedNoise(0.0009, 50);
 
     for (let i = 0; i < map.points.count; ++i) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x*0.5 + y*y)/1900, -0.5, 0.7);
+        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y)/1800, -0.5, 0.4);
         const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.6, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
@@ -286,14 +286,16 @@ export function createGenerationUi() {
                     eroder.spreadWater();
                 }
 
+                eroder.solveLakes();
                 eroder.initializeOcclusion(windSelector.getPreferredWind());
                 updateMeshes();
             } else if (controls.passTime.get()) {
                 eroder.landslide();
                 eroder.fixWater();
                 for (let i = 0; i < 20; ++i) {
-                    eroder.spreadWater(false);
+                    eroder.spreadWater();
                 }
+                eroder.solveLakes();
                 eroder.initializeOcclusion(windSelector.getPreferredWind());
                 updateMeshes();
             }

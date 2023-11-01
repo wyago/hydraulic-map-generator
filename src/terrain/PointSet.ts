@@ -175,8 +175,8 @@ export class TileSet {
         const cx = this.x(i);
         const cy = this.y(i);
 
-        const d = this.downhill(i);
-        if (this.totalElevation(d) > this.totalElevation(i)) {
+        const d = this.waterTableDownhill(i);
+        if (this.waterTable(d) > this.waterTable(i)) {
             output.x = 0;
             output.y = 0;
             output.l = 0;
@@ -200,7 +200,7 @@ export class TileSet {
         let closest = this.vertices.closest(pos.x, pos.y, 12);
         const output = { x: 0, y: 0, l: 1 };
         const path = new Array<PointLike>();
-        for (let i = 0; closest && this.water[closest] < 0.01 && output.l > 0 && i < 10000; ++i) {
+        for (let i = 0; closest && this.water[closest] < 0.05 && output.l > 0 && i < 10000; ++i) {
             this.gradient(closest, output);
 
             pos.x += output.x;
