@@ -155,8 +155,8 @@ export function triangleMesh() {
                 const source = new Array<any>(tiles.count);
                 for (let i = 0; i < tiles.count; ++i) {
                     source[i] = [
-                        tiles.vertices.xys[i*2],
-                        tiles.vertices.xys[i*2+1]];
+                        tiles.graph.xys[i*2],
+                        tiles.graph.xys[i*2+1]];
                 }
 
                 const delaunay = Delaunator.from(source);

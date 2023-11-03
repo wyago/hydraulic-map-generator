@@ -9,7 +9,7 @@ export class TileSet {
     air(i: number) {
         return 0.7 - this.totalElevation(i);
     }
-    vertices: Graph;
+    graph: Graph;
     count: number;
 
     hard: Float32Array;
@@ -25,23 +25,23 @@ export class TileSet {
     adjacents: number[][];
     invertLengths: number[][];
 
-    constructor(vertices: Graph) {
-        this.hard = new Float32Array(vertices.count);
-        this.soft = new Float32Array(vertices.count);
-        this.water = new Float32Array(vertices.count);
-        this.aquifer = new Float32Array(vertices.count);
-        this.river = new Float32Array(vertices.count);
-        this.vegetation = new Float32Array(vertices.count);
-        this.occlusion = new Float32Array(vertices.count);
-        this.snow = new Float32Array(vertices.count);
-        this.silt = new Float32Array(vertices.count);
+    constructor(graph: Graph) {
+        this.hard = new Float32Array(graph.count);
+        this.soft = new Float32Array(graph.count);
+        this.water = new Float32Array(graph.count);
+        this.aquifer = new Float32Array(graph.count);
+        this.river = new Float32Array(graph.count);
+        this.vegetation = new Float32Array(graph.count);
+        this.occlusion = new Float32Array(graph.count);
+        this.snow = new Float32Array(graph.count);
+        this.silt = new Float32Array(graph.count);
 
         this.occlusion.fill(1);
 
-        this.count = vertices.count;
-        this.vertices = vertices;
+        this.count = graph.count;
+        this.graph = graph;
         
-        const source = vertices.map((x,y) => [x, y]);
+        const source = graph.map((x,y) => [x, y]);
 
         function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
         const delaunay = Delaunator.from(source);
@@ -62,13 +62,13 @@ export class TileSet {
         });
 
         this.adjacents = this.adjacents.map((a,i) => {
-            const sourcex = this.vertices.xys[i*2];
-            const sourcey = this.vertices.xys[i*2+1];
+            const sourcex = this.graph.xys[i*2];
+            const sourcey = this.graph.xys[i*2+1];
             return a.sort((x, y) => {
-                const leftx = this.vertices.xys[x*2];
-                const lefty = this.vertices.xys[x*2+1];
-                const rightx = this.vertices.xys[y*2];
-                const righty = this.vertices.xys[y*2+1];
+                const leftx = this.graph.xys[x*2];
+                const lefty = this.graph.xys[x*2+1];
+                const rightx = this.graph.xys[y*2];
+                const righty = this.graph.xys[y*2+1];
                 return Math.atan2(lefty - sourcey, leftx - sourcex) > Math.atan2(righty - sourcey, rightx - sourcex) ? 1 : -1;
             })
         });
@@ -84,11 +84,11 @@ export class TileSet {
     }
 
     x(i: number) {
-        return this.vertices.xys[i*2];
+        return this.graph.xys[i*2];
     }
 
     y(i: number) {
-        return this.vertices.xys[i*2+1];
+        return this.graph.xys[i*2+1];
     }
 
     downhill(i: number) {
@@ -140,16 +140,16 @@ export class TileSet {
         return this.hard[i] + this.soft[i] + this.water[i];
     }
 
+    waterTable(i: number) {
+        return this.hard[i] + this.aquifer[i] + this.water[i];
+    }
+
     rockElevation(i: number) {
         return this.hard[i] + this.soft[i];
     }
 
     surfaceWater(i: number) {
         return this.water[i];
-    }
-
-    waterTable(i: number) {
-        return this.hard[i] + this.aquifer[i] + this.water[i];
     }
 
     soak(i: number) {
@@ -175,8 +175,8 @@ export class TileSet {
         const cx = this.x(i);
         const cy = this.y(i);
 
-        const d = this.waterTableDownhill(i);
-        if (this.waterTable(d) > this.waterTable(i)) {
+        const d = this.downhill(i);
+        if (this.totalElevation(d) > this.totalElevation(i)) {
             output.x = 0;
             output.y = 0;
             output.l = 0;
@@ -197,7 +197,7 @@ export class TileSet {
     }
 
     fall(pos: PointLike) {
-        let closest = this.vertices.closest(pos.x, pos.y, 12);
+        let closest = this.graph.closest(pos.x, pos.y, 12);
         const output = { x: 0, y: 0, l: 1 };
         const path = new Array<PointLike>();
         for (let i = 0; closest && this.water[closest] < 0.05 && output.l > 0 && i < 10000; ++i) {
@@ -206,7 +206,7 @@ export class TileSet {
             pos.x += output.x;
             pos.y += output.y;
             path.push({ ...pos });
-            closest = this.vertices.closest(pos.x, pos.y, 12);
+            closest = this.graph.closest(pos.x, pos.y, 12);
         }
         return path;
     }
@@ -232,7 +232,7 @@ export class TileSet {
     marshal() {
         return `{
             "tilesetversion": 1,
-            "xys": [${[...this.vertices.xys].map(x => x.toFixed(1)).join(",")}],
+            "xys": [${[...this.graph.xys].map(x => x.toFixed(1)).join(",")}],
             "hard": [${[...this.hard].map(x => x.toFixed(5)).join(",")}],
             "soft": [${[...this.soft].map(x => x.toFixed(5)).join(",")}],
             "water": [${[...this.water].map(x => x.toFixed(5)).join(",")}],
@@ -243,7 +243,7 @@ export class TileSet {
     }
 
     unmarshal(json: any) {
-        this.vertices = new Graph(json.xys);
+        this.graph = new Graph(json.xys);
         this.count = json.hard.length;
         this.hard = new Float32Array(json.hard);
         this.soft = new Float32Array(json.soft);
@@ -258,8 +258,8 @@ export class TileSet {
         const source = new Array<any>(this.count);
         for (let i = 0; i < this.count; ++i) {
             source[i] = [
-                this.vertices.xys[i*2],
-                this.vertices.xys[i*2+1]];
+                this.graph.xys[i*2],
+                this.graph.xys[i*2+1]];
         }
 
         function nextHalfedge(e) { return (e % 3 === 2) ? e - 2 : e + 1; }
@@ -281,13 +281,13 @@ export class TileSet {
         });
 
         this.adjacents = this.adjacents.map((a,i) => {
-            const sourcex = this.vertices.xys[i*2];
-            const sourcey = this.vertices.xys[i*2+1];
+            const sourcex = this.graph.xys[i*2];
+            const sourcey = this.graph.xys[i*2+1];
             return a.sort((x, y) => {
-                const leftx = this.vertices.xys[x*2];
-                const lefty = this.vertices.xys[x*2+1];
-                const rightx = this.vertices.xys[y*2];
-                const righty = this.vertices.xys[y*2+1];
+                const leftx = this.graph.xys[x*2];
+                const lefty = this.graph.xys[x*2+1];
+                const rightx = this.graph.xys[y*2];
+                const righty = this.graph.xys[y*2+1];
                 return Math.atan2(lefty - sourcey, leftx - sourcex) > Math.atan2(righty - sourcey, rightx - sourcex) ? 1 : -1;
             })
         }); 

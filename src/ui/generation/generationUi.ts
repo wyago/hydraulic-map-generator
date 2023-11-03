@@ -8,6 +8,7 @@ import { createInfoPanel } from "./infoPanel";
 import { createWindSelector } from "./windSelector";
 
 import { VNodeProperties, h } from "maquette";
+import { Object3D, Scene } from "three";
 import { DistortedNoise } from "../../DistortedNoise";
 import { PointLike } from "../../PointLike";
 import { implicitVoronoi } from "../../render/implicitVoronoi";
@@ -73,13 +74,13 @@ function setupLoading(map: Eroder, wind: () => PointLike, updateMeshes: () => vo
 
 let noise: DistortedNoise;
 function initialState(map: Eroder, wind: PointLike) {
-    noise = new DistortedNoise(0.0009, 50);
+    noise = new DistortedNoise(0.0011, 10);
 
     for (let i = 0; i < map.points.count; ++i) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y)/1800, -0.5, 0.4);
+        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y)/1900, -0.5, 0.5);
         const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.6, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
@@ -121,6 +122,7 @@ export function createGenerationUi() {
     const eroder = generate(configuration);
     let mesh = implicitVoronoi();
     let river = singleRiver();
+    let rivers: Object3D[] = [];
     let stars = starfield();
     let informId = -1;
 
@@ -142,22 +144,24 @@ export function createGenerationUi() {
     const info = createInfoPanel();
     info.inform(eroder.points, 0);
 
+    const maybeUpdate = (e: boolean) => {
+        if (!e) {
+            updateMeshes(false);
+        }
+    }
+
     const controls = {
         erode: createBooleanInput({
             name: "Erode",
-            onchange: e => {
-                if (!e) {
-                    updateMeshes(false);
-                }
-            }
+            onchange: maybeUpdate
         }),
-        passTime: createBooleanInput({
+        flowAll: createBooleanInput({
+            name: "Flow all water",
+            onchange: maybeUpdate
+        }),
+        flowWater: createBooleanInput({
             name: "Flow standing water",
-            onchange: e => {
-                if (!e) {
-                    updateMeshes(false);
-                }
-            }
+            onchange: maybeUpdate
         }),
         update: createBooleanInput({
             name: "Update render",
@@ -191,7 +195,8 @@ export function createGenerationUi() {
         defaultOpen: true,
         children: [
             controls.erode,
-            controls.passTime,
+            controls.flowAll,
+            controls.flowWater,
             controls.update,
 
             createDropdown({
@@ -219,7 +224,7 @@ export function createGenerationUi() {
                     updateMeshes();
                 }
             }),
-
+            
             createButton({
                 text: "Export",
                 onclick: exportTerrain
@@ -228,7 +233,7 @@ export function createGenerationUi() {
             createButton({
                 text: "Switch to detailing",
                 onclick: () => {
-                    setRoot(createDetailingUi(eroder.points))
+                    setRoot(createDetailingUi(eroder.points));
                 }
             })
         ]
@@ -254,10 +259,12 @@ export function createGenerationUi() {
             destructors.forEach(x => x());
         }
     };
+
+    let outerScene: Scene;
     
     function setupCanvas(element: HTMLCanvasElement) {
         const {scene, render, renderer} = createCanvas(element, ({x, y}) => {
-            const closest = eroder.points.vertices.closest(x,y,10);
+            const closest = eroder.points.graph.closest(x,y,10);
             if (!closest) {
                 mesh.select(-1);
                 return;
@@ -268,6 +275,7 @@ export function createGenerationUi() {
             informId = closest;
             mesh.select(informId);
         });
+        outerScene = scene;
     
         scene.add(mesh.object);
         scene.add(river.object);
@@ -283,17 +291,26 @@ export function createGenerationUi() {
                 eroder.spreadSnow();
                 for (let i = 0; i < 20; ++i) {
                     eroder.rain();
-                    eroder.spreadWater();
+                    eroder.spreadWater(true);
                 }
 
                 eroder.solveLakes();
                 eroder.initializeOcclusion(windSelector.getPreferredWind());
                 updateMeshes();
-            } else if (controls.passTime.get()) {
+            } else if (controls.flowWater.get()) {
                 eroder.landslide();
                 eroder.fixWater();
                 for (let i = 0; i < 20; ++i) {
-                    eroder.spreadWater();
+                    eroder.spreadWater(false);
+                }
+                eroder.solveLakes();
+                eroder.initializeOcclusion(windSelector.getPreferredWind());
+                updateMeshes();
+            } else if (controls.flowAll.get()) {
+                eroder.landslide();
+                eroder.fixWater();
+                for (let i = 0; i < 20; ++i) {
+                    eroder.spreadWater(true);
                 }
                 eroder.solveLakes();
                 eroder.initializeOcclusion(windSelector.getPreferredWind());

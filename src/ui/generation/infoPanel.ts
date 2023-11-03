@@ -18,8 +18,8 @@ export function createInfoPanel() {
             info = h("details.modal", { key: "info" }, [
                 h("summary", ["Tile info"]),
                 h("p", ["Id: " + i]),
-                h("p", ["X: " + tiles.vertices.xys[i*2].toFixed(0)]),
-                h("p", ["Y: " + tiles.vertices.xys[i*2+1].toFixed(0)]),
+                h("p", ["X: " + tiles.graph.xys[i*2].toFixed(0)]),
+                h("p", ["Y: " + tiles.graph.xys[i*2+1].toFixed(0)]),
                 h("p", ["Elevation: " + totalElevation.toFixed(2)]),
                 h("p", ["River: " + tiles.river[i].toFixed(2)]),
                 h("details", [

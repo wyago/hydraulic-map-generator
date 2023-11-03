@@ -18,8 +18,11 @@ function offset(path: ArrayLike<PointLike>, i: number, width: number) {
     const toNext = nv.sub(cv);
     const toCurrent = cv.sub(pv);
 
-    //toNext.add(toCurrent);
-    //toNext.normalize().multiplyScalar(width);
+    toNext.normalize();
+    toCurrent.normalize();
+
+    toNext.add(toCurrent).multiplyScalar(0.5);
+    toNext.normalize();
 
     return { dx: -toNext.y, dy: toNext.x };
 }
@@ -28,9 +31,9 @@ export function singleRiver() {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(), 2));
 
-    let r = 0.88;
-    let g = 0.6;
-    let b = 0.45;
+    let r = 0.038;
+    let g = 0.02;
+    let b = 0.01;
     const result= new THREE.Object3D();
     result.add(new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({
         depthTest: false,

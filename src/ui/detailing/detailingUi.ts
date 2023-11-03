@@ -6,10 +6,12 @@ import { TileSet } from "../../terrain/PointSet";
 
 export function createDetailingUi(original: TileSet) {
     const board = new Gameboard(original);
+    board.deriveRivers();
    
     function setupCanvas(element: HTMLCanvasElement) {
         const {scene, render, renderer} = createCanvas(element);
     
+        renderer.sortObjects = false;
         const voronoi = implicitVoronoi();
         voronoi.update(original);
         scene.add(voronoi.object);

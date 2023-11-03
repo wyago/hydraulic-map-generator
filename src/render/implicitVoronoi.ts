@@ -153,10 +153,9 @@ export function implicitVoronoi() {
                 for (let i = 0; i < tiles.count; ++i) {
                     positions[i*3+0] = tiles.x(i);
                     positions[i*3+1] = tiles.y(i);
-                    positions[i*3+2] = 0;
                     indices[i] = i;
                 }
-                geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+                geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 2 ) );
                 geometry.setAttribute( 'albedo', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
                 geometry.setAttribute( 'water', new THREE.BufferAttribute( new Float32Array(tiles.count), 1 ) );
                 geometry.setAttribute( 'rocknormal', new THREE.BufferAttribute( new Float32Array(tiles.count*3), 3 ) );
@@ -182,7 +181,7 @@ export function implicitVoronoi() {
                 geometry.attributes.rocknormal.setXYZ(i, rock.x, rock.y, rock.z);
                 geometry.attributes.waternormal.setXYZ(i, water.x, water.y, water.z);
 
-                geometry.attributes.position.setXYZ(i, tiles.x(i), tiles.y(i), 0);
+                geometry.attributes.position.setXY(i, tiles.x(i), tiles.y(i));
                 geometry.attributes.albedo.setXYZ(i, a.x, a.y, a.z);
                 geometry.attributes.water.setX(i, tiles.surfaceWater(i));
                 geometry.attributes.height.setX(i, tiles.rockElevation(i));
