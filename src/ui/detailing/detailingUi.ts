@@ -3,10 +3,15 @@ import { Gameboard } from "../../gameboard/Gameboard";
 import { createCanvas } from "../../render/canvas";
 import { implicitVoronoi } from "../../render/implicitVoronoi";
 import { TileSet } from "../../terrain/PointSet";
+import { createControls } from "./controls";
 
 export function createDetailingUi(original: TileSet) {
     const board = new Gameboard(original);
     board.deriveRivers();
+
+    const controlPanel = createControls(() => {
+        board.setRiverScale(controlPanel.controls.riverScale.get());
+    })
    
     function setupCanvas(element: HTMLCanvasElement) {
         const {scene, render, renderer} = createCanvas(element);
@@ -50,6 +55,9 @@ export function createDetailingUi(original: TileSet) {
         realize() {
             return h("body", [
                 h("canvas", properties),
+                h("div#ui", [
+                    controlPanel.realize()
+                ])
             ]);
         }
     }

@@ -23,32 +23,49 @@ function offset(tile: Tile, width: number) {
     return undefined;
 }
 
-export function rivers(board: Gameboard) {
+function width(depth: number, scale: number) {
+    return clamp(Math.log(depth * scale + 1), 0, 4);
+}
+
+export function rivers(board: Gameboard, scale: number) {
     const geometry = new THREE.BufferGeometry();
     const positions = new Array<number>(0);
-    const colors = new Array<number>(0);
     const tiles = board.tiles;
 
-    let r = 0.01;
-    let g = 0.02;
-    let b = 0.03;
+    let r = 0.003;
+    let g = 0.004;
+    let b = 0.005;
+
+    function include(tile: Tile | undefined) {
+        return tile &&
+            !(tile.water > 0.002) &&
+            (tile.riverPoint && width(tile.riverPoint.depth, scale) > 0.1 && tile.riverPoint.next);
+    }
     
     for (let i = 0; i < tiles.length; ++i) {
         const tile = tiles[i];
-        if (tile.water > 0.002) {
-            continue;
-        }
-        if (tile.riverPoint && tile.riverPoint.next) {
-            const target = tile.riverPoint.next;
-            const {dx: sx, dy: sy} = offset(tile, clamp(Math.log(tile.riverPoint.depth + 1), 0, 4))!;
+        if (include(tile) || include(tile.riverPoint?.next) && width(tile.riverPoint!.depth, scale) > 0.1) {
+            const target = tile.riverPoint!.next!;
+            const w = width(tile.riverPoint!.depth, scale);
+            const {dx: sx, dy: sy} = offset(tile, w)!;
             const {dx: tx, dy: ty} = { dx: sx, dy: sy };
 
-            let sv: PointLike = tile;
-            let tv: PointLike = target;
+            let sv: PointLike = {x: tile.x, y: tile.y};
+            let tv: PointLike = {x: target.x, y: target.y};
             const along = new THREE.Vector2(tv.x - sv.x, tv.y - sv.y);
-            along.normalize();
+            along.normalize().multiplyScalar(w);
 
-            const sd = 0.8;//Math.log(1 + tile.riverPoint.depth);
+            if (!include(target)) {
+                tv.x += sv.x;
+                tv.y += sv.y;
+                tv.x /= 2;
+                tv.y /= 2;
+            } else if (!include(tile)) {
+                sv.x += tv.x;
+                sv.y += tv.y;
+                sv.x /= 2;
+                sv.y /= 2;
+            }
 
             positions.push(tv.x + tx, tv.y + ty);
             positions.push(sv.x + sx, sv.y + sy);
@@ -58,23 +75,20 @@ export function rivers(board: Gameboard) {
             positions.push(tv.x - tx, tv.y - ty);
             positions.push(tv.x + tx, tv.y + ty);
 
-            colors.push(r * sd, g * sd, b * sd);
-            colors.push(r * sd, g * sd, b * sd);
-            colors.push(r * sd, g * sd, b * sd);
-            colors.push(r * sd, g * sd, b * sd);
-            colors.push(r * sd, g * sd, b * sd);
-            colors.push(r * sd, g * sd, b * sd);
+            if (include(target)) {
+                positions.push(tv.x - tx, tv.y - ty);
+                positions.push(tv.x + along.x, tv.y + along.y);
+                positions.push(tv.x + tx, tv.y + ty);
+            }
         }
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 2));
-    geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
 
     const result = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({
         depthTest: false,
         depthWrite: false,
-        vertexColors: true,
-        color: new THREE.Color(0.3,0.2,0.1),
+        color: new THREE.Color(r,g,b),
         side: THREE.DoubleSide
     }));
     return result;

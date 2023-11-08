@@ -11,6 +11,7 @@ export class Tile {
     water: number;
     aquifer: number;
     snow: number;
+    exposure: number;
     adjacents: number[];
 
     riverPoint?: RiverPoint;
@@ -25,6 +26,7 @@ export class Tile {
         this.aquifer = original.aquifer[i];
         this.snow = original.snow[i];
         this.adjacents = original.adjacents[i];
+        this.exposure = original.rockElevation(i) - original.occlusion[i] > 0 ? 1 : 0;
     }
 
     totalElevation() {

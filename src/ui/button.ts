@@ -7,6 +7,7 @@ export type ButtonProps = {
 
 export function createButton({text,onclick}: ButtonProps) {
     const cache = h("button", {
+        key: text,
         onclick
     }, [text]);
     return {

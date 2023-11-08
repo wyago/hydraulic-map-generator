@@ -10,6 +10,7 @@ attribute vec3 waternormal;
 
 uniform vec3 sunlight;
 uniform vec3 light;
+uniform vec3 bouncelight;
 uniform int selected;
 
 uniform int mode;
@@ -20,9 +21,10 @@ varying float vSize;
 void main() {
     if (mode == 0) {
         float rockDot = clamp(dot(rocknormal, light), 0.0, 1.0);
+        float bounceDot = clamp(dot(rocknormal, bouncelight), 0.0, 1.0);
         float totalDot = clamp(dot(waternormal, light), 0.0, 1.0);
 
-        vec3 sunColor = sunlight * rockDot;
+        vec3 sunColor = sunlight * rockDot + sunlight * bounceDot*0.4;
         vec3 ambient = vec3(0.2, 0.2, 0.25);
 
         float depth = water * 10.0;

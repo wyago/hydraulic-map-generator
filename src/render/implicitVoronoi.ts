@@ -128,7 +128,12 @@ export function implicitVoronoi() {
             0.5,
             0.5,
             0.5);
+        const bouncelight = new THREE.Vector3(
+            -0.5,
+            -0.5,
+            0);
         light.normalize();
+        material.uniforms.bouncelight = { value: bouncelight }
         material.uniforms.light = { value: light };
         material.uniforms.sunlight = { value: globalSunlight };
     }

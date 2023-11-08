@@ -25,7 +25,7 @@ import "../ui.css";
 import { createDiagramPanel } from "./diagram";
 
 function generate(configuration: EroderConfiguration) {
-    const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 2000*2000);
+    const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 3000*3000);
     while (gen.step());
 
     const vs = gen.vertices();
@@ -74,14 +74,14 @@ function setupLoading(map: Eroder, wind: () => PointLike, updateMeshes: () => vo
 
 let noise: DistortedNoise;
 function initialState(map: Eroder, wind: PointLike) {
-    noise = new DistortedNoise(0.0011, 10);
+    noise = new DistortedNoise(0.0014, 10);
 
     for (let i = 0; i < map.points.count; ++i) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.7 - Math.sqrt(x*x + y*y)/1900, -0.5, 0.5);
-        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.6, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
+        const plateau = clamp(0.5 - Math.sqrt(x*x + y*y)/2000*0.5, -0.5, 0.5);
+        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.5, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
     map.points.soft.fill(0)
@@ -224,6 +224,24 @@ export function createGenerationUi() {
                     updateMeshes();
                 }
             }),
+            createButton({
+                text: "Solve lakes",
+                onclick: () => {
+                    eroder.solveLakes();
+                    eroder.solveLakes();
+                    eroder.solveLakes();
+                    updateMeshes();
+                }
+            }),
+            createButton({
+                text: "Flood",
+                onclick: () => {
+                    for (let i = 0; i < eroder.points.count; ++i) {
+                        eroder.points.water[i] += eroder.points.rockElevation(i) - eroder.points.occlusion[i] > 0 ? 0.01 : 0;
+                    }
+                    updateMeshes();
+                }
+            }),
             
             createButton({
                 text: "Export",
@@ -294,8 +312,8 @@ export function createGenerationUi() {
                     eroder.spreadWater(true);
                 }
 
-                eroder.solveLakes();
-                eroder.initializeOcclusion(windSelector.getPreferredWind());
+                //eroder.solveLakes();
+                eroder.initializeOcclusion();
                 updateMeshes();
             } else if (controls.flowWater.get()) {
                 eroder.landslide();
@@ -303,8 +321,8 @@ export function createGenerationUi() {
                 for (let i = 0; i < 20; ++i) {
                     eroder.spreadWater(false);
                 }
-                eroder.solveLakes();
-                eroder.initializeOcclusion(windSelector.getPreferredWind());
+                //eroder.solveLakes();
+                eroder.initializeOcclusion();
                 updateMeshes();
             } else if (controls.flowAll.get()) {
                 eroder.landslide();
@@ -312,8 +330,8 @@ export function createGenerationUi() {
                 for (let i = 0; i < 20; ++i) {
                     eroder.spreadWater(true);
                 }
-                eroder.solveLakes();
-                eroder.initializeOcclusion(windSelector.getPreferredWind());
+                //eroder.solveLakes();
+                eroder.initializeOcclusion();
                 updateMeshes();
             }
             windSelector.showWind(eroder.getWind());

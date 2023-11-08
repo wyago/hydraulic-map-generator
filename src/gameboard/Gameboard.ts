@@ -24,7 +24,7 @@ export class Gameboard {
         for (let i = 0; i < this.tiles.length; ++i) {
             const tile = this.tiles[i];
             
-            if (tile.rockElevation() < 0.25 || tile.aquifer < 0.0001) {
+            if (tile.rockElevation() < 0.25 && tile.water > 0.002) {
                 continue;
             }
 
@@ -33,11 +33,16 @@ export class Gameboard {
         return result;
     }
 
+    setRiverScale(scale: number) {
+        this.object.children[0].removeFromParent();
+        this.object.add(rivers(this, scale));
+    }
+
     deriveRivers() {
         const boundary = this.getSprings();
-        boundary.sort((a, b) => a.rockElevation() - b.rockElevation());
+        boundary.sort((a, b) => a.totalElevation() - b.totalElevation());
 
-        boundary.forEach(x => x.riverPoint = new RiverPoint(0.1, 0.5, true, false));
+        boundary.forEach(x => x.riverPoint = new RiverPoint(0.1, 0.07 * x.exposure + x.snow*0.05, false, false));
 
         while (boundary.length > 0) {
             const highest = boundary[boundary.length - 1];
@@ -47,27 +52,17 @@ export class Gameboard {
             const from = highest.riverPoint!;
             from.next = target;
 
-            if (target.rockElevation() < 0.25) {
+            if (target.rockElevation() < 0.25 && target.water > 0.002) {
                 highest.riverPoint!.sink = true;
                 continue;
             }
 
-            if (target.riverPoint) {
-                target.riverPoint.depth += from.depth;
-            } else {
-                const ratio = highest.aquifer/highest.dirt;
-                if (Number.isFinite(ratio)) {
-                    target.riverPoint = new RiverPoint(from.width, Math.max(from.depth + (ratio - 0.9)*0.05, 0.1), false, false);
-                } else {
-                    target.riverPoint = new RiverPoint(from.width, from.depth, false, false);
-                }
-                boundary.push(target);
+            if (target.totalElevation() < highest.totalElevation()) {
+                target.riverPoint!.depth += from.depth - (highest.dirt - highest.aquifer)*0.6;
             }
-            
-            boundary.sort((a, b) => a.rockElevation() - b.rockElevation());
         }
 
-        this.object.add(rivers(this));
+        this.object.add(rivers(this, 0.1));
     }
 
     renderObject() {
