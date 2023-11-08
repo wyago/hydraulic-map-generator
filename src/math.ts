@@ -73,3 +73,12 @@ export function sum(x: number[]) {
 export function id<T>(t: T): T {
     return t;
 }
+
+export function normalized(x: number[]) {
+    const total = sum(x);
+    const result = [...x];
+    for (let i = 0; i < result.length; ++i) {
+        result[i] /= total;
+    }
+    return result;
+}

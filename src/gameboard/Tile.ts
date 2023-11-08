@@ -1,4 +1,5 @@
 import { TileSet } from "../terrain/PointSet";
+import { River } from "./River";
 import { RiverPoint } from "./RiverPoint";
 
 export class Tile {
@@ -14,7 +15,8 @@ export class Tile {
     exposure: number;
     adjacents: number[];
 
-    riverPoint?: RiverPoint;
+    river: RiverPoint;
+    features: River[];
 
     constructor(original: TileSet, i: number) {
         this.i = i;
@@ -27,6 +29,8 @@ export class Tile {
         this.snow = original.snow[i];
         this.adjacents = original.adjacents[i];
         this.exposure = original.rockElevation(i) - original.occlusion[i] > 0 ? 1 : 0;
+        this.river = new RiverPoint(0);
+        this.features = [];
     }
 
     totalElevation() {

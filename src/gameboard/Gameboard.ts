@@ -2,12 +2,14 @@ import * as THREE from "three";
 import { rivers } from "../render/rivers";
 import { Graph } from "../terrain/Graph";
 import { TileSet } from "../terrain/PointSet";
-import { RiverPoint } from "./RiverPoint";
+import { River } from "./River";
 import { Tile } from "./Tile";
+import { makeName } from "./names";
 
 export class Gameboard {
     object: THREE.Object3D;
     tiles: Tile[];
+    rivers: River[];
     graph: Graph;
 
     constructor(original: TileSet) {
@@ -17,6 +19,8 @@ export class Gameboard {
         for (let i = 0; i < original.count; ++i) {
             this.tiles[i] = new Tile(original, i);
         }
+        this.rivers = [];
+        makeName();
     }
 
     getSprings() {
@@ -39,30 +43,58 @@ export class Gameboard {
     }
 
     deriveRivers() {
-        const boundary = this.getSprings();
-        boundary.sort((a, b) => a.totalElevation() - b.totalElevation());
+        const indices = this.getSprings();
+        indices.sort((a, b) => b.totalElevation() - a.totalElevation());
+        indices.forEach(x => x.river.depth = 0.07 * x.exposure + x.snow*0.05);
 
-        boundary.forEach(x => x.riverPoint = new RiverPoint(0.1, 0.07 * x.exposure + x.snow*0.05, false, false));
+        const checked = new Set<Tile>();
+        const springs = new Array<Tile>();
 
-        while (boundary.length > 0) {
-            const highest = boundary[boundary.length - 1];
-            boundary.splice(boundary.length - 1, 1);
+        for (let i = 0; i < indices.length; ++i) {
+            const center = indices[i];
+            if (!checked.has(center) && center.river.depth > 0.5) {
+                springs.push(center);
+            }
+            checked.add(center);
 
-            const target = highest.downhill(this.tiles);
-            const from = highest.riverPoint!;
-            from.next = target;
+            const downhill = center.downhill(this.tiles);
 
-            if (target.rockElevation() < 0.25 && target.water > 0.002) {
-                highest.riverPoint!.sink = true;
+            center.river.next = downhill;
+
+            if (downhill.rockElevation() < 0.25 && downhill.water > 0.002) {
                 continue;
             }
 
-            if (target.totalElevation() < highest.totalElevation()) {
-                target.riverPoint!.depth += from.depth - (highest.dirt - highest.aquifer)*0.6;
+            if (downhill.totalElevation() < center.totalElevation()) {
+                downhill.river.depth += center.river.depth - (downhill.dirt - downhill.aquifer)*0.6;
             }
         }
 
-        this.object.add(rivers(this, 0.1));
+        const assigned = new Set<Tile>();
+        for (let i = 0; i < springs.length; ++i) {
+            const spring = springs[i];
+            if (assigned.has(spring)) {
+                continue;
+            }
+
+            const river = new River();
+
+            let current: Tile | undefined = spring;
+            while (current && current.river.depth > 0.5 && !assigned.has(current)) {
+                assigned.add(current);
+                river.tiles.push(current);
+                current.features.push(river);
+                current = current.river.next;
+            }
+
+            if (current) {
+                river.tiles.push(current);
+                current.features.push(river);
+            }
+
+            this.rivers.push(river);
+            this.object.add(river.renderObject());
+        }
     }
 
     renderObject() {

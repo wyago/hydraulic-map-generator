@@ -14,7 +14,14 @@ export function createDetailingUi(original: TileSet) {
     })
    
     function setupCanvas(element: HTMLCanvasElement) {
-        const {scene, render, renderer} = createCanvas(element);
+        const {scene, render, renderer} = createCanvas(element, ({x, y}) => {
+            const closest = board.graph.closest(x,y,10);
+            if (!closest) {
+                return;
+            }
+
+            console.log(board.tiles[closest].features.map(x => x.name).join(", "));
+        });
     
         renderer.sortObjects = false;
         const voronoi = implicitVoronoi();

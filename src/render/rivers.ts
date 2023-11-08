@@ -39,14 +39,14 @@ export function rivers(board: Gameboard, scale: number) {
     function include(tile: Tile | undefined) {
         return tile &&
             !(tile.water > 0.002) &&
-            (tile.riverPoint && width(tile.riverPoint.depth, scale) > 0.1 && tile.riverPoint.next);
+            (width(tile.riverPoint.depth, scale) > 0.1 && tile.riverPoint.next);
     }
     
     for (let i = 0; i < tiles.length; ++i) {
         const tile = tiles[i];
-        if (include(tile) || include(tile.riverPoint?.next) && width(tile.riverPoint!.depth, scale) > 0.1) {
-            const target = tile.riverPoint!.next!;
-            const w = width(tile.riverPoint!.depth, scale);
+        if (include(tile) || include(tile.river.next) && width(tile.river.depth, scale) > 0.1) {
+            const target = tile.river.next!;
+            const w = width(tile.river.depth, scale);
             const {dx: sx, dy: sy} = offset(tile, w)!;
             const {dx: tx, dy: ty} = { dx: sx, dy: sy };
 
