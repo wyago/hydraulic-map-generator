@@ -74,14 +74,14 @@ function setupLoading(map: Eroder, wind: () => PointLike, updateMeshes: () => vo
 
 let noise: DistortedNoise;
 function initialState(map: Eroder, wind: PointLike) {
-    noise = new DistortedNoise(0.0014, 10);
+    noise = new DistortedNoise(0.0016, 10);
 
     for (let i = 0; i < map.points.count; ++i) {
         const x = map.points.x(i);
         const y = map.points.y(i);
 
-        const plateau = clamp(0.5 - Math.sqrt(x*x + y*y)/2000*0.5, -0.5, 0.5);
-        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.5, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
+        const plateau = clamp(0.5 - Math.sqrt(x*x + y*y)/2000*0.5, -0.5, 0.4);
+        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.6, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         map.points.hard[i] = elevation;
     }
     map.points.soft.fill(0)
@@ -107,11 +107,11 @@ export function createGenerationUi() {
         }),
         siltAngle: createNumberInput({
             name: "Silt maximum elevation difference",
-            start: 0.05,
+            start: 0.08,
         }),
         rockAngle: createNumberInput({
             name: "Rock maximum elevation difference",
-            start: 0.07,
+            start: 0.09,
         }),
         water: createNumberInput({
             name: "Water height",

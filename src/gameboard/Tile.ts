@@ -45,6 +45,20 @@ export class Tile {
         return this.rock + this.dirt;
     }
 
+    spill(tiles: Tile[]) {
+        const down = this.downWaterTable(tiles);
+        const space = down.dirt - down.aquifer;
+        const delta = this.waterTable() - down.waterTable();
+
+        if (delta < 0) {
+            return 0;
+        }
+        
+        const transfer = Math.min(delta * 0.5, this.aquifer);
+        const spill = Math.max(0, transfer - space);
+        return transfer;
+    }
+
     downhill(tiles: Tile[]) {
         let min = Number.MAX_VALUE;
         let result = tiles[0];

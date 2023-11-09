@@ -16,11 +16,11 @@ export function starfield() {
     geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 2 ) );
     geometry.setAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
 
-    const result= new THREE.Object3D();
-    result.add(new THREE.Points( geometry, new THREE.PointsMaterial({
+    const result = new THREE.Points( geometry, new THREE.PointsMaterial({
         size: 1,
         vertexColors: true,
-    })));
+    }));
+    result.frustumCulled = false;
 
     return result;
 }

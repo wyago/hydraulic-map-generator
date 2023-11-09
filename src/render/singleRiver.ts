@@ -34,12 +34,12 @@ export function singleRiver() {
     let r = 0.038;
     let g = 0.02;
     let b = 0.01;
-    const result= new THREE.Object3D();
-    result.add(new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({
+    const result= new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({
         depthTest: false,
         color: new THREE.Color(r,g,b),
         blending: THREE.SubtractiveBlending
-    })));
+    }));
+    result.frustumCulled = false;
     return {
         object: result,
         update(path: ArrayLike<PointLike>) {

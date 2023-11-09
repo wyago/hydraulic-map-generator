@@ -7,7 +7,7 @@ export function createCanvas(canvas: HTMLCanvasElement, clientmove?: (e: {x: num
     let aspect: number;
 
     let zoom = 30;
-    const renderer = new THREE.WebGLRenderer({ canvas });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     const sizeWatcher = () => {
         renderer.setSize( window.innerWidth, window.innerHeight );
         aspect = document.body.clientWidth / document.body.clientHeight;

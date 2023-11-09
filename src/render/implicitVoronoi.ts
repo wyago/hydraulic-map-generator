@@ -119,8 +119,6 @@ export function implicitVoronoi() {
         blending: THREE.NormalBlending,
     });
 
-    const result= new THREE.Object3D();
-    result.add(new THREE.Points( geometry, material ))
 
     function updateUniforms() {
         globalSunlight.set(0.9,0.9, 0.85);
@@ -139,6 +137,8 @@ export function implicitVoronoi() {
     }
 
     let start = 0;
+    const result= new THREE.Points( geometry, material );
+    result.frustumCulled = false;
 
     return {
         object: result,

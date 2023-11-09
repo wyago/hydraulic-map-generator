@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { rivers } from "../render/rivers";
 import { Graph } from "../terrain/Graph";
 import { TileSet } from "../terrain/PointSet";
 import { River } from "./River";
@@ -38,14 +37,13 @@ export class Gameboard {
     }
 
     setRiverScale(scale: number) {
-        this.object.children[0].removeFromParent();
-        this.object.add(rivers(this, scale));
+        this.rivers.forEach(river => river.setScale(scale));
     }
 
     deriveRivers() {
         const indices = this.getSprings();
         indices.sort((a, b) => b.totalElevation() - a.totalElevation());
-        indices.forEach(x => x.river.depth = 0.07 * x.exposure + x.snow*0.05);
+        indices.forEach(x => x.river.depth = 0.03 * x.exposure + x.snow*0.05 + 30*x.spill(this.tiles));
 
         const checked = new Set<Tile>();
         const springs = new Array<Tile>();
@@ -92,8 +90,10 @@ export class Gameboard {
                 current.features.push(river);
             }
 
+            river.initialize();
+
             this.rivers.push(river);
-            this.object.add(river.renderObject());
+            this.object.add(river.renderObject);
         }
     }
 
