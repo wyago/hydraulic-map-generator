@@ -43,7 +43,7 @@ export class Eroder {
         for (let i = 0; i < this.points.count; ++i) {
             if (this.points.rockElevation(i) < waterHeight) {
                 this.points.water[i] = waterHeight - this.points.rockElevation(i);
-                this.points.aquifer[i] = 0.7*this.points.soft[i];
+                this.points.aquifer[i] = this.points.soft[i];
             }
         }
     }
@@ -127,16 +127,35 @@ export class Eroder {
     }
 
     rain() {
+        let evaporation = 0;
+        let count = 0;
         const waterHeight = this.configuration.water.get();
         for (let i = 0; i < this.points.count; ++i) {
             if (this.points.rockElevation(i) < waterHeight) {
                 continue;
             }
+            count += 1;
+            if (this.points.water[i] > 0) {
+                const amount = Math.min(0.0001 * this.points.water[i], this.points.water[i]);
+                evaporation += amount;
+                this.points.water[i] -= amount;
+            } else {
+                const amount = this.points.aquifer[i] * 0.0005;
+                evaporation += amount;
+                this.points.aquifer[i] -= amount;
+            }
+        }
+
+        evaporation /= count;
+        for (let i = 0; i < this.points.count; ++i) {
+            if (this.points.rockElevation(i) < waterHeight) {
+                continue;
+            }
             const exposure = this.points.rockElevation(i) > this.points.occlusion[i] ? 1 : 0;
-            const base = 0.00001;
-            const transfer = base*(exposure + 0.0001);
+            const base = 0.00002;
+            const transfer = base*(exposure + 0.0001) + evaporation;
             const aquiferFill = 0;//Math.min(transfer, this.points.aquiferSpace(i)*0.1);
-            const water = transfer - aquiferFill;
+            const water = (transfer - aquiferFill);
             this.points.water[i] += water;
             this.points.aquifer[i] += aquiferFill;
 
@@ -319,7 +338,7 @@ export class Eroder {
                 this.points.water[i] -= soak;
             }
             
-            this.points.vegetation[i] = clamp(this.points.aquifer[i]*1.05/(this.points.aquiferCapacity(i)+0.01), 0, 1);
+            this.points.vegetation[i] = clamp(this.points.aquifer[i]*1.01/(this.points.aquiferCapacity(i)+0.01), 0, 1);
         
             let release = this.points.aquifer[i] - this.points.aquiferCapacity(i);
             if (release > 0) {
