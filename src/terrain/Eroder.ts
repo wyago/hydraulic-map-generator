@@ -154,7 +154,7 @@ export class Eroder {
             const exposure = this.points.rockElevation(i) > this.points.occlusion[i] ? 1 : 0;
             const base = 0.00002;
             const transfer = base*(exposure + 0.0001) + evaporation;
-            const aquiferFill = 0;//Math.min(transfer, this.points.aquiferSpace(i)*0.1);
+            const aquiferFill = Math.min(transfer, this.points.aquiferSpace(i)*0.1);
             const water = (transfer - aquiferFill);
             this.points.water[i] += water;
             this.points.aquifer[i] += aquiferFill;
