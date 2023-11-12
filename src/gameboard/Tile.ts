@@ -56,7 +56,7 @@ export class Tile {
         
         const transfer = Math.min(delta * 0.5, this.aquifer);
         const spill = Math.max(0, transfer - space);
-        return transfer;
+        return spill;
     }
 
     downhill(tiles: Tile[]) {

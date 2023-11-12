@@ -43,7 +43,7 @@ export class Gameboard {
     deriveRivers() {
         const indices = this.getSprings();
         indices.sort((a, b) => b.totalElevation() - a.totalElevation());
-        indices.forEach(x => x.river.depth = 0.03 * x.exposure + x.snow*0.05 + 30*x.spill(this.tiles));
+        indices.forEach(x => x.river.depth = 0.06 * x.exposure + x.snow*0.05 + 30*x.spill(this.tiles));
 
         const checked = new Set<Tile>();
         const springs = new Array<Tile>();
@@ -64,7 +64,7 @@ export class Gameboard {
             }
 
             if (downhill.totalElevation() < center.totalElevation()) {
-                downhill.river.depth += center.river.depth - (downhill.dirt - downhill.aquifer)*0.6;
+                downhill.river.depth += center.river.depth - (downhill.dirt - downhill.aquifer);
             }
         }
 

@@ -228,8 +228,6 @@ export function createGenerationUi() {
                 text: "Solve lakes",
                 onclick: () => {
                     eroder.solveLakes();
-                    eroder.solveLakes();
-                    eroder.solveLakes();
                     updateMeshes();
                 }
             }),
@@ -306,13 +304,12 @@ export function createGenerationUi() {
                 eroder.passTime();
                 eroder.fixWater();
                 eroder.landslide();
-                eroder.spreadSnow();
                 for (let i = 0; i < 20; ++i) {
                     eroder.rain();
                     eroder.spreadWater(true);
                 }
 
-                //eroder.solveLakes();
+                eroder.solveLakes(true);
                 eroder.initializeOcclusion();
                 updateMeshes();
             } else if (controls.flowWater.get()) {
@@ -330,7 +327,7 @@ export function createGenerationUi() {
                 for (let i = 0; i < 20; ++i) {
                     eroder.spreadWater(true);
                 }
-                //eroder.solveLakes();
+                eroder.solveLakes(true);
                 eroder.initializeOcclusion();
                 updateMeshes();
             }

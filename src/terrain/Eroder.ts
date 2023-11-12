@@ -52,32 +52,6 @@ export class Eroder {
         this.points.vegetation[current] = clamp(Math.log(this.points.aquifer[current]*4 + 1) - this.points.water[current]*20, 0, 1);
     }
 
-    spreadSnow() {
-        for (let current = 0; current < this.points.count; ++current) {
-            if (this.points.snow[current] > 0) {
-                let target = this.points.downhill(current);
-                const snowDelta = this.points.snow[current] - this.points.snow[target];
-                const delta = this.points.rockElevation(current) - this.points.rockElevation(target);
-                const slide = Math.min(snowDelta * 0.5, delta * 0.2);
-                this.points.snow[current] -= slide;
-                this.points.snow[target] += slide;
-
-                if (delta > 0) {
-                    const scrape = Math.min(slide*slide*10, this.points.hard[current], delta*0.4);
-                    this.points.hard[current] -= scrape;
-                    this.points.hard[target] += scrape;
-                }
-
-                if (this.points.rockElevation(current) < 0.7) {
-                    const melt = Math.min(0.001, this.points.snow[current]);
-                    this.points.snow[current] -= melt;
-                    this.points.water[target] += melt*0.01;
-                }
-                this.points.snow[current] = clamp(this.points.snow[current], 0, 1);
-            }
-        }
-    }
-
     maxElevation = 0;
     passTime() {
         this.maxElevation = 0;
@@ -93,7 +67,7 @@ export class Eroder {
         }
     }
 
-    solveLakes() {
+    solveLakes(occluded = false) {
         const waterHeight = this.configuration.water.get();
         this.points.river.fill(0);
         let more = false;
@@ -101,7 +75,10 @@ export class Eroder {
             if (this.points.rockElevation(i) < waterHeight) {
                 continue;
             }
-            more = this.findMinimum(i) || more;
+            if (occluded && this.points.rockElevation(i) < this.points.occlusion[i]) {
+                continue;
+            }
+            while (this.findMinimum(i));
         }
         return more;
     }
@@ -109,13 +86,13 @@ export class Eroder {
     findMinimum(source: number) {
         let current = source;
         const waterHeight = this.configuration.water.get();
-        for (let i = 0; i < 10000; ++i) {
+        for (let i = 0; i < 100000; ++i) {
             if (this.points.rockElevation(current) < waterHeight) {
                 return false;
             }
             const target = this.points.downhill(current);
             let delta = this.points.totalElevation(current) - this.points.totalElevation(target);
-            if (delta < 0) {
+            if (delta <= 0) {
                 const transfer = -delta + 0.001;
                 this.points.water[current] += transfer;
             }
@@ -152,9 +129,9 @@ export class Eroder {
                 continue;
             }
             const exposure = this.points.rockElevation(i) > this.points.occlusion[i] ? 1 : 0;
-            const base = 0.00002;
+            const base = 0.000007;
             const transfer = base*(exposure + 0.0001) + evaporation;
-            const aquiferFill = Math.min(transfer, this.points.aquiferSpace(i)*0.1);
+            const aquiferFill = 0;//Math.min(transfer, this.points.aquiferSpace(i)*0.05);
             const water = (transfer - aquiferFill);
             this.points.water[i] += water;
             this.points.aquifer[i] += aquiferFill;
@@ -220,7 +197,7 @@ export class Eroder {
             const length = this.points.byDirection(current, this.wind, targets, 0.5);
             for (let j = 0; j < length; ++j) {
                 const target = targets[j];
-                this.points.occlusion[target] =  Math.max(this.points.totalElevation(current), this.points.totalElevation(target), this.points.occlusion[current]) - 0.002;
+                this.points.occlusion[target] =  Math.max(this.points.totalElevation(current), this.points.totalElevation(target), this.points.occlusion[current]) * 0.99;
             }
         }
     }
@@ -235,7 +212,7 @@ export class Eroder {
     extractPacket(source: number, delta: number, rockDelta: number) {
         const transfer = Math.min(delta * 0.5, this.points.water[source]);
         const siltTransfer = Math.min(transfer / this.points.water[source] * this.points.silt[source], this.points.silt[source]);
-        this.simpleErode(source, transfer*80);
+        this.simpleErode(source, transfer*50);
         this.packet.water = transfer;
         this.waterBuffer[source] -= transfer;
         this.siltBuffer[source] -= siltTransfer;
@@ -333,7 +310,7 @@ export class Eroder {
             const water = this.points.water[i];
             const aquiferSpace = this.points.aquiferSpace(i);
             if (aquiferSpace > 0 && water > 0) {
-                const soak = Math.min(water*0.02, aquiferSpace, 0.0002);
+                const soak = Math.min(water*0.005, aquiferSpace, 0.00005);
                 this.points.aquifer[i] += soak;
                 this.points.water[i] -= soak;
             }

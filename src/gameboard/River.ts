@@ -31,7 +31,7 @@ function normal(tiles: Tile[], i: number, width: number) {
 }
 
 function width(depth: number, scale: number) {
-    return clamp(Math.log(depth * scale + 1), 0, 4);
+    return Math.log(depth * scale + 1);
 }
 
 export class River {
