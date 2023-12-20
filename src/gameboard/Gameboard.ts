@@ -1,37 +1,34 @@
 import * as THREE from "three";
-import { Graph } from "../terrain/Graph";
-import { TileSet } from "../terrain/PointSet";
+import { TileSet as PointSet } from "../terrain/PointSet";
 import { River } from "./River";
-import { Tile } from "./Tile";
-import { makeName } from "./names";
 
 export class Gameboard {
     object: THREE.Object3D;
-    tiles: Tile[];
+    points: PointSet;
     rivers: River[];
-    graph: Graph;
 
-    constructor(original: TileSet) {
+    constructor(original: PointSet) {
         this.object = new THREE.Object3D();
-        this.graph = original.graph;
-        this.tiles = new Array<Tile>(original.count);
-        for (let i = 0; i < original.count; ++i) {
-            this.tiles[i] = new Tile(original, i);
-        }
+        this.points = original;
         this.rivers = [];
-        makeName();
+    }
+
+    marshal() {
+        return {
+            gameboardversion: "0",
+            points: this.points.marshal(),
+            rivers: this.rivers.map(r => r.marshal(this.rivers))
+        }
     }
 
     getSprings() {
-        const result = new Array<Tile>();
-        for (let i = 0; i < this.tiles.length; ++i) {
-            const tile = this.tiles[i];
-            
-            if (tile.rockElevation() < 0.25 && tile.water > 0.002) {
+        const result = new Array<number>();
+        for (let i = 0; i < this.points.count; ++i) {
+            if (this.points.rockElevation(i) < 0.25 && this.points.water[i] > 0.002) {
                 continue;
             }
 
-            result.push(tile);
+            result.push(i);
         }
         return result;
     }
@@ -42,33 +39,31 @@ export class Gameboard {
 
     deriveRivers() {
         const indices = this.getSprings();
-        indices.sort((a, b) => b.totalElevation() - a.totalElevation());
-        indices.forEach(x => x.river.depth = 0.06 * x.exposure + x.snow*0.05 + 30*x.spill(this.tiles));
+        indices.sort((a, b) => this.points.totalElevation(b) - this.points.totalElevation(a));
+        indices.forEach(x => this.points.river[x] = 0.02 * this.points.exposure(x) + 0.1*this.points.spill(x));
 
-        const checked = new Set<Tile>();
-        const springs = new Array<Tile>();
+        const checked = new Set<number>();
+        const springs = new Array<number>();
 
         for (let i = 0; i < indices.length; ++i) {
             const center = indices[i];
-            if (!checked.has(center) && center.river.depth > 0.5) {
+            if (!checked.has(center) && this.points.river[center] > 0.2) {
                 springs.push(center);
             }
             checked.add(center);
 
-            const downhill = center.downhill(this.tiles);
+            const downhill = this.points.downhill(center);
 
-            center.river.next = downhill;
-
-            if (downhill.rockElevation() < 0.25 && downhill.water > 0.002) {
+            if (this.points.rockElevation(downhill) < 0.25 && this.points.water[downhill] > 0.002) {
                 continue;
             }
 
-            if (downhill.totalElevation() < center.totalElevation()) {
-                downhill.river.depth += center.river.depth - (downhill.dirt - downhill.aquifer);
+            if (this.points.totalElevation(downhill) < this.points.totalElevation(center)) {
+                this.points.river[downhill] += this.points.river[center];
             }
         }
 
-        const assigned = new Set<Tile>();
+        const assigned = new Set<number>();
         for (let i = 0; i < springs.length; ++i) {
             const spring = springs[i];
             if (assigned.has(spring)) {
@@ -77,20 +72,18 @@ export class Gameboard {
 
             const river = new River();
 
-            let current: Tile | undefined = spring;
-            while (current && current.river.depth > 0.5 && !assigned.has(current)) {
+            let current: number | undefined = spring;
+            while (current !== undefined && this.points.river[current] > 0.5 && !assigned.has(current)) {
                 assigned.add(current);
                 river.tiles.push(current);
-                current.features.push(river);
-                current = current.river.next;
+                current = this.points.downhill(current);
             }
 
             if (current) {
                 river.tiles.push(current);
-                current.features.push(river);
             }
 
-            river.initialize();
+            river.initialize(this.points);
 
             this.rivers.push(river);
             this.object.add(river.renderObject);

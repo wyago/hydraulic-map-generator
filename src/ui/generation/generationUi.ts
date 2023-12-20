@@ -172,7 +172,7 @@ export function createGenerationUi() {
     const exportTerrain = () => {
         var element = document.createElement('a');
 
-        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(eroder.points.marshal()));
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify(eroder.points.marshal())));
         element.setAttribute('download', "map.json");
 
         element.style.display = 'none';

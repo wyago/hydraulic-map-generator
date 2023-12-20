@@ -9,19 +9,27 @@ export function createDetailingUi(original: TileSet) {
     const board = new Gameboard(original);
     board.deriveRivers();
 
+    const exportTerrain = () => {
+        var element = document.createElement('a');
+
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify(board.marshal())));
+        element.setAttribute('download', "map.json");
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+    };
+
     const controlPanel = createControls(() => {
         board.setRiverScale(controlPanel.controls.riverScale.get());
-    })
+    }, exportTerrain);
+    
    
     function setupCanvas(element: HTMLCanvasElement) {
-        const {scene, render, renderer} = createCanvas(element, ({x, y}) => {
-            const closest = board.graph.closest(x,y,10);
-            if (!closest) {
-                return;
-            }
-
-            console.log(board.tiles[closest].features.map(x => x.name).join(", "));
-        });
+        const {scene, render, renderer} = createCanvas(element);
     
         renderer.sortObjects = false;
         const voronoi = implicitVoronoi();

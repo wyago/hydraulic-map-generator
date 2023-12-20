@@ -1,7 +1,7 @@
 import { BufferAttribute, BufferGeometry, DoubleSide, Mesh, ShaderMaterial, Vector2, Vector3 } from "three";
 import { PointLike } from "../PointLike";
 import { clamp } from "../math";
-import { Tile } from "./Tile";
+import { TileSet } from "../terrain/PointSet";
 import lineFragment from "./lineFragment.glsl";
 import lineVertex from "./lineVertex.glsl";
 import { makeName } from "./names";
@@ -9,18 +9,14 @@ import { makeName } from "./names";
 const toV = new Vector2();
 const centerV = new Vector2();
 const fromV = new Vector2();
-function normal(tiles: Tile[], i: number, width: number) {
-    const fromI = clamp(i - 1, 0, tiles.length - 1);
-    const centerI = clamp(i, 0, tiles.length - 1);
-    const toI = clamp(i + 1, 0, tiles.length - 1);
+function normal(tiles: number[], set: TileSet, i: number, width: number) {
+    const from = tiles[clamp(i - 1, 0, tiles.length - 1)];
+    const center = tiles[clamp(i, 0, tiles.length - 1)];
+    const to = tiles[clamp(i + 1, 0, tiles.length - 1)];
 
-    const from = tiles[fromI];
-    const center = tiles[centerI];
-    const to = tiles[toI];
-
-    toV.set(to.x, to.y);
-    fromV.set(from.x, from.y);
-    centerV.set(center.x, center.y);
+    fromV.set(set.x(from), set.y(from));
+    centerV.set(set.x(center), set.y(center));
+    toV.set(set.x(to), set.y(to));
 
     const toNext = toV.sub(centerV);
     const toCenter = centerV.sub(fromV);
@@ -30,13 +26,14 @@ function normal(tiles: Tile[], i: number, width: number) {
     return new Vector2(-toNext.y, toNext.x);
 }
 
-function width(depth: number, scale: number) {
-    return Math.log(depth * scale + 1);
+function width(points: TileSet, i: number) {
+    return 1;
+    return Math.log(points.river[i] * 0.1 + 1);
 }
 
 export class River {
     name: string;
-    tiles: Tile[];
+    tiles: number[];
     feeders: River[];
 
     renderObject: Mesh;
@@ -47,7 +44,15 @@ export class River {
         this.feeders = [];
     }
 
-    initialize() {
+    marshal(rivers: River[]) {
+        return {
+            name: this.name,
+            tiles: this.tiles,
+            feeders: this.feeders.map(f => rivers.indexOf(f))
+        };
+    }
+
+    initialize(points: TileSet) {
         const geometry = new BufferGeometry();
         const positions = new Array<number>(0);
         const normals = new Array<number>(0);
@@ -56,14 +61,13 @@ export class River {
         for (let i = 0; i < tiles.length - 1; ++i) {
             const from = tiles[i];
             const to = tiles[i+1];
-            const w = width(from.river.depth, 0.1);
-            const sn = normal(tiles, i, w);
-            const tn = normal(tiles, i + 1, w);
+            const sn = normal(tiles, points, i, width(points, from));
+            const tn = normal(tiles, points, i + 1, width(points, from));
 
-            let sv: PointLike = {x: from.x, y: from.y};
-            let tv: PointLike = {x: to.x, y: to.y};
+            let sv: PointLike = {x: points.x(from), y: points.y(from)};
+            let tv: PointLike = {x: points.x(to), y: points.y(to)};
 
-            if (!to.river.next) {
+            if (i === tiles.length - 2 && points.water[to] >= 0.002) {
                 tv.x += sv.x;
                 tv.y += sv.y;
                 tv.x /= 2;

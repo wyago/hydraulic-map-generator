@@ -1,7 +1,8 @@
+import { createButton } from "../button";
 import { createPanel } from "../panel";
 import { createSliderInput } from "../sliderInput";
 
-export function createControls(onchange: () => void) {
+export function createControls(onchange: () => void, onexport: () => void) {
     const controls = {
         riverScale: createSliderInput({
             name: "River scale",
@@ -10,6 +11,10 @@ export function createControls(onchange: () => void) {
             max: 1,
             onchange
         }),
+        export: createButton({
+            text: "Export",
+            onclick: onexport
+        })
     }
 
     const controlPanel = createPanel({
@@ -17,6 +22,7 @@ export function createControls(onchange: () => void) {
         defaultOpen: true,
         children: [
             controls.riverScale,
+            controls.export,
         ]
     });
 

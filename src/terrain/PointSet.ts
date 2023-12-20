@@ -91,6 +91,24 @@ export class TileSet {
         return this.graph.xys[i*2+1];
     }
 
+    exposure(i: number) {
+        return this.occlusion[i] > this.totalElevation(i) ? 1 : 0;
+    }
+
+    spill(i: number) {
+        const down = this.waterTableDownhill(i);
+        const space = this.soft[down] - this.aquifer[down];
+        const delta = this.waterTable(i) - this.waterTable(down);
+
+        if (delta < 0) {
+            return 0;
+        }
+        
+        const transfer = Math.min(delta * 0.5, this.aquifer[i]);
+        const spill = Math.max(0, transfer - space);
+        return spill;
+    }
+
     downhill(i: number) {
         let min = Number.MAX_VALUE;
         const adjacents = this.adjacents[i];
@@ -230,16 +248,18 @@ export class TileSet {
     }
 
     marshal() {
-        return `{
+        return {
             "tilesetversion": 1,
-            "xys": [${[...this.graph.xys].map(x => x.toFixed(1)).join(",")}],
-            "hard": [${[...this.hard].map(x => x.toFixed(5)).join(",")}],
-            "soft": [${[...this.soft].map(x => x.toFixed(5)).join(",")}],
-            "water": [${[...this.water].map(x => x.toFixed(5)).join(",")}],
-            "aquifer": [${[...this.aquifer].map(x => x.toFixed(5)).join(",")}],
-            "vegetation": [${[...this.vegetation].map(x => x.toFixed(5)).join(",")}],
-            "snow": [${[...this.snow].map(x => x.toFixed(5)).join(",")}]
-        }`
+            "xys": [...this.graph.xys],
+            "hard": [...this.hard],
+            "soft": [...this.soft],
+            "water": [...this.water],
+            "aquifer": [...this.aquifer],
+            "vegetation": [...this.vegetation],
+            "snow": [...this.snow],
+            "adjacents": this.adjacents,
+            "river": [...this.river]
+        }
     }
 
     unmarshal(json: any) {
