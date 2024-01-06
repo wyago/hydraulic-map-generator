@@ -4,16 +4,25 @@ struct VertexOut {
     @location(1) offset : vec2f
 }
 
+@group(0) @binding(0)
+var<uniform> zoom : f32;
+
 @vertex
 fn vertex_main(
     @location(0) position: vec2f,
     @location(1) offset: vec2f,
     @location(2) hard: f32,
     @location(3) water: f32,
-    @location(4) rocknormal: vec3f
+    @location(4) rocknormal: vec3f,
+    @location(5) soft: f32,
 ) -> VertexOut {
     var output: VertexOut;
-    output.position = vec4f((position + offset)*0.001, 0, 1);
+    output.position = vec4f((position + offset)*zoom, 0, 1);
+
+    var rock_albedo = vec3f(0.49, 0.38, 0.56);
+    var softrock_albedo = vec3f(0.28, 0.16, 0.15);
+
+    var albedo = mix(rock_albedo, softrock_albedo, (soft)/(soft + hard));
 
     var light = vec3f(0.5, 0.5, 0.5);
     var rockDot = clamp(dot(rocknormal, light), 0.0, 1.0);
@@ -31,9 +40,9 @@ fn vertex_main(
     var subtractor = vec3f(0.18, 0.13, 0.12) * depth;
     var transit = sunColor * (1.0 - reflect) - subtractor;
 
-    var vColor= (transit + ambient) + vec3f(0,0.05,0.12)*water;
+    var vColor= (transit + ambient)*albedo + vec3f(0,0.05,0.12)*water;
 
-    output.color = vec3f(hard);
+    output.color = vColor;
     output.offset = position;
     return output;
 }

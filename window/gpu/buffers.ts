@@ -46,7 +46,7 @@ function initialState(map: Graph) {
         const x = map.x(i);
         const y = map.y(i);
 
-        const plateau = clamp(0.5 - Math.sqrt(x*x + y*y)/2000*0.5, -0.5, 0.4);
+        const plateau = clamp(0.5 - Math.sqrt(x*x + y*y)/7800*0.5, -0.5, 0.4);
         const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.6, 0.01, 0.9) + noise.noise(x,y)*0.1 + 0.1, 0, 1);
         result[i * 6] = elevation;
         result[i * 6 + 1] = Math.max(0.25 - elevation, 0);
@@ -84,7 +84,7 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
     });
 
     const normals = device.createBuffer({
-        size: count * 3 * Float32Array.BYTES_PER_ELEMENT,
+        size: count * 4 * Float32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.VERTEX |  GPUBufferUsage.STORAGE
     });
 

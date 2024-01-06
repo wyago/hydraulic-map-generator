@@ -29,10 +29,7 @@ var<storage, read_write> normals: array<vec3f>;
 var<storage, read_write> positions: array<vec2f>;
 
 fn rockElevation(i: u32) -> f32 {
-    return 0;//(tiles[i].hard + tiles[i].soft)*1.0;
-}
-fn elevation(i: u32) -> f32 {
-    return 0;//(tiles[i].hard + tiles[i].soft + tiles[i].water)*1.0;
+    return (tiles[i].hard + tiles[i].soft)*100.0;
 }
 
 @compute @workgroup_size(64)
@@ -51,21 +48,17 @@ fn main(
     var base = adjacent_indices[center].base;
     var adjacent_count = adjacent_indices[center].length;
 
-    normals[0] = vec3f(1,0,0);
-    normals[1] = vec3f(1,0,0);
-    return;
-
     var rocknormal = vec3f(0,0,0);
     var rock_elevation = vec3f(positions[center].xy, rockElevation(center));
     var half = adjacent_count/2;
-    for (var i = 0; i < adjacent_count; i++) {
+    for (var i = 0; i <adjacent_count; i++) {
         var adj1 = adjacents[base + i];
-        var adj2 = adjacents[base + (i+half)%adjacent_count];
+        var adj2 = adjacents[base + (i+1)%adjacent_count];
 
         var firstr = vec3f(positions[adj1].xy, rockElevation(adj1)) - rock_elevation;
         var secondr = vec3f(positions[adj2].xy, rockElevation(adj2)) - rock_elevation;
 
-        rocknormal += normalize(cross(firstr, secondr));
+        rocknormal += cross(firstr, secondr);
     }
 
     rocknormal /= f32(adjacent_count);

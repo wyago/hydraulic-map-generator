@@ -2,6 +2,7 @@
 import { VNodeProperties, h } from "maquette";
 import { createBuffers } from "../../gpu/buffers";
 import { erosionPass } from "../../gpu/compute/erosionPass";
+import { fixWaterPass } from "../../gpu/compute/fixWaterPass";
 import { normalsPass } from "../../gpu/compute/normalsPass";
 import { getDevice } from "../../gpu/globalDevice";
 import { implicitVoronoiRenderer } from "../../gpu/implicitvoronoi";
@@ -26,7 +27,7 @@ export function createGpuUi() {
             usage: GPUTextureUsage.RENDER_ATTACHMENT
         }).createView();
 
-        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 1000*1000);
+        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 6000*6000);
         while (gen.step());
     
         const vs = gen.vertices();
@@ -35,11 +36,17 @@ export function createGpuUi() {
         const render = implicitVoronoiRenderer(device, context, buffers, depth);
         const erode = erosionPass(device, buffers);
         const normals = normalsPass(device, buffers);
+        const fixWater = fixWaterPass(device, buffers);
+
+        let zoom = 10.1;
+        element.addEventListener("wheel", e => {
+            zoom -= e.deltaY * 0.01;
+        });
 
         function frame() {
-            render();
+            render(Math.pow(2, zoom));
             for (let i = 0; i < 1; i++)
-                device.queue.submit([erode(), normals()]);
+                device.queue.submit([erode(), normals(), fixWater()]);
             requestAnimationFrame(frame);
         }
         requestAnimationFrame(frame);
