@@ -1,3 +1,3 @@
 node_modules/
-public/terrainWorker/*
-public/window/*
+public/window.js
+public/window.css

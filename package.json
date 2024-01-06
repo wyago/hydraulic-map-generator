@@ -5,9 +5,9 @@
     "main": "index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "build": "esbuild window/window.ts terrainWorker/terrain.ts --bundle --outdir=public --target=es6 --loader:.glsl=text ",
-        "build-min": "esbuild window/window.ts terrainWorker/terrain.ts  --minify --bundle --outdir=public --loader:.glsl=text ",
-        "start": "esbuild window/window.ts terrainWorker/terrain.ts --bundle --outdir=public  --target=es6 --watch --servedir=public --loader:.glsl=text --sourcemap"
+        "build": "esbuild window/window.ts  --bundle --outdir=public --target=es6 --loader:.glsl=text ",
+        "build-min": "esbuild window/window.ts   --minify --bundle --outdir=public --loader:.glsl=text ",
+        "start": "esbuild window/window.ts  --bundle --outdir=public  --target=es6 --watch --servedir=public --loader:.glsl=text --loader:.wgsl=text --sourcemap"
     },
     "author": "Wyatt Goodin",
     "license": "MIT",
@@ -17,6 +17,7 @@
         "@types/rbush": "^3.0.0",
         "@types/three": "^0.154.0",
         "@types/uuid": "9.0.4",
+        "@webgpu/types": "^0.1.40",
         "esbuild": "0.19.3",
         "typescript": "5.2.2"
     },

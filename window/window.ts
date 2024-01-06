@@ -1,9 +1,9 @@
 import { globalProjector } from "./projector";
 import { root, setRoot } from "./root";
-import { createGenerationUi } from "./ui/generation/generationUi";
+import { createGpuUi } from "./ui/gpu/gpuUi";
 
 window.addEventListener("load", () => {
-    setRoot(createGenerationUi());
+    setRoot(createGpuUi());
 
     globalProjector.replace(document.body, () => root.realize());
 });
