@@ -27,7 +27,7 @@ export function createGpuUi() {
             usage: GPUTextureUsage.RENDER_ATTACHMENT
         }).createView();
 
-        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 6000*6000);
+        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 8000*8000);
         while (gen.step());
     
         const vs = gen.vertices();
@@ -38,14 +38,14 @@ export function createGpuUi() {
         const normals = normalsPass(device, buffers);
         const fixWater = fixWaterPass(device, buffers);
 
-        let zoom = 10.1;
+        let zoom = -12;
         element.addEventListener("wheel", e => {
-            zoom -= e.deltaY * 0.01;
+            zoom -= e.deltaY * 0.002;
         });
 
         function frame() {
             render(Math.pow(2, zoom));
-            for (let i = 0; i < 1; i++)
+            for (let i = 0; i < 10; i++)
                 device.queue.submit([erode(), normals(), fixWater()]);
             requestAnimationFrame(frame);
         }

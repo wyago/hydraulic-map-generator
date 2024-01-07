@@ -29,7 +29,7 @@ var<storage, read_write> normals: array<vec3f>;
 var<storage, read_write> positions: array<vec2f>;
 
 fn rockElevation(i: u32) -> f32 {
-    return (tiles[i].hard + tiles[i].soft)*100.0;
+    return (tiles[i].hard + tiles[i].soft)*250.0;
 }
 
 @compute @workgroup_size(64)

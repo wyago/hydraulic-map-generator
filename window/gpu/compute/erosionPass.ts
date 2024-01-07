@@ -15,21 +15,29 @@ export function erosionPass(device: GPUDevice, buffers: Buffers) {
             binding: 2,
             visibility: GPUShaderStage.COMPUTE,
             buffer: { type: "storage" }
+        }, {
+            binding: 3,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" }
         }],
     });
     const bindGroup = device.createBindGroup({
         layout,
         entries: [{
             binding: 0,
-            resource: { buffer: buffers.tileProperties }
+            resource: { buffer: buffers.tilePropertiesA }
         }, {
             binding: 1,
             resource: { buffer: buffers.tileAdjacents }
         }, {
             binding: 2,
             resource: { buffer: buffers.tileAdjacentIndices }
+        }, {
+            binding: 3,
+            resource: { buffer: buffers.tilePropertiesB }
         }]
     });
+
 
     const module = device.createShaderModule({ code: code.replace("$BUFFER_SIZE", buffers.instanceCount.toString()) });
 
@@ -40,18 +48,6 @@ export function erosionPass(device: GPUDevice, buffers: Buffers) {
             entryPoint: "main"
         }
     });
-    /*
-                eroder.passTime();
-                eroder.fixWater();
-                eroder.landslide();
-                for (let i = 0; i < 20; ++i) {
-                    eroder.rain();
-                    eroder.spreadWater(true);
-                }
-
-                eroder.solveLakes(true);
-                eroder.initializeOcclusion();
-                updateMeshes();*/
 
     return () => {
         const encoder = device.createCommandEncoder();
@@ -60,6 +56,7 @@ export function erosionPass(device: GPUDevice, buffers: Buffers) {
         computer.setBindGroup(0, bindGroup);
         computer.dispatchWorkgroups(Math.ceil(buffers.instanceCount/64));
         computer.end();
+        encoder.copyBufferToBuffer(buffers.tilePropertiesB, 0, buffers.tilePropertiesA, 0, buffers.tilePropertiesA.size);
 
         return encoder.finish();
     }

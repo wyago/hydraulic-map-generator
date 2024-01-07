@@ -50,6 +50,14 @@ export function implicitVoronoiRenderer(device: GPUDevice, context: GPUCanvasCon
                     shaderLocation: 5,
                     offset: 1*4,
                     format: "float32" as const 
+                }, {
+                    shaderLocation: 6,
+                    offset: 5*4,
+                    format: "float32" as const 
+                }, {
+                    shaderLocation: 7,
+                    offset: 3*4,
+                    format: "float32" as const 
                 }],
                 stepMode: "instance" as const,
                 arrayStride: 4*6
@@ -117,7 +125,7 @@ export function implicitVoronoiRenderer(device: GPUDevice, context: GPUCanvasCon
         pass.setPipeline(pipeline);
         pass.setVertexBuffer(0, buffers.triangle);
         pass.setVertexBuffer(1, buffers.positions);
-        pass.setVertexBuffer(2, buffers.tileProperties);
+        pass.setVertexBuffer(2, buffers.tilePropertiesA);
         pass.setVertexBuffer(3, buffers.normals);;
         pass.setBindGroup(0, group);
         pass.draw(4, buffers.instanceCount);

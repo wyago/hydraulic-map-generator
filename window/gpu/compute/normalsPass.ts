@@ -29,7 +29,7 @@ export function normalsPass(device: GPUDevice, buffers: Buffers) {
         layout,
         entries: [{
             binding: 0,
-            resource: { buffer: buffers.tileProperties }
+            resource: { buffer: buffers.tilePropertiesA }
         }, {
             binding: 1,
             resource: { buffer: buffers.tileAdjacents }

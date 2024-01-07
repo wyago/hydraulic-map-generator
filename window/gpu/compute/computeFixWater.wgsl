@@ -29,14 +29,24 @@ fn main(
         return;
     }
 
-    var center = global_id.x;
+    var i = global_id.x;
 
-    var rock_elevation = tiles[center].hard + tiles[center].soft;
-
-    if (rock_elevation < 0.3) {
-        tiles[center].water = 0.3 - rock_elevation;
-        tiles[center].aquifer = tiles[center].soft;
+    var rock_elevation = tiles[i].hard + tiles[i].soft;
+    
+    
+    if (tiles[i].water > 0) {
+        var amount = (0.0001* tiles[i].water);
+        tiles[i].water -= amount;
     } else {
-        tiles[center].water += 0.00008;
+        var amount = (0.0001* tiles[i].aquifer);
+        tiles[i].aquifer -= amount;
     }
+
+    if (rock_elevation < 0.2) {
+        tiles[i].water = clamp(0.3 - rock_elevation, 0, 1);
+        tiles[i].aquifer = tiles[i].soft*0.8;
+    } else {
+        tiles[i].water += 0.000008;
+    }
+
 }
