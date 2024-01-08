@@ -41,8 +41,8 @@ fn main(
         //tiles[i].aquifer -= amount;
     //}
 
-    tiles[i].water += clamp(0.00002, 0, 1);
-    if (rock_elevation < 0.2) {
-        tiles[i].water = min(clamp(0.2 - rock_elevation, 0, 1), tiles[i].water);
+    tiles[i].water += clamp(0.00001, 0, 1);
+    if (rock_elevation < 0.1) {
+        tiles[i].water = min(clamp(0.1 - rock_elevation, 0, 1), tiles[i].water);
     }
 }

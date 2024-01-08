@@ -46,7 +46,7 @@ struct Packet {
 
 fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     var tile = source;
-    var transfer = min(delta * 0.4, tile.water);
+    var transfer = min(delta * 0.2, tile.water);
     var siltTransfer = min(transfer / tile.water * tile.silt, tile.silt);
     var packet: Packet;
     simpleErode(tile, i, transfer*70);
@@ -182,7 +182,7 @@ fn main(
     placePacket(sourceI, down, packet);
     
     source = tiles[sourceI];
-    var releaseFactor = 0.1 + clamp(0.7 - delta*20 - source.water*4, 0.01, 0.7);
+    var releaseFactor = 0.05 + clamp(0.7 - delta*20 - source.water*4, 0.01, 0.7);
     var release = tiles[sourceI].silt*releaseFactor;
     tiles[sourceI].soft += release;
     tiles[sourceI].silt -= release;

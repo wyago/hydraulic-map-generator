@@ -59,8 +59,8 @@ fn vertex_main(
         var depth = water * 10.0;
 
         var reflect = 0.8;
-        if (water < 0.001) {
-            reflect = mix(0.0, 0.8, water/0.001);
+        if (water < 0.004) {
+            reflect = mix(0.0, 0.4, water/0.004);
         }
         var subtractor = mix(vec3f(0.12, 0.09, 0.08), vec3f(0.12, 0.35, 0.58), silt) * depth;
         var transit = sunColor * (1.0 - reflect) - subtractor;

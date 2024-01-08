@@ -64,7 +64,7 @@ export function createGpuUi() {
 
         function frame() {
             render(Math.pow(2, zoom), +mode.get());
-            for (let i = 0; i < 1; i++)
+            for (let i = 0; i < 5; i++)
                 eroder();
             device.queue.submit([normals()]);
             requestAnimationFrame(frame);

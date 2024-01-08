@@ -245,7 +245,7 @@ fn main(
     pos.x += 0.5;
     pos.y += 0.5;
     
-    var plateau = clamp(0.5 - sqrt(x*x + y*y)/1000*0.5, -0.5, 0.4);
+    var plateau = clamp(0.5 - sqrt(x*x + y*y)/2000*0.5, -0.5, 0.4);
     var elevation = clamp(clamp(plateau + noise(pos)*0.6, 0.01, 0.9) + noise(pos)*0.15 + 0.2, 0, 1); 
     tiles[source].hard = elevation;
 }
