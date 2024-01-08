@@ -20,19 +20,21 @@ var<storage, read_write> adjacents: array<i32>;
 var<storage, read_write> adjacent_indices: array<AdjacentIndex>;
 @group(0) @binding(3)
 var<storage, read_write> buffer: array<Tile>;
+@group(0) @binding(4)
+var<storage, read_write> targetIndices: array<i32>;
 
-fn elevation(i: i32) -> f32 {
-    return (tiles[i].hard + tiles[i].soft + tiles[i].water);
+fn elevation(i: Tile) -> f32 {
+    return (i.hard + i.soft + i.water);
 }
 
-fn rockElevation(i: i32) -> f32 {
-    return (tiles[i].hard + tiles[i].soft);
+fn rockElevation(i: Tile) -> f32 {
+    return (i.hard + i.soft);
 }
 
-fn simpleErode(center: i32, amount: f32) {
-    var hardFactor = clamp(amount*0.1 *tiles[center].hard*(0.1 - tiles[center].soft), 0, tiles[center].hard);
-    buffer[center].hard -= hardFactor;
-    buffer[center].soft += hardFactor;
+fn simpleErode(center: Tile, i: i32, amount: f32) {
+    var hardFactor = clamp(amount*0.1 * center.hard*(0.1 -  center.soft), 0,  center.hard);
+    tiles[i].hard -= hardFactor;
+    tiles[i].soft += hardFactor;
 }
 
 struct Packet {
@@ -42,35 +44,38 @@ struct Packet {
     soft: f32
 }
 
-fn extractPacket(source: i32, delta: f32, rockDelta: f32) -> Packet {
-    var transfer = min(delta * 0.1, tiles[source].water);
-    var siltTransfer = min(transfer / tiles[source].water * tiles[source].silt, tiles[source].silt);
+fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
+    var tile = source;
+    var transfer = min(delta * 0.4, tile.water);
+    var siltTransfer = min(transfer / tile.water * tile.silt, tile.silt);
     var packet: Packet;
-    simpleErode(source, transfer*50);
+    simpleErode(tile, i, transfer*70);
+    tiles[i].water -= transfer;
+    tiles[i].silt -= siltTransfer;
+    tile = tiles[i];
+
     packet.water = transfer;
-    buffer[source].water -= transfer;
-    buffer[source].silt -= siltTransfer;
     packet.silt = siltTransfer;
     packet.soft = 0;
 
     if (rockDelta > 0) {
-        var erosion = clamp(min(transfer*.5/(tiles[source].water*1 + 1), min(tiles[source].soft, min(rockDelta*0.5, delta * 0.1))), 0, 1);
-        buffer[source].soft -= erosion;
-        packet.selfSilt = erosion;
+        var erosion = clamp(min(transfer*.5/(tile.water*1 + 1), min(tile.soft, min(rockDelta*0.5, delta * 0.1))), 0, 1);
+        tiles[i].soft -= erosion;
+        tiles[i].silt += erosion;
     }
 
     return packet;
 }
 
 fn placePacket(source: i32, down: i32, packet: Packet) {
-    buffer[down].water += packet.water;
-    buffer[down].silt += packet.silt;
-    buffer[source].silt += packet.selfSilt;
-    buffer[down].soft += packet.soft;
+    targetIndices[source] = down;
+    buffer[source].water += packet.water;
+    buffer[source].silt += packet.silt;
+    buffer[source].soft += packet.soft;
 }
 
-fn waterTable(adj: i32) -> f32 {
-    return tiles[adj].water + tiles[adj].aquifer + tiles[adj].hard;
+fn waterTable(adj: Tile) -> f32 {
+    return adj.water + adj.aquifer + adj.hard;
 }
 
 fn waterTableDownhill(center: i32) -> i32 {
@@ -80,7 +85,8 @@ fn waterTableDownhill(center: i32) -> i32 {
     var adjacent_count = adjacent_indices[center].length;
     for (var i = 0; i < adjacent_count; i++) {
         var adj = adjacents[base + i];
-        var e = tiles[adj].water + tiles[adj].aquifer + tiles[adj].hard;
+        var t = tiles[adj];
+        var e = t.water + t.aquifer + t.hard;
         if (e < minimum) {
             downhill = adj;
             minimum = e;
@@ -96,7 +102,7 @@ fn totalDownhill(center: i32) -> i32 {
     var adjacent_count = adjacent_indices[center].length;
     for (var i = 0; i < adjacent_count; i++) {
         var adj = adjacents[base + i];
-        var e = elevation(adj);
+        var e = elevation(tiles[adj]);
         if (e < minimum) {
             downhill = adj;
             minimum = e;
@@ -105,66 +111,42 @@ fn totalDownhill(center: i32) -> i32 {
     return downhill;
 }
 
-fn spreadAquifer(source: i32) {
-    if (tiles[source].aquifer <= 0) {
+fn spreadAquifer(source: i32, tile: Tile) {
+    if (tile.aquifer <= 0) {
         return;
     }
     var down = waterTableDownhill(source);
-    var delta = waterTable(source) - waterTable(down);
+    var delta = waterTable(tile) - waterTable(tile);
     if (delta < 0) {
         return;
     }
     
-    var transfer = min(delta * 0.01, tiles[source].aquifer);
-    buffer[source].aquifer -= transfer;
-    buffer[down].aquifer += transfer;
+    var transfer = min(delta * 0.01, tile.aquifer);
+    tiles[source].aquifer -= transfer;
+    buffer[source].aquifer += transfer;
 }
 
-fn aquiferCapacity(i: i32) -> f32 {
-    return clamp(tiles[i].soft, 0, 1);
+fn aquiferCapacity(i: Tile) -> f32 {
+    return clamp(i.soft, 0, 1);
 }
 
-fn aquiferSpace(i: i32) -> f32 {
-    return clamp(aquiferCapacity(i) - tiles[i].aquifer, 0, 1);
+fn aquiferSpace(i: Tile) -> f32 {
+    return clamp(aquiferCapacity(i) - i.aquifer, 0, 1);
 }
 
-fn spreadWater(i: i32) {
-    var water = tiles[i].water;
-    var aquifer_space = aquiferSpace(i);
+fn spreadWater(tile: Tile, i: i32) {
+    var water = tile.water;
+    var aquifer_space = aquiferSpace(tile);
     if (aquifer_space > 0 && water > 0) {
         var soak = min(water*0.001, aquifer_space*0.001);
-        buffer[i].aquifer += soak;
-        buffer[i].water -= soak;
+        tiles[i].aquifer += soak;
+        tiles[i].water -= soak;
     }
     
-    let release = tiles[i].aquifer - aquiferCapacity(i);
+    let release = tiles[i].aquifer - aquiferCapacity(tiles[i]);
     if (release > 0) {
-        buffer[i].water += release;
-        buffer[i].aquifer -= release;
-    }
-}
-
-
-fn landslide(source: i32) {
-    var siltAngle = 0.06;
-    var rockAngle = 0.1;
-
-    var down = totalDownhill(source);
-    var delta = rockElevation(source) - rockElevation(down);
-    if (delta > siltAngle) {
-        var transfer = min((delta - siltAngle) * 0.1, tiles[source].soft);
-
-        buffer[source].soft -= transfer;
-        buffer[down].soft += transfer;
-    }
-
-    down = totalDownhill(source);
-    delta = rockElevation(source) - rockElevation(down);
-    if (delta > rockAngle) {
-        var transfer = min((delta - rockAngle) * 0.1, tiles[source].hard);
-
-        buffer[source].hard -= transfer;
-        buffer[down].hard += transfer;
+        tiles[i].water += release;
+        tiles[i].aquifer -= release;
     }
 }
 
@@ -178,112 +160,30 @@ fn main(
         return;
     }
 
-    var source = i32(global_id.x);
+    var sourceI = i32(global_id.x);
+    var source = tiles[sourceI];
 
-    spreadWater(source);
-    spreadAquifer(source);
-    landslide(source);
+    //spreadWater(source, sourceI);
+    //spreadAquifer(sourceI, source);
 
-    if (tiles[source].water <= 0) {
+    if (source.water <= 0) {
         return;
     }
-    var down = totalDownhill(source);
-    var delta = elevation(source) - elevation(down);
+    var down = totalDownhill(sourceI);
+    var dtile = tiles[down];
+    var delta = elevation(source) - elevation(dtile);
     if (delta < 0) {
         return;
     }
 
-    var rockDelta = rockElevation(source) - rockElevation(down);
-    var packet = extractPacket(source, delta, rockDelta);
+    var rockDelta = rockElevation(source) - rockElevation(dtile);
+    var packet = extractPacket(source, sourceI, delta, rockDelta);
     
-    placePacket(source, down, packet);
+    placePacket(sourceI, down, packet);
     
-    var releaseFactor = 0.05 + clamp(0.7 - delta*20 - tiles[source].water*4, 0.01, 0.7);
-    var release = buffer[source].silt*releaseFactor;
-    buffer[source].soft += release;
-    buffer[source].silt -= release;
+    source = tiles[sourceI];
+    var releaseFactor = 0.1 + clamp(0.7 - delta*20 - source.water*4, 0.01, 0.7);
+    var release = tiles[sourceI].silt*releaseFactor;
+    tiles[sourceI].soft += release;
+    tiles[sourceI].silt -= release;
 }
-
-    /*for (let i = 0; i < this.points.count; ++i) {
-        this.points.water[i] += this.waterBuffer[i];
-        this.points.soft[i] += this.softBuffer[i];
-        this.points.silt[i] += this.siltBuffer[i];
-        this.points.aquifer[i] += this.aquiferBuffer[i];
-        
-        const releaseFactor = 0.05;
-        const release = this.points.silt[i]*releaseFactor;
-        this.points.soft[i] += release//25/(adjs.length + 25);
-        this.points.silt[i] -= release;
-    }*/
-    /*var center = i32(global_id.x);
-
-    var minimum = 1000.0f;
-    var base = adjacent_indices[center].base;
-    var downhill = -1;
-    var adjacent_count = adjacent_indices[center].length;
-    for (var i = 0; i < adjacent_count; i++) {
-        var adj = adjacents[base + i];
-        var e = elevation(adj);
-        if (e < minimum) {
-            downhill = adj;
-            minimum = e;
-        }
-    }
-
-    if (downhill < 0) {
-        return;
-    }
-
-    var center_elevation = elevation(center);
-    var downhill_elevation = elevation(downhill);
-    var center_water = tiles[center].water;
-
-    var deposition = tiles[center].silt*0.05;
-    buffer[center].silt -= deposition;
-    buffer[center].soft += deposition;
-
-    var waterfall = min((center_elevation - downhill_elevation)*0.3, center_water);
-    if (waterfall > 0) {
-        buffer[center].water -= waterfall;
-        buffer[downhill].water += waterfall;
-
-        var erosion = min(tiles[center].hard, waterfall*0.1*tiles[center].hard*(0.1 - tiles[center].soft));
-        buffer[center].hard -= erosion;
-        buffer[center].soft += erosion;
-
-        var liquefaction = clamp(min(waterfall*0.5/(center_water + 1), min(tiles[center].soft, waterfall*0.1)), 0, 1);
-        buffer[center].soft -= liquefaction;
-        buffer[center].silt += liquefaction;
-
-        var release = clamp(0.7 - waterfall*20 - tiles[center].water*4, 0.01, 0.7)*tiles[center].silt;
-        buffer[downhill].soft += release;
-        buffer[downhill].silt -= release;
-
-        var transfer = min(waterfall / center_water * buffer[center].silt, buffer[center].silt);
-        buffer[center].silt -= transfer;
-        buffer[downhill].silt += transfer;
-    }*/
-/*
-    extractPacket(source: number, delta: number, rockDelta: number) {
-        const transfer = Math.min(delta * 0.2, this.points.water[source]);
-        const siltTransfer = Math.min(transfer / this.points.water[source] * this.points.silt[source], this.points.silt[source]);
-        this.simpleErode(source, transfer*70);
-        this.packet.water = transfer;
-        this.waterBuffer[source] -= transfer;
-        this.siltBuffer[source] -= siltTransfer;
-        this.packet.silt = siltTransfer;
-        this.packet.soft = 0;
-
-        if (rockDelta > 0) {
-            const erosion = clamp(Math.min(transfer*.5/(this.points.water[source]*1 + 1), this.points.soft[source], rockDelta*0.5, delta * 0.1), 0, 1);
-            this.softBuffer[source] -= erosion;
-            this.packet.selfSilt = erosion;
-        }
-    }
-
-    placePacket(source: number, target: number) {
-        this.waterBuffer[target] += this.packet.water;
-        this.siltBuffer[target] += this.packet.silt;
-        this.siltBuffer[source] += this.packet.selfSilt;
-        this.softBuffer[target] += this.packet.soft;
-    }*/

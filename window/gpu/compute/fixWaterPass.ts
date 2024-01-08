@@ -21,7 +21,7 @@ export function fixWaterPass(device: GPUDevice, buffers: Buffers) {
         layout,
         entries: [{
             binding: 0,
-            resource: { buffer: buffers.tilePropertiesB }
+            resource: { buffer: buffers.tiles }
         }, {
             binding: 1,
             resource: { buffer: buffers.tileAdjacents }
@@ -41,14 +41,9 @@ export function fixWaterPass(device: GPUDevice, buffers: Buffers) {
         }
     });
 
-    return () => {
-        const encoder = device.createCommandEncoder();
-        const computer = encoder.beginComputePass();
+    return (computer: GPUComputePassEncoder) => {
         computer.setPipeline(computePipeline);
         computer.setBindGroup(0, bindGroup);
         computer.dispatchWorkgroups(Math.ceil(buffers.instanceCount/64));
-        computer.end();
-
-        return encoder.finish();
     }
 }

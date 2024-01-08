@@ -1,15 +1,33 @@
 
 import { VNodeProperties, h } from "maquette";
 import { createBuffers } from "../../gpu/buffers";
-import { erosionPass } from "../../gpu/compute/erosionPass";
-import { fixWaterPass } from "../../gpu/compute/fixWaterPass";
+import { createEroder } from "../../gpu/compute/createEroder";
+import { noisePass } from "../../gpu/compute/noisePass";
 import { normalsPass } from "../../gpu/compute/normalsPass";
 import { getDevice } from "../../gpu/globalDevice";
 import { implicitVoronoiRenderer } from "../../gpu/implicitvoronoi";
 import { createDiscSampler } from "../../terrain/discSampler";
+import { createDropdown } from "../dropdown";
+import { createPanel } from "../panel";
 import "../ui.css";
 
 export function createGpuUi() {
+    const mode = createDropdown({
+            label: "Mode",
+            start: "Normal",
+            values: [{
+                key: "0",
+                display: "Normal"
+            }, {
+                key: "1",
+                display: "Height"
+            }]
+        });
+    const options = createPanel({
+        title: "Options",
+        children: [mode]
+    })
+
     async function setupCanvas(element: HTMLCanvasElement) {
         element.width = window.innerWidth;
         element.height = window.innerHeight;
@@ -27,16 +45,17 @@ export function createGpuUi() {
             usage: GPUTextureUsage.RENDER_ATTACHMENT
         }).createView();
 
-        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 8000*8000);
+        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 3000*3000);
         while (gen.step());
     
         const vs = gen.vertices();
         const buffers = createBuffers(device, vs);
 
+        device.queue.submit([noisePass(device, buffers)()]);
+
         const render = implicitVoronoiRenderer(device, context, buffers, depth);
-        const erode = erosionPass(device, buffers);
+        const eroder = createEroder(device, buffers);
         const normals = normalsPass(device, buffers);
-        const fixWater = fixWaterPass(device, buffers);
 
         let zoom = -12;
         element.addEventListener("wheel", e => {
@@ -44,9 +63,10 @@ export function createGpuUi() {
         });
 
         function frame() {
-            render(Math.pow(2, zoom));
-            for (let i = 0; i < 10; i++)
-                device.queue.submit([erode(), normals(), fixWater()]);
+            render(Math.pow(2, zoom), +mode.get());
+            for (let i = 0; i < 1; i++)
+                eroder();
+            device.queue.submit([normals()]);
             requestAnimationFrame(frame);
         }
         requestAnimationFrame(frame);
@@ -65,6 +85,9 @@ export function createGpuUi() {
         realize() {
             return h("body", [
                 h("canvas", properties),
+                h("div#ui", [
+                    options.realize()
+                ])
             ]);
         }
     }

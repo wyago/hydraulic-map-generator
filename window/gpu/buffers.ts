@@ -1,6 +1,4 @@
 import Delaunator from "delaunator";
-import { DistortedNoise } from "../DistortedNoise";
-import { clamp } from "../math";
 import { Graph } from "../terrain/Graph";
 
 function generateAdjacents(graph: Graph) {
@@ -37,31 +35,15 @@ function generateAdjacents(graph: Graph) {
     });
 }
 
-let noise: DistortedNoise;
-function initialState(map: Graph) {
-    noise = new DistortedNoise(0.0006, 15);
-
-    const result = new Float32Array(map.count * 6);
-    for (let i = 0; i < map.count; ++i) {
-        const x = map.x(i);
-        const y = map.y(i);
-
-        const plateau = clamp(0.5 - Math.sqrt(x*x + y*y)/7000*0.5, -0.5, 0.4);
-        const elevation = clamp(clamp(plateau + noise.noise(x,y)*0.6, 0.01, 0.9) + noise.noise(x,y)*0.15 + 0.15, 0, 1);
-        result[i * 6] = elevation;
-    }
-
-    return result;
-}
-
 export type Buffers = {
     instanceCount: number,
     triangle: GPUBuffer,
     positions: GPUBuffer,
     normals: GPUBuffer,
-    tilePropertiesA: GPUBuffer,
-    tilePropertiesB: GPUBuffer,
+    tiles: GPUBuffer,
+    tileBuffer: GPUBuffer,
     tileAdjacentIndices: GPUBuffer,
+    targetIndices: GPUBuffer,
     tileAdjacents: GPUBuffer
 };
 
@@ -78,12 +60,12 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
     });
 
-    const tilePropertiesB = device.createBuffer({
+    const tileBuffer = device.createBuffer({
         size: count * 6 * Float32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
     });
 
-    const tilePropertiesA = device.createBuffer({
+    const tiles = device.createBuffer({
         size: count * 6 * Float32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
@@ -95,6 +77,11 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
 
     const tileAdjacentIndices = device.createBuffer({
         size: count * 2 * Int32Array.BYTES_PER_ELEMENT,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
+    
+    const targetIndices = device.createBuffer({
+        size: count * Int32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
@@ -128,18 +115,16 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
     device.queue.writeBuffer(tileAdjacentIndices, 0, indices);
     device.queue.writeBuffer(triangle, 0, triangleData);
     device.queue.writeBuffer(positions, 0, initial.xys);
-    const state = initialState(initial);
-    device.queue.writeBuffer(tilePropertiesA, 0, state);
-    device.queue.writeBuffer(tilePropertiesB, 0, state);
 
     return {
         instanceCount: count,
         triangle,
         positions,
         normals,
-        tilePropertiesA,
-        tilePropertiesB,
+        tiles,
+        tileBuffer,
         tileAdjacentIndices,
-        tileAdjacents
+        tileAdjacents,
+        targetIndices
     };
 }
