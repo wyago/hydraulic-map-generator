@@ -3,7 +3,7 @@ struct Tile {
     soft: f32,
     water: f32,
     aquifer: f32,
-    occlusion: f32,
+    fog: f32,
     silt: f32
 }
 
@@ -23,16 +23,13 @@ var<storage, read_write> buffer: array<Tile>;
 @group(0) @binding(4)
 var<storage, read_write> targetIndices: array<i32>;
 
-fn elevation(i: Tile) -> f32 {
-    return (i.hard + i.soft + i.water);
-}
 
 fn rockElevation(i: Tile) -> f32 {
     return (i.hard + i.soft);
 }
 
 fn simpleErode(center: Tile, i: i32, amount: f32) {
-    var hardFactor = clamp(amount*0.1 * center.hard*(0.1 -  center.soft), 0,  center.hard);
+    var hardFactor = clamp(amount*0.1 * center.hard*(0.2 -  center.soft), 0,  center.hard);
     tiles[i].hard -= hardFactor;
     tiles[i].soft += hardFactor;
 }
@@ -46,10 +43,10 @@ struct Packet {
 
 fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     var tile = source;
-    var transfer = min(delta * 0.2, tile.water);
+    var transfer = min(delta * 0.4, tile.water);
     var siltTransfer = min(transfer / tile.water * tile.silt, tile.silt);
     var packet: Packet;
-    simpleErode(tile, i, transfer*70);
+    simpleErode(tile, i, transfer*30);
     tiles[i].water -= transfer;
     tiles[i].silt -= siltTransfer;
     tile = tiles[i];
@@ -59,7 +56,7 @@ fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     packet.soft = 0;
 
     if (rockDelta > 0) {
-        var erosion = clamp(min(transfer*.5/(tile.water*1 + 1), min(tile.soft, min(rockDelta*0.5, delta * 0.1))), 0, 1);
+        var erosion = clamp(min(transfer*.8, tile.soft), 0, 1);
         tiles[i].soft -= erosion;
         tiles[i].silt += erosion;
     }
@@ -95,6 +92,9 @@ fn waterTableDownhill(center: i32) -> i32 {
     return downhill;
 }
 
+fn elevation(i: Tile) -> f32 {
+    return (i.hard + i.soft + i.water);
+}
 fn totalDownhill(center: i32) -> i32 {
     var minimum = 1000.0f;
     var base = adjacent_indices[center].base;
@@ -111,45 +111,6 @@ fn totalDownhill(center: i32) -> i32 {
     return downhill;
 }
 
-fn spreadAquifer(source: i32, tile: Tile) {
-    if (tile.aquifer <= 0) {
-        return;
-    }
-    var down = waterTableDownhill(source);
-    var delta = waterTable(tile) - waterTable(tile);
-    if (delta < 0) {
-        return;
-    }
-    
-    var transfer = min(delta * 0.01, tile.aquifer);
-    tiles[source].aquifer -= transfer;
-    buffer[source].aquifer += transfer;
-}
-
-fn aquiferCapacity(i: Tile) -> f32 {
-    return clamp(i.soft, 0, 1);
-}
-
-fn aquiferSpace(i: Tile) -> f32 {
-    return clamp(aquiferCapacity(i) - i.aquifer, 0, 1);
-}
-
-fn spreadWater(tile: Tile, i: i32) {
-    var water = tile.water;
-    var aquifer_space = aquiferSpace(tile);
-    if (aquifer_space > 0 && water > 0) {
-        var soak = min(water*0.001, aquifer_space*0.001);
-        tiles[i].aquifer += soak;
-        tiles[i].water -= soak;
-    }
-    
-    let release = tiles[i].aquifer - aquiferCapacity(tiles[i]);
-    if (release > 0) {
-        tiles[i].water += release;
-        tiles[i].aquifer -= release;
-    }
-}
-
 @compute @workgroup_size(64)
 fn main(
   @builtin(global_invocation_id)
@@ -162,9 +123,6 @@ fn main(
 
     var sourceI = i32(global_id.x);
     var source = tiles[sourceI];
-
-    //spreadWater(source, sourceI);
-    //spreadAquifer(sourceI, source);
 
     if (source.water <= 0) {
         return;
@@ -182,7 +140,7 @@ fn main(
     placePacket(sourceI, down, packet);
     
     source = tiles[sourceI];
-    var releaseFactor = 0.05 + clamp(0.7 - delta*20 - source.water*4, 0.01, 0.7);
+    var releaseFactor = clamp(0.7 - delta*20 - source.water*4, 0.1, 0.7);
     var release = tiles[sourceI].silt*releaseFactor;
     tiles[sourceI].soft += release;
     tiles[sourceI].silt -= release;

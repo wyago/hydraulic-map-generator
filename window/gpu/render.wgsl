@@ -41,22 +41,24 @@ fn vertex_main(
     @location(5) soft: f32,
     @location(6) silt: f32,
     @location(7) aquifer: f32,
+    @location(8) fog: f32,
 ) -> VertexOut {
     var output: VertexOut;
     output.position = vec4f((position + offset)*zoom, 0, 1);
     output.offset = position;
+    const fogalbedo = vec3f(0.5,0.5,0.5); 
 
     if (mode == 0) {
         var albedo = albedo(hard, soft, aquifer);
 
-        var light = vec3f(0.5, 0.5, 0.5);
+        const light = vec3f(0.5, 0.5, 0.5);
         var rockDot = clamp(dot(rocknormal, light), 0.0, 1.0);
 
-        var sunlight = vec3f(0.9,0.9, 0.85);
+        const sunlight = vec3f(0.9,0.9, 0.85);
         var sunColor = sunlight * rockDot + sunlight * 0.4;
-        var ambient = vec3f(0.2, 0.2, 0.25);
+        const ambient = vec3f(0.2, 0.2, 0.25);
 
-        var depth = water * 10.0;
+        var depth = water * 5.0;
 
         var reflect = 0.8;
         if (water < 0.004) {
@@ -64,9 +66,12 @@ fn vertex_main(
         }
         var subtractor = mix(vec3f(0.12, 0.09, 0.08), vec3f(0.12, 0.35, 0.58), silt) * depth;
         var transit = sunColor * (1.0 - reflect) - subtractor;
-        output.color = (transit + ambient)*albedo + vec3f(0,0.05,0.12)*water;
+        var ground = (transit + ambient)*albedo + vec3f(0,0.05,0.12)*clamp(water, 0, 0.1);
+        output.color = mix(ground, fogalbedo, min(fog, 0.25));
+    } else if (mode == 1) {
+        output.color = vec3f(hard + soft);
     } else {
-        output.color = vec3f(hard + soft, aquifer, water);
+        output.color = vec3f(hard, 0, soft);
     }
 
     return output;

@@ -13,6 +13,21 @@ export function implicitVoronoiRenderer(device: GPUDevice, context: GPUCanvasCon
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
+    const triangle = device.createBuffer({
+        size: (4 * 2)*Float32Array.BYTES_PER_ELEMENT,
+        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
+    });
+    const triangleData = new Float32Array(4 * 2);
+    triangleData[0] = -16;
+    triangleData[1] = -16;
+    triangleData[2] = 16;
+    triangleData[3] = -16;
+    triangleData[4] = -16;
+    triangleData[5] = 16;
+    triangleData[6] = 16;
+    triangleData[7] = 16;
+    device.queue.writeBuffer(triangle, 0, triangleData);
+
     const bindGroupLayout = device.createBindGroupLayout({
         entries: [{
             binding: 0,
@@ -65,6 +80,10 @@ export function implicitVoronoiRenderer(device: GPUDevice, context: GPUCanvasCon
                 }, {
                     shaderLocation: 7,
                     offset: 3*4,
+                    format: "float32" as const 
+                }, {
+                    shaderLocation: 8,
+                    offset: 4*4,
                     format: "float32" as const 
                 }],
                 stepMode: "instance" as const,
@@ -139,7 +158,7 @@ export function implicitVoronoiRenderer(device: GPUDevice, context: GPUCanvasCon
             }
         })
         pass.setPipeline(pipeline);
-        pass.setVertexBuffer(0, buffers.triangle);
+        pass.setVertexBuffer(0, triangle);
         pass.setVertexBuffer(1, buffers.positions);
         pass.setVertexBuffer(2, buffers.tiles);
         pass.setVertexBuffer(3, buffers.normals);;

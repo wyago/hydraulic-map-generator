@@ -3,7 +3,7 @@ struct Tile {
     soft: f32,
     water: f32,
     aquifer: f32,
-    occlusion: f32,
+    fog: f32,
     silt: f32
 }
 
@@ -24,6 +24,9 @@ var<storage, read_write> buffer: array<Tile>;
 var<storage, read_write> targetIndices: array<i32>;
 
 fn waterTable(adj: Tile) -> f32 {
+    if (adj.aquifer < adj.soft*0.9) {
+        return adj.aquifer + adj.hard;
+    } 
     return adj.water + adj.aquifer + adj.hard;
 }
 
@@ -49,16 +52,20 @@ fn spreadAquifer(source: i32, tile: Tile) {
         return;
     }
     var down = waterTableDownhill(source);
-    var delta = waterTable(tile) - waterTable(tile);
+    var delta = waterTable(tile) - waterTable(tiles[down]);
     if (delta < 0) {
         return;
     }
     
     targetIndices[source] = down;
 
-    var transfer = min(delta * 0.01, tile.aquifer);
+    var transfer = min(delta * 0.1, tile.aquifer);
     tiles[source].aquifer -= transfer;
     buffer[source].aquifer += transfer;
+
+    var erosion = min(transfer*0.01, tile.soft*0.1);
+    tiles[source].soft -= erosion;
+    buffer[source].soft += erosion;
 }
 
 fn aquiferCapacity(i: Tile) -> f32 {
@@ -69,19 +76,18 @@ fn aquiferSpace(i: Tile) -> f32 {
     return clamp(aquiferCapacity(i) - i.aquifer, 0, 1);
 }
 
-fn spreadWater(tile: Tile, i: i32) {
-    var water = tile.water;
+fn soak(tile: Tile, i: i32) {
     var aquifer_space = aquiferSpace(tile);
-    if (aquifer_space > 0 && water > 0) {
-        var soak = min(water*0.002, aquifer_space*0.002);
-        tiles[i].aquifer += soak;
-        tiles[i].water -= soak;
-    }
-    
-    let release = tiles[i].aquifer - aquiferCapacity(tiles[i]);
+    let release = tile.aquifer - aquiferCapacity(tile);
     if (release > 0) {
         tiles[i].water += release;
         tiles[i].aquifer -= release;
+    }
+
+    if (aquifer_space > 0 && tiles[i].water > 0) {
+        var soak = min(tiles[i].water, aquifer_space);
+        tiles[i].aquifer += soak;
+        tiles[i].water -= soak;
     }
 }
 
@@ -98,6 +104,6 @@ fn main(
     var sourceI = i32(global_id.x);
     var source = tiles[sourceI];
 
-    spreadWater(source, sourceI);
-    spreadAquifer(sourceI, source);
+    soak(source, sourceI);
+    spreadAquifer(sourceI, tiles[sourceI]);
 }

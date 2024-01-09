@@ -5,8 +5,10 @@ import { createEroder } from "../../gpu/compute/createEroder";
 import { noisePass } from "../../gpu/compute/noisePass";
 import { normalsPass } from "../../gpu/compute/normalsPass";
 import { getDevice } from "../../gpu/globalDevice";
-import { implicitVoronoiRenderer } from "../../gpu/implicitvoronoi";
+import { landscape } from "../../gpu/landscape";
 import { createDiscSampler } from "../../terrain/discSampler";
+import { createBooleanInput } from "../booleanInput";
+import { createButton } from "../button";
 import { createDropdown } from "../dropdown";
 import { createPanel } from "../panel";
 import "../ui.css";
@@ -21,11 +23,18 @@ export function createGpuUi() {
             }, {
                 key: "1",
                 display: "Height"
+            }, {
+                key: "2",
+                display: "Rocks"
             }]
         });
+    let generate = () => {};
+    const generateButton = createButton({ text: "Generate", onclick: () => generate() });
+    const erode = createBooleanInput({ name: "Erode" });
     const options = createPanel({
         title: "Options",
-        children: [mode]
+        defaultOpen: true,
+        children: [mode, generateButton, erode]
     })
 
     async function setupCanvas(element: HTMLCanvasElement) {
@@ -39,34 +48,42 @@ export function createGpuUi() {
             alphaMode: "premultiplied"
         });
 
-        const depth = device.createTexture({
-            size: { width: window.innerWidth, height: window.innerHeight},
-            format: 'depth24plus',
-            usage: GPUTextureUsage.RENDER_ATTACHMENT
-        }).createView();
+        //const depth = device.createTexture({
+            //size: { width: window.innerWidth, height: window.innerHeight},
+            //format: 'depth24plus',
+            //usage: GPUTextureUsage.RENDER_ATTACHMENT
+        //}).createView();
 
-        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 3000*3000);
+        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 5000*5000);
         while (gen.step());
     
         const vs = gen.vertices();
         const buffers = createBuffers(device, vs);
 
-        device.queue.submit([noisePass(device, buffers)()]);
 
-        const render = implicitVoronoiRenderer(device, context, buffers, depth);
+        //const render = implicitVoronoiRenderer(device, context, buffers, depth);
+        const renderer = landscape(device, context, vs, buffers, window.innerWidth, window.innerHeight);
         const eroder = createEroder(device, buffers);
         const normals = normalsPass(device, buffers);
 
-        let zoom = -12;
+        let zoom = -10;
         element.addEventListener("wheel", e => {
             zoom -= e.deltaY * 0.002;
         });
+        generate = () => {
+            device.queue.submit([noisePass(device, buffers)()]);
+            eroder();
+            device.queue.submit([normals()]);
+        }
+        generate();
 
         function frame() {
-            render(Math.pow(2, zoom), +mode.get());
-            for (let i = 0; i < 5; i++)
-                eroder();
-            device.queue.submit([normals()]);
+            renderer.render(Math.pow(2, zoom));
+            if (erode.get()) {
+                for (let i = 0; i < 1; i++)
+                    eroder();
+                device.queue.submit([normals()]);
+            }
             requestAnimationFrame(frame);
         }
         requestAnimationFrame(frame);

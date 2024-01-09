@@ -37,14 +37,15 @@ function generateAdjacents(graph: Graph) {
 
 export type Buffers = {
     instanceCount: number,
-    triangle: GPUBuffer,
     positions: GPUBuffer,
     normals: GPUBuffer,
     tiles: GPUBuffer,
     tileBuffer: GPUBuffer,
     tileAdjacentIndices: GPUBuffer,
     targetIndices: GPUBuffer,
-    tileAdjacents: GPUBuffer
+    tileAdjacents: GPUBuffer,
+    albedo: GPUBuffer,
+    adjacents: number[][]
 };
 
 export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
@@ -55,14 +56,14 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE  | GPUBufferUsage.COPY_DST
     });
 
-    const triangle = device.createBuffer({
-        size: (4 * 2)*Float32Array.BYTES_PER_ELEMENT,
-        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
-    });
-
     const tileBuffer = device.createBuffer({
         size: count * 6 * Float32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
+    });
+
+    const albedo = device.createBuffer({
+        size: count * 3 * Float32Array.BYTES_PER_ELEMENT,
+        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE
     });
 
     const tiles = device.createBuffer({
@@ -85,15 +86,6 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
-    const triangleData = new Float32Array(4 * 2);
-    triangleData[0] = -16;
-    triangleData[1] = -16;
-    triangleData[2] = 16;
-    triangleData[3] = -16;
-    triangleData[4] = -16;
-    triangleData[5] = 16;
-    triangleData[6] = 16;
-    triangleData[7] = 16;
 
     const adjacents = generateAdjacents(initial);
     const indices = new Int32Array(adjacents.length*2);
@@ -113,18 +105,18 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
 
     device.queue.writeBuffer(tileAdjacents, 0, flattened);
     device.queue.writeBuffer(tileAdjacentIndices, 0, indices);
-    device.queue.writeBuffer(triangle, 0, triangleData);
     device.queue.writeBuffer(positions, 0, initial.xys);
 
     return {
         instanceCount: count,
-        triangle,
         positions,
         normals,
+        albedo,
         tiles,
         tileBuffer,
         tileAdjacentIndices,
         tileAdjacents,
-        targetIndices
+        targetIndices,
+        adjacents
     };
 }

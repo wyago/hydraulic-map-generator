@@ -3,7 +3,7 @@ struct Tile {
     soft: f32,
     water: f32,
     aquifer: f32,
-    occlusion: f32,
+    fog: f32,
     silt: f32
 }
 
@@ -18,6 +18,8 @@ var<storage, read_write> tiles: array<Tile>;
 var<storage, read_write> adjacents: array<i32>;
 @group(0) @binding(2)
 var<storage, read_write> adjacent_indices: array<AdjacentIndex>;
+@group(0) @binding(3)
+var<storage, read_write> normals: array<vec3f>;
 
 @compute @workgroup_size(64)
 fn main(
@@ -32,17 +34,33 @@ fn main(
     var i = global_id.x;
 
     var rock_elevation = tiles[i].hard + tiles[i].soft;
-    
-    //if (tiles[i].water > 0) {
-        //var amount = (0.0001* tiles[i].water);
-        //tiles[i].water -= amount;
-    //} else {
-        //var amount = (0.0001* tiles[i].aquifer);
-        //tiles[i].aquifer -= amount;
-    //}
 
-    tiles[i].water += clamp(0.00001, 0, 1);
+    var fog = tiles[i].fog;
+    
+
+    var mul: f32 = 1;
+    if (dot(normals[i], vec3f(1,0,0)) > 0) {
+        mul = 1;
+    }
+    tiles[i].water += 0.00005*mul;
+    //tiles[i].water += clamp(0.00001, 0, 1);
     if (rock_elevation < 0.2) {
-        tiles[i].water = min(clamp(0.2 - rock_elevation, 0, 1), tiles[i].water);
+        tiles[i].water = clamp(0.2 - rock_elevation, 0, 1);
+        tiles[i].aquifer = 0.99*tiles[i].soft;
+        //tiles[i].fog += 0.000001;
+    } else {
+        //if (tiles[i].water > 0) {
+            //var amount = clamp((0.001* tiles[i].water), 0, 1 - fog);
+            //tiles[i].water -= amount;
+            //tiles[i].fog += amount;
+        //} else {
+            //var amount = clamp((0.0001* tiles[i].aquifer), 0, 1 - fog);
+            //tiles[i].aquifer -= amount;
+            //tiles[i].fog -= amount;
+        //}
+
+        //var amount = ( 0.1 * tiles[i].fog);
+        //tiles[i].fog -= amount;
+        //tiles[i].water += amount;
     }
 }

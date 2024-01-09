@@ -3,7 +3,7 @@ struct Tile {
     soft: f32,
     water: f32,
     aquifer: f32,
-    occlusion: f32,
+    fog: f32,
     silt: f32
 }
 
@@ -32,11 +32,13 @@ fn main(
     tiles[t].soft += source.soft;
     tiles[t].water += source.water;
     tiles[t].aquifer += source.aquifer;
+    tiles[t].fog += source.fog;
     tiles[t].silt += source.silt;
 
     buffer[i].hard = 0;
     buffer[i].soft = 0;
     buffer[i].water = 0;
     buffer[i].aquifer = 0;
+    buffer[i].fog = 0;
     buffer[i].silt = 0;
 }

@@ -26,15 +26,19 @@ export function noisePass(device: GPUDevice, buffers: Buffers) {
 
     const module = device.createShaderModule({ code: code.replace("$BUFFER_SIZE", buffers.instanceCount.toString()) });
 
-    const computePipeline = device.createComputePipeline({
-        layout: device.createPipelineLayout({ bindGroupLayouts: [layout]}),
-        compute: {
-            module,
-            entryPoint: "main"
-        }
-    });
     
     return () => {
+        const computePipeline = device.createComputePipeline({
+            layout: device.createPipelineLayout({ bindGroupLayouts: [layout]}),
+            compute: {
+                module,
+                constants: {
+                    seed: Math.random()*1000,
+                },
+                entryPoint: "main"
+            },
+        });
+
         const encoder = device.createCommandEncoder();
         const computer = encoder.beginComputePass();
         computer.setPipeline(computePipeline);
