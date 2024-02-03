@@ -1,41 +1,11 @@
 import { mat4 } from "wgpu-matrix";
 import { Graph } from "../terrain/Graph";
 import { Buffers } from "./buffers";
-import code from "./landscape.wgsl";
+import landCode from "./landscape.wgsl";
+import waterCode from "./water.wgsl";
 
-export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: Graph, buffers: Buffers, width: number, height: number) {
-    let perspective = mat4.identity();
-    const shader = device.createShaderModule({ code });
-
-    const eye  = [300,800,300];
-    const target =  [0,0,0];
-    const up = [0,1,0];
-    const view = mat4.lookAt(eye, target, up);
-
-    const uniforms = {
-        perspective: device.createBuffer({
-            size: perspective.length * Float32Array.BYTES_PER_ELEMENT,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        }),
-        view: device.createBuffer({
-            size: view.length * Float32Array.BYTES_PER_ELEMENT,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        })
-    }
-    
-    const bindGroupLayout = device.createBindGroupLayout({
-        entries: [{
-            binding: 0,
-            visibility: GPUShaderStage.VERTEX,
-            buffer: {}
-        }, {
-            binding: 1,
-            visibility: GPUShaderStage.VERTEX,
-            buffer: {}
-        }]
-    });
-
-    const pipeline = device.createRenderPipeline({
+function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayout: GPUBindGroupLayout, blend: boolean) {
+    return device.createRenderPipeline({
         vertex: {
             module: shader,
             entryPoint: "vertex_main",
@@ -79,13 +49,33 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: G
                 }],
                 stepMode: "vertex" as const,
                 arrayStride: 4*4
+            }, {
+                attributes: [{
+                    shaderLocation: 6,
+                    offset: 0,
+                    format: "float32x3" as const 
+                }],
+                stepMode: "vertex" as const,
+                arrayStride: 4*4
             }],
         },
         fragment: {
             module: shader,
             entryPoint: "fragment_main",
             targets: [{
-                format: navigator.gpu.getPreferredCanvasFormat()
+                format: navigator.gpu.getPreferredCanvasFormat(),
+                blend: blend ? {
+                    color: {
+                        srcFactor: 'src-alpha',
+                        dstFactor: 'one',
+                        operation: "add"
+                    },
+                    alpha: {
+                        srcFactor: 'zero',
+                        dstFactor: 'one',
+                        operation: "add"
+                    }
+                } : undefined
             }]
         },
         depthStencil: {
@@ -100,6 +90,59 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: G
             bindGroupLayouts: [bindGroupLayout]
         })
     });
+}
+
+export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: Graph, buffers: Buffers, width: number, height: number) {
+    let perspective = mat4.identity();
+    const landshader = device.createShaderModule({ code: landCode });
+    const watershader = device.createShaderModule({ code: waterCode });
+
+    const eye  = [300,800,300];
+    const target =  [0,0,0];
+    const up = [0,1,0];
+    const view = mat4.lookAt(eye, target, up);
+
+    const uniforms = {
+        perspective: device.createBuffer({
+            size: perspective.length * Float32Array.BYTES_PER_ELEMENT,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        }),
+        view: device.createBuffer({
+            size: view.length * Float32Array.BYTES_PER_ELEMENT,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        }),
+        eye: device.createBuffer({
+            size: eye.length * Float32Array.BYTES_PER_ELEMENT,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        }),
+        time: device.createBuffer({
+            size: Float32Array.BYTES_PER_ELEMENT,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        })
+    }
+    
+    const bindGroupLayout = device.createBindGroupLayout({
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: {}
+        }, {
+            binding: 1,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: {}
+        }, {
+            binding: 2,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: {}
+        }, {
+            binding: 3,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: {}
+        }]
+    });
+
+    const pipeline1 = makePipeline(device, landshader, bindGroupLayout, false);
+    const pipeline2 = makePipeline(device, watershader, bindGroupLayout, true);
     
     const indices = new Array<number>();
     for (let i = 0; i < graph.count; ++i) {
@@ -124,6 +167,12 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: G
         }, {
             binding: 1,
             resource: { buffer: uniforms.view, }
+        }, {
+            binding: 2,
+            resource: { buffer: uniforms.eye, }
+        }, {
+            binding: 3,
+            resource: { buffer: uniforms.time, }
         }]
     })
 
@@ -149,14 +198,20 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: G
     let t = 0;
     return {
         resize,
-        render(zoom: number) {
+        render(zoom: number, xrot: number, yrot: number) {
             t += 1;
             
-            const eye  = [1/zoom*Math.cos(t*0.001),1/zoom,1/zoom*Math.sin(t*0.001)];
-            const target =  [1/zoom*Math.cos(t*0.001)*0.2,100,1/zoom*Math.sin(t*0.001)*0.2];
+            const eye  = [
+                1/zoom*Math.cos(yrot)*Math.sin(xrot),
+                1/zoom*Math.cos(xrot),
+                1/zoom*Math.sin(yrot)*Math.sin(xrot)
+            ];
+            const target =  [0,0,0];
             const up = [0,1,0];
             const view = mat4.lookAt(eye, target, up);
             device.queue.writeBuffer(uniforms.view, 0, view as Float32Array);
+            device.queue.writeBuffer(uniforms.eye, 0, new Float32Array(eye));
+            device.queue.writeBuffer(uniforms.time, 0, new Float32Array([t*0.1]));
 
             const encoder = device.createCommandEncoder();
             const pass = encoder.beginRenderPass({
@@ -173,12 +228,22 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: G
                     depthStoreOp: 'store' as const,
                 }
             })
-            pass.setPipeline(pipeline);
+            pass.setPipeline(pipeline1);
             pass.setIndexBuffer(indexBuffer, "uint32");
             pass.setVertexBuffer(0, buffers.positions);
             pass.setVertexBuffer(1, buffers.tiles);
             pass.setVertexBuffer(2, buffers.normals);
             pass.setVertexBuffer(3, buffers.albedo);
+            pass.setVertexBuffer(4, buffers.waternormals);
+            pass.setBindGroup(0, group);
+            pass.drawIndexed(indices.length);
+            pass.setPipeline(pipeline2);
+            pass.setIndexBuffer(indexBuffer, "uint32");
+            pass.setVertexBuffer(0, buffers.positions);
+            pass.setVertexBuffer(1, buffers.tiles);
+            pass.setVertexBuffer(2, buffers.normals);
+            pass.setVertexBuffer(3, buffers.albedo);
+            pass.setVertexBuffer(4, buffers.waternormals);
             pass.setBindGroup(0, group);
             pass.drawIndexed(indices.length);
             pass.end();

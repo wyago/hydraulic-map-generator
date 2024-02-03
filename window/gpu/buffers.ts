@@ -39,6 +39,7 @@ export type Buffers = {
     instanceCount: number,
     positions: GPUBuffer,
     normals: GPUBuffer,
+    waternormals: GPUBuffer,
     tiles: GPUBuffer,
     tileBuffer: GPUBuffer,
     tileAdjacentIndices: GPUBuffer,
@@ -62,7 +63,7 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
     });
 
     const albedo = device.createBuffer({
-        size: count * 3 * Float32Array.BYTES_PER_ELEMENT,
+        size: count * 4 * Float32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE
     });
 
@@ -72,6 +73,11 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
     });
 
     const normals = device.createBuffer({
+        size: count * 4 * Float32Array.BYTES_PER_ELEMENT,
+        usage: GPUBufferUsage.VERTEX |  GPUBufferUsage.STORAGE
+    });
+
+    const waternormals = device.createBuffer({
         size: count * 4 * Float32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.VERTEX |  GPUBufferUsage.STORAGE
     });
@@ -111,6 +117,7 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
         instanceCount: count,
         positions,
         normals,
+        waternormals,
         albedo,
         tiles,
         tileBuffer,

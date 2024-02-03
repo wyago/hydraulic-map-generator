@@ -6,6 +6,7 @@ import { noisePass } from "../../gpu/compute/noisePass";
 import { normalsPass } from "../../gpu/compute/normalsPass";
 import { getDevice } from "../../gpu/globalDevice";
 import { landscape } from "../../gpu/landscape";
+import { setupInputs } from "../../render/inputs";
 import { createDiscSampler } from "../../terrain/discSampler";
 import { createBooleanInput } from "../booleanInput";
 import { createButton } from "../button";
@@ -29,12 +30,12 @@ export function createGpuUi() {
             }]
         });
     let generate = () => {};
-    const generateButton = createButton({ text: "Generate", onclick: () => generate() });
+    const generateButton = createButton({ text: "New Terrain", onclick: () => generate() });
     const erode = createBooleanInput({ name: "Erode" });
     const options = createPanel({
         title: "Options",
         defaultOpen: true,
-        children: [mode, generateButton, erode]
+        children: [generateButton, erode]
     })
 
     async function setupCanvas(element: HTMLCanvasElement) {
@@ -54,7 +55,7 @@ export function createGpuUi() {
             //usage: GPUTextureUsage.RENDER_ATTACHMENT
         //}).createView();
 
-        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 5000*5000);
+        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 2000*2000);
         while (gen.step());
     
         const vs = gen.vertices();
@@ -66,10 +67,6 @@ export function createGpuUi() {
         const eroder = createEroder(device, buffers);
         const normals = normalsPass(device, buffers);
 
-        let zoom = -10;
-        element.addEventListener("wheel", e => {
-            zoom -= e.deltaY * 0.002;
-        });
         generate = () => {
             device.queue.submit([noisePass(device, buffers)()]);
             eroder();
@@ -77,10 +74,31 @@ export function createGpuUi() {
         }
         generate();
 
+        let iterations = 5;
+        let xrot = 1;
+        let yrot = 0;
+        let zoom = -10;
+        setupInputs(element, {
+            move(position, delta) {
+                if (delta) {
+                    xrot -= delta.y * 0.01;
+                    yrot += delta.x * 0.01;
+                    if (xrot > Math.PI * 0.45) {
+                        xrot = Math.PI * 0.45;
+                    } else if (xrot < Math.PI * 0.1) {
+                        xrot = Math.PI * 0.1;
+                    }
+                }
+            },
+            zoom(multiplier) {
+                zoom *= multiplier;
+            }
+        })
+
         function frame() {
-            renderer.render(Math.pow(2, zoom));
+            renderer.render(Math.pow(2, zoom), xrot, yrot);
             if (erode.get()) {
-                for (let i = 0; i < 1; i++)
+                for (let i = 0; i < iterations; i++)
                     eroder();
                 device.queue.submit([normals()]);
             }

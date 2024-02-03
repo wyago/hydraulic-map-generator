@@ -43,10 +43,15 @@ struct Packet {
 
 fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     var tile = source;
-    var transfer = min(delta * 0.4, tile.water);
-    var siltTransfer = min(transfer / tile.water * tile.silt, tile.silt);
+    var transfer = min(delta * 0.05, tile.water);
+    if (rockDelta > 0) {
+        var erosion = clamp(transfer*1.25, 0, min(tile.soft, rockDelta));
+        tiles[i].soft -= erosion;
+        tiles[i].silt += erosion;
+    }
+    var siltTransfer = min(transfer / tile.water * tiles[i].silt, tiles[i].silt);
     var packet: Packet;
-    simpleErode(tile, i, transfer*30);
+    simpleErode(tile, i, transfer*20);
     tiles[i].water -= transfer;
     tiles[i].silt -= siltTransfer;
     tile = tiles[i];
@@ -55,11 +60,6 @@ fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     packet.silt = siltTransfer;
     packet.soft = 0;
 
-    if (rockDelta > 0) {
-        var erosion = clamp(min(transfer*.8, tile.soft), 0, 1);
-        tiles[i].soft -= erosion;
-        tiles[i].silt += erosion;
-    }
 
     return packet;
 }
@@ -130,6 +130,11 @@ fn main(
     var down = totalDownhill(sourceI);
     var dtile = tiles[down];
     var delta = elevation(source) - elevation(dtile);
+    var releaseFactor = clamp(0.7 - clamp(delta, 0, 1)*20, 0.1, 0.7);
+    var release = tiles[sourceI].silt*releaseFactor;
+    tiles[sourceI].soft += release;
+    tiles[sourceI].silt -= release;
+    source = tiles[sourceI];
     if (delta < 0) {
         return;
     }
@@ -139,9 +144,4 @@ fn main(
     
     placePacket(sourceI, down, packet);
     
-    source = tiles[sourceI];
-    var releaseFactor = clamp(0.7 - delta*20 - source.water*4, 0.1, 0.7);
-    var release = tiles[sourceI].silt*releaseFactor;
-    tiles[sourceI].soft += release;
-    tiles[sourceI].silt -= release;
 }

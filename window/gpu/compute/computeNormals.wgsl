@@ -29,6 +29,8 @@ var<storage, read_write> normals: array<vec3f>;
 var<storage, read_write> positions: array<vec2f>;
 @group(0) @binding(5)
 var<storage, read_write> albedos: array<vec3f>;
+@group(0) @binding(6)
+var<storage, read_write> waternormals: array<vec3f>;
 
 
 fn albedo(hard: f32, soft: f32, aquifer: f32) -> vec3f {
@@ -54,7 +56,10 @@ fn albedo(hard: f32, soft: f32, aquifer: f32) -> vec3f {
 }
 
 fn rockElevation(i: u32) -> f32 {
-    return (tiles[i].hard + tiles[i].soft + tiles[i].water)*250.0;
+    return (tiles[i].hard + tiles[i].soft)*450.0;
+}
+fn elevation(i: u32) -> f32 {
+    return (tiles[i].hard + tiles[i].soft + tiles[i].water)*450.0;
 }
 
 @compute @workgroup_size(64)
@@ -73,6 +78,7 @@ fn main(
     var adjacent_count = adjacent_indices[center].length;
 
     var rocknormal = vec3f(0,0,0);
+    var waternormal = vec3f(0,0,0);
     var rock_elevation = vec3f(positions[center].xy, rockElevation(center));
     var half = adjacent_count/2;
     for (var i = 0; i <adjacent_count; i++) {
@@ -82,10 +88,16 @@ fn main(
         var firstr = vec3f(positions[adj1].xy, rockElevation(adj1)) - rock_elevation;
         var secondr = vec3f(positions[adj2].xy, rockElevation(adj2)) - rock_elevation;
 
+        var wfirstr = vec3f(positions[adj1].xy, elevation(adj1)) - rock_elevation;
+        var wsecondr = vec3f(positions[adj2].xy, elevation(adj2)) - rock_elevation;
+
         rocknormal += cross(firstr, secondr);
+        waternormal += cross(wfirstr, wsecondr);
     }
 
     rocknormal /= f32(adjacent_count);
+    waternormal /= f32(adjacent_count);
     normals[center]= normalize(rocknormal);
+    waternormals[center]= normalize(waternormal);
     albedos[center] = albedo(tiles[center].hard, tiles[center].soft, tiles[center].aquifer);
 }

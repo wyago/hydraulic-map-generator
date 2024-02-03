@@ -27,6 +27,10 @@ export function normalsPass(device: GPUDevice, buffers: Buffers) {
             binding: 5,
             visibility: GPUShaderStage.COMPUTE,
             buffer: { type: "storage" }
+        }, {
+            binding: 6,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" }
         }],
     });
     const bindGroup = device.createBindGroup({
@@ -49,6 +53,9 @@ export function normalsPass(device: GPUDevice, buffers: Buffers) {
         }, {
             binding: 5,
             resource: { buffer: buffers.albedo }
+        }, {
+            binding: 6,
+            resource: { buffer: buffers.waternormals }
         }]
     });
 

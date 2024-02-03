@@ -4,12 +4,20 @@ struct VertexOut {
     @location(1) albedo : vec3f,
     @location(2) water : f32,
     @location(3) waternormal : vec3f,
+    @location(4) reflection : vec3f,
+    @location(5) view : vec3f,
+    @location(6) vertex : vec3f,
+    @location(7) time : f32,
 }
 
 @group(0) @binding(0)
 var<uniform> perspective : mat4x4f;
 @group(0) @binding(1)
 var<uniform> view : mat4x4f;
+@group(0) @binding(2)
+var<uniform> eye : vec3f;
+@group(0) @binding(3)
+var<uniform> time : f32;
 
 @vertex
 fn vertex_main(
@@ -22,7 +30,13 @@ fn vertex_main(
     @location(6) waternormal: vec3f,
 ) -> VertexOut {
     var output: VertexOut;
-    output.position = perspective * view * vec4f(position.x, (hard + soft)*450, position.y, 1);
+    const light = vec3f(0.5, -0.5, 0.5);
+    var vertex = vec3f(position.x, (hard + soft + water)*450, position.y);
+    output.position = perspective * view * vec4f(vertex, 1);
+    output.reflection = reflect(normalize(-light), normalize(vertex - eye));
+    output.view = normalize(vertex - eye);
+    output.vertex = vertex;
+    output.time = time;
 
     output.rocknormal = rocknormal;
     output.waternormal = waternormal;
@@ -38,25 +52,18 @@ struct FragmentOutput {
 @fragment
 fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     var output: FragmentOutput;
-    const fogalbedo = vec3f(0.5,0.5,0.5); 
-
-    const light = vec3f(0.5, 0.5, 0.5);
-    var rockDot = clamp(dot(fragData.rocknormal, light), 0.0, 1.0);
-
+    const light = vec3f(0.5, -0.5, 0.5);
     const sunlight = vec3f(0.9,0.9, 0.85);
-    var sunColor = sunlight * rockDot + sunlight * 0.4;
-    const ambient = vec3f(0.2, 0.2, 0.25);
 
     var water = fragData.water;
-    var depth = water * 50.0;
+    var normal = normalize(fragData.waternormal);
 
-    var reflect = 0.6;
+    var reflect = 1.0;
     if (water < 0.005) {
-        reflect = mix(0.0, 0.6, water/0.005);
+        reflect = mix(0.0, 1.0, water/0.005);
     }
-    var subtractor = vec3f(0.12, 0.09, 0.08) * depth;
-    var transit = sunColor * (1.0 - reflect);
-    var ground = (transit + ambient - subtractor)*fragData.albedo;
-    output.color = vec4f(ground, 1);
+    let specular = pow(clamp(dot(fragData.reflection, normal)*reflect, 0, 1), 20)*0.6;
+
+    output.color = vec4f(sunlight, reflect*specular);
     return output;
 }

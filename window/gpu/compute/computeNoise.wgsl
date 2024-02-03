@@ -243,13 +243,13 @@ fn main(
     var pos = positions[source];
     var x = pos.x;
     var y = pos.y;
-    pos *= 0.0004;
+    pos *= 0.0008;
     pos.x += 0.5;
     pos.y += 0.5;
    
-    var plateau = clamp(sqrt(x*x + y*y)/5000, 0, 1);
-    var elevation = clamp((noise(pos) - plateau*2 + 1)/2, 0.01, 1) + noise(pos)*0.05;//clamp(noise(pos)*0.2 + plateau*0.5 + noise(pos)*0.05 + 0.01, 0, 1); 
-    tiles[source].hard = elevation;
+    var plateau = clamp(sqrt(x*x + y*y)/2000, 0, 1);
+    var elevation = clamp(clamp((noise(pos) - plateau*2 + 1)/2, 0.01, 1) + noise(pos)*0.05, 0.01, 1);//clamp(noise(pos)*0.2 + plateau*0.5 + noise(pos)*0.05 + 0.01, 0, 1); 
+    tiles[source].hard = elevation*0.2;
     tiles[source].soft = 0;
     tiles[source].original = elevation;
     tiles[source].water = 0;

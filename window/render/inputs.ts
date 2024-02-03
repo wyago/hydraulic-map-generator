@@ -19,9 +19,9 @@ type TouchState = {
 export function setupMouse(element: HTMLElement, options: InputOptions) {
     window.addEventListener("wheel", e => {
         if (e.deltaY > 0) {
-            options.zoom(1.1);
+            options.zoom(1.05);
         } else {
-            options.zoom(0.9);
+            options.zoom(0.95);
         }
     });
 

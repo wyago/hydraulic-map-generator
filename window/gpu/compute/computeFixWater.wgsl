@@ -42,11 +42,11 @@ fn main(
     if (dot(normals[i], vec3f(1,0,0)) > 0) {
         mul = 1;
     }
-    tiles[i].water += 0.00005*mul;
+    tiles[i].water += 0.00002*mul;
     //tiles[i].water += clamp(0.00001, 0, 1);
     if (rock_elevation < 0.2) {
         tiles[i].water = clamp(0.2 - rock_elevation, 0, 1);
-        tiles[i].aquifer = 0.99*tiles[i].soft;
+        tiles[i].aquifer = 0.8*tiles[i].soft;
         //tiles[i].fog += 0.000001;
     } else {
         //if (tiles[i].water > 0) {
