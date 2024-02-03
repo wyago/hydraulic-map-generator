@@ -5,8 +5,8 @@
     "main": "index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "build": "esbuild window/window.ts  --bundle --outdir=public --target=es6 --loader:.glsl=text ",
-        "build-min": "esbuild window/window.ts   --minify --bundle --outdir=public --loader:.glsl=text ",
+        "build": "esbuild window/window.ts  --bundle --outdir=public --target=es6 --loader:.glsl=text --loader:.wgsl=text ",
+        "build-min": "esbuild window/window.ts   --minify --bundle --outdir=public --loader:.glsl=text --loader:.wgsl=text ",
         "start": "esbuild window/window.ts  --bundle --outdir=public  --target=es6 --watch --servedir=public --loader:.glsl=text --loader:.wgsl=text --sourcemap"
     },
     "author": "Wyatt Goodin",
