@@ -34,7 +34,7 @@ var<storage, read_write> waternormals: array<vec3f>;
 
 
 fn albedo(hard: f32, soft: f32, aquifer: f32) -> vec3f {
-    const silt_albedo = vec3f(0.69, 0.43, 0.2);
+    const silt_albedo = vec3f(0.39, 0.23, 0.1);
     const rock_albedo = vec3f(0.49, 0.38, 0.36);
     const softrock_albedo = vec3f(0.69, 0.43, 0.2);
     const vegetation_albedo = vec3f(0.13, 0.17, 0.11); 

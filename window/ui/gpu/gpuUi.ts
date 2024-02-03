@@ -63,7 +63,7 @@ export function createGpuUi() {
 
 
         //const render = implicitVoronoiRenderer(device, context, buffers, depth);
-        const renderer = landscape(device, context, vs, buffers, window.innerWidth, window.innerHeight);
+        const renderer = landscape(device, context, vs, buffers);
         const eroder = createEroder(device, buffers);
         const normals = normalsPass(device, buffers);
 

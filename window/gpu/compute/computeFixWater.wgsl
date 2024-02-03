@@ -32,21 +32,24 @@ fn main(
     }
 
     var i = global_id.x;
+    let tile = tiles[i];
 
-    var rock_elevation = tiles[i].hard + tiles[i].soft;
-
-    var fog = tiles[i].fog;
-    
+    var rock_elevation = tile.hard + tile.soft;
+    let capacity = tile.soft - tile.aquifer;
 
     var mul: f32 = 1;
     if (dot(normals[i], vec3f(1,0,0)) > 0) {
-        mul = 1;
+        mul = 0;
     }
-    tiles[i].water += 0.00002*mul;
-    //tiles[i].water += clamp(0.00001, 0, 1);
+    //var add =  0.0001*mul;
+    //let aquifer = min(add, capacity);
+    //let rest = add - aquifer;
+    //tiles[i].aquifer += aquifer;
+    //tiles[i].water += rest;
+    tiles[i].water += 0.000025*mul;
     if (rock_elevation < 0.2) {
-        tiles[i].water = clamp(0.2 - rock_elevation, 0, 1);
-        tiles[i].aquifer = 0.8*tiles[i].soft;
+        tiles[i].water = tiles[i].water*0.5 + clamp(0.2 - rock_elevation, 0, 1)*0.5;
+        tiles[i].aquifer = 0.8*tile.soft;
         //tiles[i].fog += 0.000001;
     } else {
         //if (tiles[i].water > 0) {

@@ -48,4 +48,8 @@ export class Graph {
     y(i: number) {
         return this.xys[i * 2 + 1];
     }
+
+    export() {
+        return JSON.stringify([...this.xys]);
+    }
 }

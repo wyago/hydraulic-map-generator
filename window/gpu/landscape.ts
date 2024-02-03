@@ -92,7 +92,7 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
     });
 }
 
-export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: Graph, buffers: Buffers, width: number, height: number) {
+export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: Graph, buffers: Buffers) {
     let perspective = mat4.identity();
     const landshader = device.createShaderModule({ code: landCode });
     const watershader = device.createShaderModule({ code: waterCode });
@@ -193,7 +193,10 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: G
         device.queue.writeBuffer(uniforms.perspective, 0, perspective as Float32Array);
         device.queue.writeBuffer(uniforms.view, 0, view as Float32Array);
     }
-    resize(width, height);
+    resize(window.innerWidth, window.innerHeight);
+    window.addEventListener('resize', () => {
+        resize(window.innerWidth, window.innerHeight);
+    })
 
     let t = 0;
     return {

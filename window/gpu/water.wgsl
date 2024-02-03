@@ -55,14 +55,14 @@ fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     const light = vec3f(0.5, -0.5, 0.5);
     const sunlight = vec3f(0.9,0.9, 0.85);
 
-    var water = fragData.water;
+    var water = clamp(fragData.water - 0.003, 0, 1);
     var normal = normalize(fragData.waternormal);
 
     var reflect = 1.0;
-    if (water < 0.005) {
-        reflect = mix(0.0, 1.0, water/0.005);
+    if (water < 0.001) {
+        reflect = mix(0.0, 1.0, water/0.001);
     }
-    let specular = pow(clamp(dot(fragData.reflection, normal)*reflect, 0, 1), 20)*0.6;
+    let specular = pow(clamp(dot(fragData.reflection, normal)*reflect, 0, 1), 20)*0.4;
 
     output.color = vec4f(sunlight, reflect*specular);
     return output;
