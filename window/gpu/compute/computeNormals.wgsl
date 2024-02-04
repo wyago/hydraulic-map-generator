@@ -79,20 +79,23 @@ fn main(
 
     var rocknormal = vec3f(0,0,0);
     var waternormal = vec3f(0,0,0);
-    var rock_elevation = vec3f(positions[center].xy, rockElevation(center));
+    var center_position = vec3f(positions[center].x, rockElevation(center), positions[center].y);
     var half = adjacent_count/2;
     for (var i = 0; i <adjacent_count; i++) {
         var adj1 = adjacents[base + i];
         var adj2 = adjacents[base + (i+1)%adjacent_count];
 
-        var firstr = vec3f(positions[adj1].xy, rockElevation(adj1)) - rock_elevation;
-        var secondr = vec3f(positions[adj2].xy, rockElevation(adj2)) - rock_elevation;
+        var p1 = positions[adj1];
+        var p2 = positions[adj2];
 
-        var wfirstr = vec3f(positions[adj1].xy, elevation(adj1)) - rock_elevation;
-        var wsecondr = vec3f(positions[adj2].xy, elevation(adj2)) - rock_elevation;
+        var firstr = vec3f(p1.x, rockElevation(adj1), p1.y) - center_position;
+        var secondr = vec3f(p2.x, rockElevation(adj2), p2.y) - center_position;
 
-        rocknormal += cross(firstr, secondr);
-        waternormal += cross(wfirstr, wsecondr);
+        var wfirstr = vec3f(p1.x, elevation(adj1), p1.y) - center_position;
+        var wsecondr = vec3f(p2.x, elevation(adj2), p2.y) - center_position;
+
+        rocknormal += cross(secondr, firstr);
+        waternormal += cross(wsecondr, wfirstr);
     }
 
     rocknormal /= f32(adjacent_count);

@@ -49,12 +49,6 @@ export function createGpuUi() {
             alphaMode: "premultiplied"
         });
 
-        //const depth = device.createTexture({
-            //size: { width: window.innerWidth, height: window.innerHeight},
-            //format: 'depth24plus',
-            //usage: GPUTextureUsage.RENDER_ATTACHMENT
-        //}).createView();
-
         const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 2000*2000);
         while (gen.step());
     

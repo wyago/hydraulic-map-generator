@@ -30,10 +30,10 @@ fn vertex_main(
     @location(6) waternormal: vec3f,
 ) -> VertexOut {
     var output: VertexOut;
-    const light = vec3f(0.5, -0.5, 0.5);
+    const light = vec3f(0.5, 0.5, 0.5);
     var vertex = vec3f(position.x, (hard + soft + water)*450, position.y);
     output.position = perspective * view * vec4f(vertex, 1);
-    output.reflection = reflect(normalize(-light), normalize(vertex - eye));
+    output.reflection = reflect(normalize(light), normalize(vertex - eye));
     output.view = normalize(vertex - eye);
     output.vertex = vertex;
     output.time = time;
@@ -52,7 +52,6 @@ struct FragmentOutput {
 @fragment
 fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     var output: FragmentOutput;
-    const light = vec3f(0.5, -0.5, 0.5);
     const sunlight = vec3f(0.9,0.9, 0.85);
 
     var water = clamp(fragData.water - 0.003, 0, 1);
@@ -62,7 +61,7 @@ fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     if (water < 0.001) {
         reflect = mix(0.0, 1.0, water/0.001);
     }
-    let specular = pow(clamp(dot(fragData.reflection, normal)*reflect, 0, 1), 20)*0.4;
+    let specular = pow(clamp(dot(fragData.reflection, normal), 0, 1), 40)*0.4;
 
     output.color = vec4f(sunlight, reflect*specular);
     return output;

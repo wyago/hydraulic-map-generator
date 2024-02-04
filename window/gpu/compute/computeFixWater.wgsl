@@ -39,7 +39,7 @@ fn main(
 
     var mul: f32 = 1;
     if (dot(normals[i], vec3f(1,0,0)) > 0) {
-        mul = 0;
+        mul = 0.0001;
     }
     //var add =  0.0001*mul;
     //let aquifer = min(add, capacity);
