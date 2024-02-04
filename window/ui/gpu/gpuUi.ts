@@ -55,6 +55,10 @@ export function createGpuUi() {
         const vs = gen.vertices();
         const buffers = createBuffers(device, vs);
 
+        window.addEventListener('resize', () => {
+            element.width = window.innerWidth;
+            element.height = window.innerHeight;
+        })
 
         //const render = implicitVoronoiRenderer(device, context, buffers, depth);
         const renderer = landscape(device, context, vs, buffers);
