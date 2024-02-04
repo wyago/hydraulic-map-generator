@@ -46,7 +46,7 @@ fn main(
     //let rest = add - aquifer;
     //tiles[i].aquifer += aquifer;
     //tiles[i].water += rest;
-    tiles[i].water += 0.000025*mul;
+    tiles[i].water += 0.000007*mul;
     if (rock_elevation < 0.2) {
         tiles[i].water = tiles[i].water*0.5 + clamp(0.2 - rock_elevation, 0, 1)*0.5;
         tiles[i].aquifer = 0.8*tile.soft;

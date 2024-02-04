@@ -4,6 +4,7 @@ import erosionCode from "./computeErosion.wgsl";
 import fixWaterCode from "./computeFixWater.wgsl";
 import landslideCode from "./computeLandslide.wgsl";
 import updateCode from "./computeUpdate.wgsl";
+import zeroCode from "./computeZero.wgsl";
 import { genericComputePass } from "./genericComputePass";
 
 export function createEroder(device: GPUDevice, buffers: Buffers) {
@@ -37,8 +38,13 @@ export function createEroder(device: GPUDevice, buffers: Buffers) {
     const update = genericComputePass(device, buffers.instanceCount, [
         buffers.tiles,
         buffers.tileBuffer,
-        buffers.targetIndices
+        buffers.targetIndices,
+        buffers.tileAdjacents,
+        buffers.tileAdjacentIndices
     ], updateCode);
+    const zero = genericComputePass(device, buffers.instanceCount, [
+        buffers.tileBuffer,
+    ], zeroCode);
 
     return () => {
         const encoder = device.createCommandEncoder();
@@ -46,10 +52,13 @@ export function createEroder(device: GPUDevice, buffers: Buffers) {
         fixWater(computer);
         erode(computer);
         update(computer);
+        zero(computer);
         landslide(computer);
         update(computer);
+        zero(computer);
         aquifer(computer);
         update(computer);
+        zero(computer);
         computer.end();
 
         device.queue.submit([encoder.finish()]);
