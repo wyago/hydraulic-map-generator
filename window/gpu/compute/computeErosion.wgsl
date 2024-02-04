@@ -43,15 +43,15 @@ struct Packet {
 
 fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     var tile = source;
-    var transfer = min(delta * 0.05, tile.water);
+    var transfer = min(delta * 0.1, tile.water);
     if (rockDelta > 0) {
-        var erosion = clamp(transfer*1.25, 0, min(tile.soft, rockDelta));
+        var erosion = clamp(transfer*2.25, 0, min(tile.soft, rockDelta));
         tiles[i].soft -= erosion;
         tiles[i].silt += erosion;
     }
     var siltTransfer = min(transfer / tile.water * tiles[i].silt, tiles[i].silt);
     var packet: Packet;
-    simpleErode(tile, i, transfer*20);
+    simpleErode(tile, i, transfer*40);
     tiles[i].water -= transfer;
     tiles[i].silt -= siltTransfer;
     tile = tiles[i];

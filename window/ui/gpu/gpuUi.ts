@@ -72,7 +72,7 @@ export function createGpuUi() {
         }
         generate();
 
-        let iterations = 5;
+        let iterations = 7;
         let xrot = 1;
         let yrot = 0;
         let zoom = -10;

@@ -94,8 +94,8 @@ fn main(
         var wfirstr = vec3f(p1.x, elevation(adj1), p1.y) - center_position;
         var wsecondr = vec3f(p2.x, elevation(adj2), p2.y) - center_position;
 
-        rocknormal += cross(secondr, firstr);
-        waternormal += cross(wsecondr, wfirstr);
+        rocknormal += cross(firstr, secondr);
+        waternormal += cross(wfirstr, wsecondr);
     }
 
     rocknormal /= f32(adjacent_count);

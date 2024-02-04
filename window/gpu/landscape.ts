@@ -30,6 +30,10 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
                     shaderLocation: 5,
                     offset: 2*4,
                     format: "float32" as const 
+                }, {
+                    shaderLocation: 7,
+                    offset: 3*4,
+                    format: "float32" as const 
                 }],
                 stepMode: "vertex" as const,
                 arrayStride: 4*6
@@ -115,8 +119,8 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: G
             size: eye.length * Float32Array.BYTES_PER_ELEMENT,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         }),
-        time: device.createBuffer({
-            size: Float32Array.BYTES_PER_ELEMENT,
+        light: device.createBuffer({
+            size: 3 * Float32Array.BYTES_PER_ELEMENT,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         })
     }
@@ -172,7 +176,7 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: G
             resource: { buffer: uniforms.eye, }
         }, {
             binding: 3,
-            resource: { buffer: uniforms.time, }
+            resource: { buffer: uniforms.light, }
         }]
     })
 
@@ -214,7 +218,14 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, graph: G
             const view = mat4.lookAt(eye, target, up);
             device.queue.writeBuffer(uniforms.view, 0, view as Float32Array);
             device.queue.writeBuffer(uniforms.eye, 0, new Float32Array(eye));
-            device.queue.writeBuffer(uniforms.time, 0, new Float32Array([t*0.1]));
+            device.queue.writeBuffer(uniforms.light, 0, new Float32Array([
+                //Math.cos(t*0.001 + Math.PI),
+                //Math.sin(t*0.001 + Math.PI),
+                //Math.cos(t*0.001 + Math.PI)
+                0.5, 
+                -0.5,
+                0.5
+            ]));
 
             const encoder = device.createCommandEncoder();
             const pass = encoder.beginRenderPass({
