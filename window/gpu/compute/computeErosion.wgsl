@@ -46,12 +46,14 @@ fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     var transfer = min(delta * 0.4, tile.water);
     let factor = (transfer / 0.02) * (transfer / 0.02);
     simpleErode(tile, i, factor*0.2);
+    var silt = tile.silt;
     if (rockDelta > 0) {
         var erosion = clamp(factor*0.05, 0, min(tile.soft, rockDelta));
         tiles[i].soft -= erosion;
         tiles[i].silt += erosion;
+        silt += erosion;
     }
-    var siltTransfer = transfer / tile.water * tiles[i].silt;
+    var siltTransfer = transfer / tile.water * silt;
     var packet: Packet;
     tiles[i].water -= transfer;
     tiles[i].silt -= siltTransfer;
@@ -70,38 +72,20 @@ fn placePacket(source: i32, down: i32, packet: Packet) {
     buffer[source].soft += packet.soft;
 }
 
-fn waterTable(adj: Tile) -> f32 {
-    return adj.water + adj.aquifer + adj.hard;
-}
 
-fn waterTableDownhill(center: i32) -> i32 {
-    var minimum = 1000.0f;
-    var base = adjacent_indices[center].base;
-    var downhill = -1;
-    var adjacent_count = adjacent_indices[center].length;
-    for (var i = 0; i < adjacent_count; i++) {
-        var adj = adjacents[base + i];
-        var t = tiles[adj];
-        var e = t.water + t.aquifer + t.hard;
-        if (e < minimum) {
-            downhill = adj;
-            minimum = e;
-        }
-    }
-    return downhill;
-}
 
 fn elevation(i: Tile) -> f32 {
     return (i.hard + i.soft + i.water);
 }
 fn totalDownhill(center: i32) -> i32 {
     var minimum = 1000.0f;
-    var base = adjacent_indices[center].base;
+    let indices = adjacent_indices[center];
+    let base = indices.base;
     var downhill = -1;
-    var adjacent_count = adjacent_indices[center].length;
+    let adjacent_count = indices.length;
     for (var i = 0; i < adjacent_count; i++) {
-        var adj = adjacents[base + i];
-        var e = elevation(tiles[adj]);
+        let adj = adjacents[base + i];
+        let e = elevation(tiles[adj]);
         if (e < minimum) {
             downhill = adj;
             minimum = e;
@@ -134,15 +118,13 @@ fn main(
     var release = source.silt*mix(0.1, 0.8, 1 - clamp(factor, 0, 1));//clamp((source.silt - source.water*0.1), -source.soft, source.silt);
     tiles[sourceI].soft += release;
     tiles[sourceI].silt -= release;
-    source = tiles[sourceI];
     if (delta < 0) {
         return;
     }
 
-    source = tiles[sourceI];
-    var rockDelta = rockElevation(source) - rockElevation(dtile);
-    var packet = extractPacket(source, sourceI, delta, rockDelta);
-    
+    source.soft += release;
+    source.silt -= release;
+    let rockDelta = rockElevation(source) - rockElevation(dtile);
+    let packet = extractPacket(source, sourceI, delta, rockDelta);
     placePacket(sourceI, down, packet);
-    
 }

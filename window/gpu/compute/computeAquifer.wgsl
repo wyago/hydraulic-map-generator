@@ -73,12 +73,15 @@ fn aquiferSpace(i: Tile) -> f32 {
     return clamp(aquiferCapacity(i) - i.aquifer, 0, 1);
 }
 
-fn soak(tile: Tile, i: i32) {
+fn soak(source: Tile, i: i32) -> Tile {
+    var tile = source;
     var aquifer_space = aquiferSpace(tile);
     if (aquifer_space > 0 && tiles[i].water > 0) {
-        var soak = min(tiles[i].water*0.01, min(aquifer_space, tiles[i].aquifer*0.0001 + 0.000001));
+        var soak = min(tile.water*0.01, min(aquifer_space, tile.aquifer*0.0001 + 0.000001));
         tiles[i].aquifer += soak;
         tiles[i].water -= soak;
+        tile.aquifer += soak;
+        tile.water += soak;
     }
     
     aquifer_space = aquiferSpace(tile);
@@ -86,7 +89,11 @@ fn soak(tile: Tile, i: i32) {
     if (release > 0) {
         tiles[i].water += release;
         tiles[i].aquifer -= release;
+        tile.water += release;
+        tile.aquifer += release;
     }
+
+    return tile;
 }
 
 @compute @workgroup_size(64)
@@ -102,6 +109,5 @@ fn main(
     var sourceI = i32(global_id.x);
     var source = tiles[sourceI];
 
-    soak(source, sourceI);
-    spreadAquifer(sourceI, tiles[sourceI]);
+    spreadAquifer(sourceI, soak(source, sourceI));
 }

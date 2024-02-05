@@ -32,31 +32,15 @@ fn main(
         return;
     }
 
-    var index = i32(global_id.x);
-    /*var t = targetIndices[i];
-    var source = buffer[i];
-
-    tiles[t].hard += source.hard;
-    tiles[t].soft += source.soft;
-    tiles[t].water += source.water;
-    tiles[t].aquifer += source.aquifer;
-    tiles[t].fog += source.fog;
-    tiles[t].silt += source.silt;
-
-    buffer[i].hard = 0;
-    buffer[i].soft = 0;
-    buffer[i].water = 0;
-    buffer[i].aquifer = 0;
-    buffer[i].fog = 0;
-    buffer[i].silt = 0;*/
-    
-    var base = adjacent_indices[index].base;
-    var adjacent_count = adjacent_indices[index].length;
+    let index = i32(global_id.x);
+    let indices = adjacent_indices[index];
+    let base = indices.base;
+    let adjacent_count = indices.length;
     for (var i = 0; i < adjacent_count; i++) {
-        var adj = adjacents[base + i];
-        var othertarget = targetIndices[adj];
+        let adj = adjacents[base + i];
+        let othertarget = targetIndices[adj];
         if (othertarget == index) {
-            var source = buffer[adj];
+            let source = buffer[adj];
             tiles[index].hard += source.hard;
             tiles[index].soft += source.soft;
             tiles[index].water += source.water;

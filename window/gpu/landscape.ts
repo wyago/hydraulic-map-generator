@@ -187,7 +187,6 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, camera: 
                     depthStoreOp: 'store' as const,
                 }
             })
-            pass.setPipeline(landPipeline);
             pass.setIndexBuffer(indexBuffer, "uint32");
             pass.setVertexBuffer(0, buffers.positions);
             pass.setVertexBuffer(1, buffers.tiles);
@@ -196,16 +195,10 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, camera: 
             pass.setVertexBuffer(4, buffers.waternormals);
             pass.setBindGroup(0, camera.bindGroup);
             pass.setBindGroup(1, group);
+
+            pass.setPipeline(landPipeline);
             pass.drawIndexed(indices.length);
             pass.setPipeline(waterPipeline);
-            pass.setIndexBuffer(indexBuffer, "uint32");
-            pass.setVertexBuffer(0, buffers.positions);
-            pass.setVertexBuffer(1, buffers.tiles);
-            pass.setVertexBuffer(2, buffers.normals);
-            pass.setVertexBuffer(3, buffers.albedo);
-            pass.setVertexBuffer(4, buffers.waternormals);
-            pass.setBindGroup(0, camera.bindGroup);
-            pass.setBindGroup(1, group);
             pass.drawIndexed(indices.length);
             pass.end();
         

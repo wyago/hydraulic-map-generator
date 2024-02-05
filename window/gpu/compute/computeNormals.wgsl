@@ -76,27 +76,29 @@ fn main(
         return;
     }
 
-    var center = global_id.x;
+    let center = global_id.x;
     var min = 1000.0f;
-    var base = adjacent_indices[center].base;
-    var adjacent_count = adjacent_indices[center].length;
+    let indices = adjacent_indices[center];
+    let base = indices.base;
+    let adjacent_count = indices.length;
 
     var rocknormal = vec3f(0,0,0);
     var waternormal = vec3f(0,0,0);
-    var center_position = vec3f(positions[center].x, rockElevation(center), positions[center].y);
-    var half = adjacent_count/2;
+    let position = positions[center];
+    let center_position = vec3f(position.x, rockElevation(center), position.y);
+    let half = adjacent_count/2;
     for (var i = 0; i <adjacent_count; i++) {
-        var adj1 = adjacents[base + i];
-        var adj2 = adjacents[base + (i+1)%adjacent_count];
+        let adj1 = adjacents[base + i];
+        let adj2 = adjacents[base + (i+1)%adjacent_count];
 
-        var p1 = positions[adj1];
-        var p2 = positions[adj2];
+        let p1 = positions[adj1];
+        let p2 = positions[adj2];
 
-        var firstr = vec3f(p1.x, rockElevation(adj1), p1.y) - center_position;
-        var secondr = vec3f(p2.x, rockElevation(adj2), p2.y) - center_position;
+        let firstr = vec3f(p1.x, rockElevation(adj1), p1.y) - center_position;
+        let secondr = vec3f(p2.x, rockElevation(adj2), p2.y) - center_position;
 
-        var wfirstr = vec3f(p1.x, elevation(adj1), p1.y) - center_position;
-        var wsecondr = vec3f(p2.x, elevation(adj2), p2.y) - center_position;
+        let wfirstr = vec3f(p1.x, elevation(adj1), p1.y) - center_position;
+        let wsecondr = vec3f(p2.x, elevation(adj2), p2.y) - center_position;
 
         rocknormal += cross(firstr, secondr);
         waternormal += cross(wfirstr, wsecondr);
@@ -106,5 +108,6 @@ fn main(
     waternormal /= f32(adjacent_count);
     normals[center]= normalize(rocknormal);
     waternormals[center]= normalize(waternormal);
-    albedos[center] = albedo(tiles[center].hard, tiles[center].soft, tiles[center].aquifer);
+    let tile = tiles[center];
+    albedos[center] = albedo(tile.hard, tile.soft, tile.aquifer);
 }
