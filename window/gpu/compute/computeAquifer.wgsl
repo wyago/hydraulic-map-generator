@@ -24,9 +24,6 @@ var<storage, read_write> buffer: array<Tile>;
 var<storage, read_write> targetIndices: array<i32>;
 
 fn waterTable(adj: Tile) -> f32 {
-    if (adj.aquifer < adj.soft*0.9) {
-        return adj.aquifer + adj.hard;
-    } 
     return adj.water + adj.aquifer + adj.hard;
 }
 
@@ -59,13 +56,13 @@ fn spreadAquifer(source: i32, tile: Tile) {
     
     targetIndices[source] = down;
 
-    var transfer = min(delta * 0.005, tile.aquifer);
+    var transfer = min(delta * 0.1, tile.aquifer);
     tiles[source].aquifer -= transfer;
     buffer[source].aquifer += transfer;
 
-    var erosion = min(transfer*0.05, tile.soft*0.05);
-    tiles[source].soft -= erosion;
-    buffer[source].soft += erosion;
+    //var erosion = min(transfer*0.01, tile.soft);
+    //tiles[source].soft -= erosion;
+    //buffer[source].soft += erosion;
 }
 
 fn aquiferCapacity(i: Tile) -> f32 {
@@ -78,16 +75,17 @@ fn aquiferSpace(i: Tile) -> f32 {
 
 fn soak(tile: Tile, i: i32) {
     var aquifer_space = aquiferSpace(tile);
+    if (aquifer_space > 0 && tiles[i].water > 0) {
+        var soak = min(tiles[i].water*0.01, min(aquifer_space, tiles[i].aquifer*0.0001 + 0.000001));
+        tiles[i].aquifer += soak;
+        tiles[i].water -= soak;
+    }
+    
+    aquifer_space = aquiferSpace(tile);
     let release = tile.aquifer - aquiferCapacity(tile);
     if (release > 0) {
         tiles[i].water += release;
         tiles[i].aquifer -= release;
-    }
-
-    if (aquifer_space > 0 && tiles[i].water > 0) {
-        var soak = min(tiles[i].water*0.008, aquifer_space);
-        tiles[i].aquifer += soak;
-        tiles[i].water -= soak;
     }
 }
 

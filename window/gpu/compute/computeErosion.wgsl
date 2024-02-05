@@ -29,7 +29,7 @@ fn rockElevation(i: Tile) -> f32 {
 }
 
 fn simpleErode(center: Tile, i: i32, amount: f32) {
-    var hardFactor = clamp(amount*0.1 * center.hard*(0.2 -  center.soft), 0,  center.hard);
+    var hardFactor = clamp(amount * center.hard*(0.2 -  center.soft), 0,  center.hard);
     tiles[i].hard -= hardFactor;
     tiles[i].soft += hardFactor;
 }
@@ -43,14 +43,15 @@ struct Packet {
 
 fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     var tile = source;
-    var transfer = min(delta * 0.2, tile.water);
-    simpleErode(tile, i, transfer*25);
-    //if (rockDelta > 0) {
-        //var erosion = clamp(transfer*2, 0, min(tile.soft, rockDelta));
-        //tiles[i].soft -= erosion;
-        //tiles[i].silt += erosion;
-    //}
-    var siltTransfer = transfer / tile.water * tile.silt;
+    var transfer = min(delta * 0.4, tile.water);
+    let factor = (transfer / 0.02) * (transfer / 0.02);
+    simpleErode(tile, i, factor*0.2);
+    if (rockDelta > 0) {
+        var erosion = clamp(factor*0.05, 0, min(tile.soft, rockDelta));
+        tiles[i].soft -= erosion;
+        tiles[i].silt += erosion;
+    }
+    var siltTransfer = transfer / tile.water * tiles[i].silt;
     var packet: Packet;
     tiles[i].water -= transfer;
     tiles[i].silt -= siltTransfer;
@@ -128,7 +129,9 @@ fn main(
     var down = totalDownhill(sourceI);
     var dtile = tiles[down];
     var delta = elevation(source) - elevation(dtile);
-    let release = clamp((source.silt - source.water*0.2), -source.soft, source.silt);
+
+    let factor = delta/0.02;
+    var release = source.silt*mix(0.1, 0.8, 1 - clamp(factor, 0, 1));//clamp((source.silt - source.water*0.1), -source.soft, source.silt);
     tiles[sourceI].soft += release;
     tiles[sourceI].silt -= release;
     source = tiles[sourceI];
@@ -136,6 +139,7 @@ fn main(
         return;
     }
 
+    source = tiles[sourceI];
     var rockDelta = rockElevation(source) - rockElevation(dtile);
     var packet = extractPacket(source, sourceI, delta, rockDelta);
     

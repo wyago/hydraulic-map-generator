@@ -61,7 +61,7 @@ fn main(
     var d = totalDownhill(sourceI);
     targetIndices[sourceI] = d;
 
-    tiles[sourceI].hard += clamp(source.original - 0.02, 0, 1)*0.000008;
+    tiles[sourceI].hard += clamp(source.original - 0.02, 0, 1)*0.000003;
 
     const siltAngle = 0.01;
     const rockAngle = 0.02;

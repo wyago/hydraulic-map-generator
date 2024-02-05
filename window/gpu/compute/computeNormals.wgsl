@@ -3,7 +3,7 @@ struct Tile {
     soft: f32,
     water: f32,
     aquifer: f32,
-    occlusion: f32,
+    original: f32,
     silt: f32
 }
 
@@ -52,6 +52,10 @@ fn albedo(hard: f32, soft: f32, aquifer: f32) -> vec3f {
     result.x = mix(result.x, vegetation_albedo.r, min(vegetation, softness + 0.5));
     result.y = mix(result.y, vegetation_albedo.g, min(vegetation, softness + 0.5));
     result.z = mix(result.z, vegetation_albedo.b, min(vegetation, softness + 0.5));
+    let snow = clamp((hard + soft - 0.5)*100, 0, 1);
+    result.x = mix(result.x, 1, snow);
+    result.y = mix(result.y, 1, snow);
+    result.z = mix(result.z, 1, snow);
     return result;
 }
 
