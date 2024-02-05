@@ -1,6 +1,7 @@
 
 import { VNodeProperties, h } from "maquette";
 import { createBuffers } from "../../gpu/buffers";
+import { makeCamera } from "../../gpu/camera";
 import { createEroder } from "../../gpu/compute/createEroder";
 import { noisePass } from "../../gpu/compute/noisePass";
 import { normalsPass } from "../../gpu/compute/normalsPass";
@@ -55,15 +56,17 @@ export function createGpuUi() {
         const vs = gen.vertices();
         const buffers = createBuffers(device, vs);
 
+        const camera = makeCamera(device);
+        const renderer = landscape(device, context, camera, vs, buffers);
+        const eroder = createEroder(device, buffers);
+        const normals = normalsPass(device, buffers);
+
         window.addEventListener('resize', () => {
             element.width = window.innerWidth;
             element.height = window.innerHeight;
+            camera.resize();
+            renderer.resize();
         })
-
-        //const render = implicitVoronoiRenderer(device, context, buffers, depth);
-        const renderer = landscape(device, context, vs, buffers);
-        const eroder = createEroder(device, buffers);
-        const normals = normalsPass(device, buffers);
 
         generate = () => {
             device.queue.submit([noisePass(device, buffers)()]);
@@ -94,7 +97,8 @@ export function createGpuUi() {
         })
 
         function frame() {
-            renderer.render(Math.pow(2, zoom), xrot, yrot);
+            camera.update(Math.pow(2, zoom), xrot, yrot);
+            renderer.render();
             if (erode.get()) {
                 for (let i = 0; i < iterations; i++)
                     eroder();

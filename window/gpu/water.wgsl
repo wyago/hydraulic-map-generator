@@ -16,7 +16,8 @@ var<uniform> perspective : mat4x4f;
 var<uniform> view : mat4x4f;
 @group(0) @binding(2)
 var<uniform> eye : vec3f;
-@group(0) @binding(3)
+
+@group(1) @binding(0)
 var<uniform> light : vec3f;
 
 @vertex

@@ -18,7 +18,8 @@ var<uniform> perspective : mat4x4f;
 var<uniform> view : mat4x4f;
 @group(0) @binding(2)
 var<uniform> eye : vec3f;
-@group(0) @binding(3)
+
+@group(1) @binding(0)
 var<uniform> light : vec3f;
 
 fn color(rocknormal: vec3f, height: f32, rawwater: f32, albedo: vec3f, reflection: vec3f, reflectivity: f32, dirt: f32, view: vec3f, light: vec3f) -> vec3f {
