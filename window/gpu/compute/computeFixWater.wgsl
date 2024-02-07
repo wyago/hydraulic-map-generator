@@ -41,14 +41,14 @@ fn main(
     if (dot(normals[i], vec3f(1,0,0)) > 0.0) {
         mul = 0.000;
     }
-    var add =  0.00001*mul;
+    var add =  0.00002*mul;
     //let aquifer = clamp(add, 0, capacity);
     //let rest = add - aquifer;
     //tiles[i].aquifer += aquifer;
     //tiles[i].water += rest;
     tiles[i].water += add;
     if (rock_elevation < 0.2) {
-        tiles[i].water = clamp(0.2 - rock_elevation, 0, 1);
+        tiles[i].water = tiles[i].water * 0.9 +clamp(0.2 - rock_elevation, 0, 1)*0.1;
         tiles[i].aquifer = 0.8*tile.soft;
     }
 }

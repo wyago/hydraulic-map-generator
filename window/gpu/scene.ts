@@ -67,20 +67,10 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
             module: shader,
             entryPoint: "fragment_main",
             targets: [{
-                format: navigator.gpu.getPreferredCanvasFormat(),
-                blend: blend ? {
-                    color: {
-                        srcFactor: 'src-alpha',
-                        dstFactor: 'one-minus-src-alpha',
-                    },
-                    alpha: {
-                        srcFactor: 'zero',
-                        dstFactor: 'one',
-                    }
-                } : undefined
+                format: blend ? navigator.gpu.getPreferredCanvasFormat() : "bgra8unorm",
             }]
         },
-        depthStencil: blend ? undefined : {
+        depthStencil: {
             depthWriteEnabled: true,
             depthCompare: 'less' as const,
             format: 'depth24plus'
@@ -113,16 +103,20 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
         }]
     });
     
-    const depthGroupLayout = device.createBindGroupLayout({
+    const gbufferLayout = device.createBindGroupLayout({
         entries: [{
             binding: 0,
             visibility: GPUShaderStage.FRAGMENT,
             texture: {sampleType: "depth"}
+        }, {
+            binding: 1,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: {sampleType: "float"}
         }]
     });
 
     const landPipeline = makePipeline(device, landshader, [camera.bindGroupLayout, bindGroupLayout], false);
-    const waterPipeline = makePipeline(device, watershader, [camera.bindGroupLayout, bindGroupLayout, depthGroupLayout], true);
+    const waterPipeline = makePipeline(device, watershader, [camera.bindGroupLayout, bindGroupLayout, gbufferLayout], true);
     
     const indices = new Array<number>();
     for (let i = 0; i < graph.count; ++i) {
@@ -147,17 +141,38 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
         }]
     })
 
-    let depth = device.createTexture({
+    let landDepth = device.createTexture({
         size: { width: window.innerWidth, height: window.innerHeight},
         format: 'depth24plus',
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
     });
+    let waterDepth = device.createTexture({
+        size: { width: window.innerWidth, height: window.innerHeight},
+        format: 'depth24plus',
+        usage: GPUTextureUsage.RENDER_ATTACHMENT
+    });
+    let landBuffer = device.createTexture({
+        size: { width: window.innerWidth, height: window.innerHeight},
+        format: 'bgra8unorm',
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+    });
 
     function resize() {
-        depth.destroy();
-        depth = device.createTexture({
+        landDepth.destroy();
+        landBuffer.destroy();
+        landDepth = device.createTexture({
             size: { width: window.innerWidth, height: window.innerHeight},
             format: 'depth24plus',
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+        });
+        waterDepth = device.createTexture({
+            size: { width: window.innerWidth, height: window.innerHeight},
+            format: 'depth24plus',
+            usage: GPUTextureUsage.RENDER_ATTACHMENT
+        });
+        landBuffer = device.createTexture({
+            size: { width: window.innerWidth, height: window.innerHeight},
+            format: 'bgra8unorm',
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
         });
     }
@@ -184,10 +199,10 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
                     clearValue: { r: 0, g: 0, b: 0, a: 1 },
                     loadOp: "clear" as const,
                     storeOp: "store" as const,
-                    view: context.getCurrentTexture().createView(),
+                    view: landBuffer.createView(),
                 }],
                 depthStencilAttachment: {
-                    view: depth.createView(),
+                    view: landDepth.createView(),
                     depthClearValue: 1,
                     depthLoadOp: 'clear' as const,
                     depthStoreOp: 'store' as const,
@@ -209,10 +224,16 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
             const waterPass = encoder.beginRenderPass({
                 colorAttachments: [{
                     clearValue: { r: 0, g: 0, b: 0, a: 1 },
-                    loadOp: "load" as const,
+                    loadOp: "clear" as const,
                     storeOp: "store" as const,
                     view: context.getCurrentTexture().createView(),
-                }]
+                }],
+                depthStencilAttachment: {
+                    view: waterDepth.createView(),
+                    depthClearValue: 1,
+                    depthLoadOp: 'clear' as const,
+                    depthStoreOp: 'discard' as const,
+                }
             });
 
             waterPass.setIndexBuffer(indexBuffer, "uint32");
@@ -224,10 +245,13 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
             waterPass.setBindGroup(0, camera.bindGroup);
             waterPass.setBindGroup(1, group);
             waterPass.setBindGroup(2, device.createBindGroup({
-                layout: depthGroupLayout,
+                layout: gbufferLayout,
                 entries: [{
                     binding: 0,
-                    resource: depth.createView()
+                    resource: landDepth.createView()
+                }, {
+                    binding: 1,
+                    resource: landBuffer.createView() 
                 }]
             }));
             waterPass.setPipeline(waterPipeline);

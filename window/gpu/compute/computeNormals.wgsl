@@ -33,7 +33,7 @@ var<storage, read_write> albedos: array<vec3f>;
 var<storage, read_write> waternormals: array<vec3f>;
 
 
-fn albedo(hard: f32, soft: f32, aquifer: f32) -> vec3f {
+fn albedo(hard: f32, soft: f32, aquifer: f32, water: f32) -> vec3f {
     const silt_albedo = vec3f(0.39, 0.23, 0.1);
     const rock_albedo = vec3f(0.49, 0.38, 0.36);
     const softrock_albedo = vec3f(0.69, 0.43, 0.2);
@@ -49,9 +49,10 @@ fn albedo(hard: f32, soft: f32, aquifer: f32) -> vec3f {
     result.y = mix(rock_albedo.g, silt_albedo.g, siltPortion);
     result.z = mix(rock_albedo.b, silt_albedo.b, siltPortion);
 
-    result.x = mix(result.x, vegetation_albedo.r, min(vegetation, softness + 0.5));
-    result.y = mix(result.y, vegetation_albedo.g, min(vegetation, softness + 0.5));
-    result.z = mix(result.z, vegetation_albedo.b, min(vegetation, softness + 0.5));
+    let factor = clamp(min(vegetation, softness + 0.5) - water*100, 0, 1);
+    result.x = mix(result.x, vegetation_albedo.r, factor);
+    result.y = mix(result.y, vegetation_albedo.g, factor);
+    result.z = mix(result.z, vegetation_albedo.b, factor);
     return result;
 }
 
@@ -105,5 +106,5 @@ fn main(
     normals[center]= normalize(rocknormal);
     waternormals[center]= normalize(waternormal);
     let tile = tiles[center];
-    albedos[center] = albedo(tile.hard, tile.soft, tile.aquifer);
+    albedos[center] = albedo(tile.hard, tile.soft, tile.aquifer, tile.water);
 }

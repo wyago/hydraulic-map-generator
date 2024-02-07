@@ -38,6 +38,10 @@ export function makeCamera(device: GPUDevice): Camera {
             size: eye.length * Float32Array.BYTES_PER_ELEMENT,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         }),
+        time: device.createBuffer({
+            size: 1 * Float32Array.BYTES_PER_ELEMENT,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        }),
     };
     
     const bindGroupLayout = device.createBindGroupLayout({
@@ -57,6 +61,10 @@ export function makeCamera(device: GPUDevice): Camera {
             binding: 3,
             visibility: GPUShaderStage.FRAGMENT,
             buffer: {}
+        }, {
+            binding: 4,
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+            buffer: {}
         }]
     });
 
@@ -74,6 +82,9 @@ export function makeCamera(device: GPUDevice): Camera {
         }, {
             binding: 3,
             resource: { buffer: uniforms.inverseView }
+        }, {
+            binding: 4,
+            resource: { buffer: uniforms.time }
         }]
     })
 
@@ -104,6 +115,7 @@ export function makeCamera(device: GPUDevice): Camera {
             device.queue.writeBuffer(uniforms.view, 0, view as Float32Array);
             device.queue.writeBuffer(uniforms.inverseView, 0, inverseView as Float32Array);
             device.queue.writeBuffer(uniforms.eye, 0, new Float32Array(eye));
+            device.queue.writeBuffer(uniforms.time, 0, new Float32Array(t * 0.01));
         }
     }
 }

@@ -249,10 +249,10 @@ fn main(
    
     var plateau = clamp(sqrt(x*x + y*y)/2000, 0, 1);
     var elevation = clamp(clamp((noise(pos) - plateau*2 + 1)/2, 0.01, 1) + noise(pos)*0.05, 0.01, 1);//clamp(noise(pos)*0.2 + plateau*0.5 + noise(pos)*0.05 + 0.01, 0, 1); 
-    tiles[source].hard = elevation*0.4;
+    tiles[source].hard = elevation*0.3;
     tiles[source].soft = 0;
     tiles[source].original = elevation;
-    tiles[source].water = 0;
+    tiles[source].water = clamp(0.2 - elevation*0.3, 0, 1);
     tiles[source].aquifer = 0;
     tiles[source].silt = 0;
 }

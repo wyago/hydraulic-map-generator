@@ -31,31 +31,20 @@ fn color(rocknormal: vec3f, height: f32, rawwater: f32, albedo: vec3f, reflectio
     var sunColor = sunlight * rockDot;
     let ambient = vec3f(0.1, 0.1, 0.2)*clamp((height - 0.2)*8, 0, 1);
 
-    var water = clamp(rawwater - 0.003, 0, 1);
+    var water = clamp(rawwater, 0, 1);
     var depth = water * 20.0;
     
-    let specular = pow(clamp(dot(reflection, light), 0, 1), 10)*0.25*reflectivity;
+    let specular = pow(clamp(dot(reflection, light), 0, 1), 10)*0.5*reflectivity;
 
-    var transit = sunColor;
-    let coniness =  (1 - dirt*clamp(dot(normalize(view), normalize(rocknormal)), 0, 1));
+    var reflect = 0.8;
+    if (water < 0.001) {
+        reflect = mix(0.0, 0.8, water/0.001);
+    }
+    var transit = sunColor*(1-reflectivity);
+    let coniness =  (1 - dirt*clamp(dot(normalize(view), normalize(rocknormal))*0.8, 0, 1));
     return clamp(transit + ambient + specular, vec3f(0), vec3f(1))*albedo*coniness*0.5;
 }
 
-fn gammacomponent(cl: f32) -> f32 {
-    if (cl > 1.0) {
-         return 1.0;
-     } else if (cl < 0.0) {
-         return 0.0;
-     } else if (cl < 0.0031308) {
-         return 12.92 * cl;
-     } else {
-         return 1.055 * pow(cl, 0.41666) - 0.055;
-     }
-}
-
-fn gamma(cl: vec3f) -> vec3f {
-    return vec3f(gammacomponent(cl.x), gammacomponent(cl.y), gammacomponent(cl.z));
-}
 
 @vertex
 fn vertex_main(
@@ -83,7 +72,7 @@ fn vertex_main(
     output.albedo = albedo;
     output.water = water;
     output.light = normalize(light);
-    output.reflectivity = 1 - clamp(soft * 200, 0, 1);
+    output.reflectivity = clamp(1 - softness, 0, 0.2);
     return output;
 }
 
@@ -94,7 +83,10 @@ struct FragmentOutput {
 @fragment
 fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     var output: FragmentOutput;
-    output.color = vec4f(
-        gamma(color(fragData.rocknormal, fragData.height, fragData.water, fragData.albedo, fragData.reflection, fragData.reflectivity, fragData.dirt, fragData.view, fragData.light)), 1);
+    var reflect = 0.8;
+    if (fragData.water < 0.001) {
+        reflect = mix(0.0, 0.8, fragData.water/0.001);
+    }
+    output.color = vec4f(color(fragData.rocknormal, fragData.height, fragData.water, fragData.albedo, fragData.reflection, fragData.reflectivity, fragData.dirt, fragData.view, fragData.light), reflect);
     return output;
 }
