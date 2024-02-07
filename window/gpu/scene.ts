@@ -72,17 +72,15 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
                     color: {
                         srcFactor: 'src-alpha',
                         dstFactor: 'one',
-                        operation: "add"
                     },
                     alpha: {
                         srcFactor: 'zero',
                         dstFactor: 'one',
-                        operation: "add"
                     }
                 } : undefined
             }]
         },
-        depthStencil: {
+        depthStencil: blend ? undefined : {
             depthWriteEnabled: true,
             depthCompare: 'less' as const,
             format: 'depth24plus'
@@ -114,9 +112,17 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
             buffer: {}
         }]
     });
+    
+    const depthGroupLayout = device.createBindGroupLayout({
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: {sampleType: "depth"}
+        }]
+    });
 
     const landPipeline = makePipeline(device, landshader, [camera.bindGroupLayout, bindGroupLayout], false);
-    const waterPipeline = makePipeline(device, watershader, [camera.bindGroupLayout, bindGroupLayout], true);
+    const waterPipeline = makePipeline(device, watershader, [camera.bindGroupLayout, bindGroupLayout, depthGroupLayout], true);
     
     const indices = new Array<number>();
     for (let i = 0; i < graph.count; ++i) {
@@ -173,7 +179,7 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
             ]));
 
             const encoder = device.createCommandEncoder();
-            const pass = encoder.beginRenderPass({
+            const landPass = encoder.beginRenderPass({
                 colorAttachments: [{
                     clearValue: { r: 0, g: 0, b: 0, a: 1 },
                     loadOp: "clear" as const,
@@ -186,21 +192,47 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
                     depthLoadOp: 'clear' as const,
                     depthStoreOp: 'store' as const,
                 }
-            })
-            pass.setIndexBuffer(indexBuffer, "uint32");
-            pass.setVertexBuffer(0, buffers.positions);
-            pass.setVertexBuffer(1, buffers.tiles);
-            pass.setVertexBuffer(2, buffers.normals);
-            pass.setVertexBuffer(3, buffers.albedo);
-            pass.setVertexBuffer(4, buffers.waternormals);
-            pass.setBindGroup(0, camera.bindGroup);
-            pass.setBindGroup(1, group);
+            });
+            landPass.setIndexBuffer(indexBuffer, "uint32");
+            landPass.setVertexBuffer(0, buffers.positions);
+            landPass.setVertexBuffer(1, buffers.tiles);
+            landPass.setVertexBuffer(2, buffers.normals);
+            landPass.setVertexBuffer(3, buffers.albedo);
+            landPass.setVertexBuffer(4, buffers.waternormals);
+            landPass.setBindGroup(0, camera.bindGroup);
+            landPass.setBindGroup(1, group);
 
-            pass.setPipeline(landPipeline);
-            pass.drawIndexed(indices.length);
-            pass.setPipeline(waterPipeline);
-            pass.drawIndexed(indices.length);
-            pass.end();
+            landPass.setPipeline(landPipeline);
+            landPass.drawIndexed(indices.length);
+            landPass.end();
+            
+            const waterPass = encoder.beginRenderPass({
+                colorAttachments: [{
+                    clearValue: { r: 0, g: 0, b: 0, a: 1 },
+                    loadOp: "load" as const,
+                    storeOp: "store" as const,
+                    view: context.getCurrentTexture().createView(),
+                }]
+            });
+
+            waterPass.setIndexBuffer(indexBuffer, "uint32");
+            waterPass.setVertexBuffer(0, buffers.positions);
+            waterPass.setVertexBuffer(1, buffers.tiles);
+            waterPass.setVertexBuffer(2, buffers.normals);
+            waterPass.setVertexBuffer(3, buffers.albedo);
+            waterPass.setVertexBuffer(4, buffers.waternormals);
+            waterPass.setBindGroup(0, camera.bindGroup);
+            waterPass.setBindGroup(1, group);
+            waterPass.setBindGroup(2, device.createBindGroup({
+                layout: depthGroupLayout,
+                entries: [{
+                    binding: 0,
+                    resource: depth.createView()
+                }]
+            }));
+            waterPass.setPipeline(waterPipeline);
+            waterPass.drawIndexed(indices.length);
+            waterPass.end();
         
             const command = encoder.finish();
             device.queue.submit([command]);

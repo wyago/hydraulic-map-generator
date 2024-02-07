@@ -20,6 +20,9 @@ var<uniform> eye : vec3f;
 @group(1) @binding(0)
 var<uniform> light : vec3f;
 
+@group(2) @binding(0)
+var gBufferDepth: texture_depth_2d;
+
 @vertex
 fn vertex_main(
     @location(0) position: vec2f,
@@ -52,6 +55,11 @@ struct FragmentOutput {
 fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     var output: FragmentOutput;
     const sunlight = vec3f(0.9,0.9, 0.85);
+     let depth = textureLoad(
+        gBufferDepth,
+        vec2<i32>(floor(fragData.position.xy)),
+        0
+    );
 
     var water = clamp(fragData.water - 0.003, 0, 1);
     var normal = normalize(fragData.waternormal);
@@ -62,6 +70,6 @@ fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     }
     let specular = pow(clamp(dot(fragData.reflection, fragData.light), 0, 1), 40)*0.4;
 
-    output.color = vec4f(sunlight, reflect*specular);
+    output.color = vec4f(0.1,0.2,0.3, clamp((depth - fragData.position.z)*5, 0, 1));//vec4f(sunlight, reflect*specular);
     return output;
 }

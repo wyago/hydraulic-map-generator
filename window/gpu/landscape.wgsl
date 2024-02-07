@@ -36,14 +36,9 @@ fn color(rocknormal: vec3f, height: f32, rawwater: f32, albedo: vec3f, reflectio
     
     let specular = pow(clamp(dot(reflection, light), 0, 1), 10)*0.25*reflectivity;
 
-    var reflect = 0.6;
-    if (water < 0.001) {
-        reflect = mix(0.0, 0.6, water/0.001);
-    }
-    var subtractor = vec3f(0.12, 0.09, 0.08) * depth;
-    var transit = sunColor * (1.0 - reflect);
+    var transit = sunColor;
     let coniness =  (1 - dirt*clamp(dot(normalize(view), normalize(rocknormal)), 0, 1));
-    return clamp(transit + ambient + specular - subtractor, vec3f(0), vec3f(1))*albedo*coniness*0.5;
+    return clamp(transit + ambient + specular, vec3f(0), vec3f(1))*albedo*coniness*0.5;
 }
 
 fn gammacomponent(cl: f32) -> f32 {
