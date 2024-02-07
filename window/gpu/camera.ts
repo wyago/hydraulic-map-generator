@@ -19,6 +19,7 @@ export function makeCamera(device: GPUDevice): Camera {
     const target =  [0,0,0];
     const up = [0,1,0];
     const view = mat4.lookAt(eye, target, up);
+    const inverseView = mat4.inverse(view);
 
     const uniforms = {
         perspective: device.createBuffer({
@@ -29,10 +30,14 @@ export function makeCamera(device: GPUDevice): Camera {
             size: view.length * Float32Array.BYTES_PER_ELEMENT,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         }),
+        inverseView: device.createBuffer({
+            size: inverseView.length * Float32Array.BYTES_PER_ELEMENT,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        }),
         eye: device.createBuffer({
             size: eye.length * Float32Array.BYTES_PER_ELEMENT,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        })
+        }),
     };
     
     const bindGroupLayout = device.createBindGroupLayout({
@@ -46,7 +51,11 @@ export function makeCamera(device: GPUDevice): Camera {
             buffer: {}
         }, {
             binding: 2,
-            visibility: GPUShaderStage.VERTEX,
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+            buffer: {}
+        }, {
+            binding: 3,
+            visibility: GPUShaderStage.FRAGMENT,
             buffer: {}
         }]
     });
@@ -62,6 +71,9 @@ export function makeCamera(device: GPUDevice): Camera {
         }, {
             binding: 2,
             resource: { buffer: uniforms.eye }
+        }, {
+            binding: 3,
+            resource: { buffer: uniforms.inverseView }
         }]
     })
 
@@ -88,7 +100,9 @@ export function makeCamera(device: GPUDevice): Camera {
             const target =  [0,0,0];
             const up = [0,1,0];
             const view = mat4.lookAt(eye, target, up);
+            const inverseView = mat4.inverse(mat4.multiply(perspective, view));
             device.queue.writeBuffer(uniforms.view, 0, view as Float32Array);
+            device.queue.writeBuffer(uniforms.inverseView, 0, inverseView as Float32Array);
             device.queue.writeBuffer(uniforms.eye, 0, new Float32Array(eye));
         }
     }

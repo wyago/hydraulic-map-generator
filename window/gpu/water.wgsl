@@ -16,6 +16,8 @@ var<uniform> perspective : mat4x4f;
 var<uniform> view : mat4x4f;
 @group(0) @binding(2)
 var<uniform> eye : vec3f;
+@group(0) @binding(3)
+var<uniform> inverseView: mat4x4f;
 
 @group(1) @binding(0)
 var<uniform> light : vec3f;
@@ -51,6 +53,14 @@ struct FragmentOutput {
     @location(0) color : vec4f,
 }
 
+fn world_from_screen_coord(coord : vec2<f32>, depth_sample: f32) -> vec3<f32> {
+  // reconstruct world-space position from the screen coordinate.
+  let posClip = vec4(coord.x * 2.0 - 1.0, (1.0 - coord.y) * 2.0 - 1.0, depth_sample, 1.0);
+  let posWorldW = inverseView * posClip;
+  let posWorld = posWorldW.xyz / posWorldW.www;
+  return posWorld;
+}
+
 @fragment
 fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     var output: FragmentOutput;
@@ -70,6 +80,13 @@ fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     }
     let specular = pow(clamp(dot(fragData.reflection, fragData.light), 0, 1), 40)*0.4;
 
-    output.color = vec4f(0.1,0.2,0.3, clamp((depth - fragData.position.z)*5, 0, 1));//vec4f(sunlight, reflect*specular);
+    let bufferSize = textureDimensions(gBufferDepth);
+    let coordUV = fragData.position.xy / vec2<f32>(bufferSize);
+    let far = world_from_screen_coord(coordUV.xy, depth);
+    let near = world_from_screen_coord(coordUV.xy, fragData.position.z);
+    let fdist = length(far - eye);
+    let ndist = length(near - eye);
+
+    output.color = vec4(vec3f(0.02, 0.07, 0.09), max(fdist-ndist, 0)*0.01);
     return output;
 }

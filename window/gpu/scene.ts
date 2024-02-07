@@ -71,7 +71,7 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
                 blend: blend ? {
                     color: {
                         srcFactor: 'src-alpha',
-                        dstFactor: 'one',
+                        dstFactor: 'one-minus-src-alpha',
                     },
                     alpha: {
                         srcFactor: 'zero',
