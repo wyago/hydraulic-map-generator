@@ -119,14 +119,14 @@ fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     var waterDepth = max((farDist - nearDist)*0.5, 0);
     var specular = pow(clamp(dot(normalize(fragData.reflection), fragData.light), 0, 1), 50)*0.5;
 
-    var reflected = 0.5;
+    var reflected = 0.7;
     if (waterDepth < 0.05) {
-        reflected = mix(0.0, 0.5, waterDepth/0.05);
+        reflected = mix(0.0, 0.7, waterDepth/0.05);
     }
 
     let extinctionColor = vec3f(0.3, 0.09, 0.08);
     var transmittance = exp(-waterDepth * extinctionColor);
-    let waterColor = vec3f(0.08, 0.2, 0.21)*0.2;
+    let waterColor = vec3f(0.08, 0.2, 0.21)*0.3;
     let scattering = (1 - transmittance)*waterColor * (vec3f(0.1, 0.1, 0.2) + clamp(-fragData.light.y, 0, 1)*sunlight);
 
     //output.color = vec4f(gamma(mix(land.rgb, waterColor, waterDepth) + specular), 1);
