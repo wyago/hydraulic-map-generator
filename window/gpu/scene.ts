@@ -96,7 +96,7 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
     });
 }
 
-export function landscape(device: GPUDevice, context: GPUCanvasContext, camera: Camera, graph: Graph, buffers: Buffers) {
+export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Camera, graph: Graph, buffers: Buffers) {
     const landshader = device.createShaderModule({ code: landCode });
     const watershader = device.createShaderModule({ code: waterCode });
 
@@ -144,7 +144,7 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, camera: 
     let depth = device.createTexture({
         size: { width: window.innerWidth, height: window.innerHeight},
         format: 'depth24plus',
-        usage: GPUTextureUsage.RENDER_ATTACHMENT
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
     });
 
     function resize() {
@@ -152,7 +152,7 @@ export function landscape(device: GPUDevice, context: GPUCanvasContext, camera: 
         depth = device.createTexture({
             size: { width: window.innerWidth, height: window.innerHeight},
             format: 'depth24plus',
-            usage: GPUTextureUsage.RENDER_ATTACHMENT
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
         });
     }
     resize();

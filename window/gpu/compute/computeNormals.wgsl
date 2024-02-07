@@ -44,7 +44,7 @@ fn albedo(hard: f32, soft: f32, aquifer: f32) -> vec3f {
 
     var result: vec3f;
     var softness = (soft / (hard + soft)) * 3;
-    var siltPortion = max(softness, 0);
+    var siltPortion = clamp(softness, 0, 1);
     result.x = mix(rock_albedo.r, silt_albedo.r, siltPortion);
     result.y = mix(rock_albedo.g, silt_albedo.g, siltPortion);
     result.z = mix(rock_albedo.b, silt_albedo.b, siltPortion);

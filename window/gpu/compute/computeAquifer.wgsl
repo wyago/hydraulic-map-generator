@@ -56,7 +56,7 @@ fn spreadAquifer(source: i32, tile: Tile) {
     
     targetIndices[source] = down;
 
-    var transfer = min(delta * 0.1, tile.aquifer);
+    var transfer = min(delta * 0.05, tile.aquifer);
     tiles[source].aquifer -= transfer;
     buffer[source].aquifer += transfer;
 
@@ -77,7 +77,7 @@ fn soak(source: Tile, i: i32) -> Tile {
     var tile = source;
     var aquifer_space = aquiferSpace(tile);
     if (aquifer_space > 0 && tiles[i].water > 0) {
-        var soak = min(tile.water*0.01, min(aquifer_space, tile.aquifer*0.0001 + 0.000001));
+        var soak = min(tile.water*0.001, min(aquifer_space, tile.aquifer*0.00001 + 0.000001));
         tiles[i].aquifer += soak;
         tiles[i].water -= soak;
         tile.aquifer += soak;

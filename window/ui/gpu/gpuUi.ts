@@ -6,7 +6,7 @@ import { createEroder } from "../../gpu/compute/createEroder";
 import { noisePass } from "../../gpu/compute/noisePass";
 import { normalsPass } from "../../gpu/compute/normalsPass";
 import { getDevice } from "../../gpu/globalDevice";
-import { landscape } from "../../gpu/landscape";
+import { scene } from "../../gpu/scene";
 import { setupInputs } from "../../render/inputs";
 import { createDiscSampler } from "../../terrain/discSampler";
 import { createBooleanInput } from "../booleanInput";
@@ -57,7 +57,7 @@ export function createGpuUi() {
         const buffers = createBuffers(device, vs);
 
         const camera = makeCamera(device);
-        const renderer = landscape(device, context, camera, vs, buffers);
+        const renderer = scene(device, context, camera, vs, buffers);
         const eroder = createEroder(device, buffers);
         const normals = normalsPass(device, buffers);
 
