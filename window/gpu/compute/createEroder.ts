@@ -53,9 +53,11 @@ export function createEroder(device: GPUDevice, buffers: Buffers) {
         erode(computer);
         update(computer);
         zero(computer);
+
         landslide(computer);
         update(computer);
         zero(computer);
+
         aquifer(computer);
         update(computer);
         zero(computer);
