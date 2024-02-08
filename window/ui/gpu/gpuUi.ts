@@ -13,6 +13,7 @@ import { createBooleanInput } from "../booleanInput";
 import { createButton } from "../button";
 import { createDropdown } from "../dropdown";
 import { createPanel } from "../panel";
+import { createSliderInput } from "../sliderInput";
 import "../ui.css";
 
 export function createGpuUi() {
@@ -30,13 +31,20 @@ export function createGpuUi() {
                 display: "Rocks"
             }]
         });
+    const rain = createSliderInput({
+        name: "Rain multiplier",
+        min: 0,
+        max: 10,
+        start: 1,
+    })
     let generate = () => {};
     const generateButton = createButton({ text: "New Terrain", onclick: () => generate() });
     const erode = createBooleanInput({ name: "Erode" });
+    const rendering = createBooleanInput({ name: "Render", start: true });
     const options = createPanel({
         title: "Options",
         defaultOpen: true,
-        children: [generateButton, erode]
+        children: [generateButton, rain, erode, rendering]
     })
 
     async function setupCanvas(element: HTMLCanvasElement) {
@@ -50,7 +58,7 @@ export function createGpuUi() {
             alphaMode: "premultiplied"
         });
 
-        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 2000*2000);
+        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 6000*6000);
         while (gen.step());
     
         const vs = gen.vertices();
@@ -75,7 +83,7 @@ export function createGpuUi() {
         }
         generate();
 
-        let iterations = 7;
+        let iterations = 1;
         let xrot = 1;
         let yrot = 0;
         let zoom = -10;
@@ -96,13 +104,19 @@ export function createGpuUi() {
             }
         })
 
+        let i = 0;
+
         function frame() {
-            camera.update(Math.pow(2, zoom), xrot, yrot);
-            renderer.render();
+            i += 1;
+            if (rendering.get() && (i % 20 ===0 || !erode.get())) {
+                device.queue.submit([normals()]);
+                device.queue.writeBuffer(buffers.rain, 0, new Float32Array([rain.get()]))
+                camera.update(Math.pow(2, zoom), xrot, yrot);
+                renderer.render();
+            }
             if (erode.get()) {
                 for (let i = 0; i < iterations; i++)
                     eroder();
-                device.queue.submit([normals()]);
             }
             requestAnimationFrame(frame);
         }

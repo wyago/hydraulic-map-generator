@@ -56,13 +56,13 @@ fn spreadAquifer(source: i32, tile: Tile) {
     
     targetIndices[source] = down;
 
-    var transfer = min(delta * 0.05, tile.aquifer);
+    var transfer = min(delta * 0.1, tile.aquifer);
     tiles[source].aquifer -= transfer;
     buffer[source].aquifer += transfer;
 
-    //var erosion = min(transfer*0.01, tile.soft);
-    //tiles[source].soft -= erosion;
-    //buffer[source].soft += erosion;
+    var erosion = min(transfer*transfer*10, tile.soft);
+    tiles[source].soft -= erosion;
+    buffer[source].soft += erosion;
 }
 
 fn aquiferCapacity(i: Tile) -> f32 {
@@ -77,7 +77,7 @@ fn soak(source: Tile, i: i32) -> Tile {
     var tile = source;
     var aquifer_space = aquiferSpace(tile);
     if (aquifer_space > 0 && tiles[i].water > 0) {
-        var soak = min(tile.water*0.001, min(aquifer_space, tile.aquifer*0.00001 + 0.000001));
+        var soak = min(tile.water, min(aquifer_space, tile.aquifer*0.00001 + 0.000001));
         tiles[i].aquifer += soak;
         tiles[i].water -= soak;
         tile.aquifer += soak;
@@ -96,7 +96,7 @@ fn soak(source: Tile, i: i32) -> Tile {
     return tile;
 }
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(256)
 fn main(
   @builtin(global_invocation_id)
   global_id : vec3u

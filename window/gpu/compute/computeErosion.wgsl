@@ -45,10 +45,10 @@ fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     var tile = source;
     var transfer = min(delta * 0.4, tile.water);
     let factor = (transfer / 0.02) * (transfer / 0.02);
-    simpleErode(tile, i, factor*0.2);
+    simpleErode(tile, i, factor*2);
     var silt = tile.silt;
     if (rockDelta > 0) {
-        var erosion = clamp(factor*0.01, 0, min(tile.soft, rockDelta));
+        var erosion = clamp(factor*0.05, 0, min(tile.soft, rockDelta));
         tiles[i].soft -= erosion;
         tiles[i].silt += erosion;
         silt += erosion;
@@ -94,7 +94,7 @@ fn totalDownhill(center: i32) -> i32 {
     return downhill;
 }
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(256)
 fn main(
   @builtin(global_invocation_id)
   global_id : vec3u

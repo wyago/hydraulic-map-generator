@@ -108,14 +108,18 @@ export function makeCamera(device: GPUDevice): Camera {
                 1/zoom*Math.cos(xrot),
                 1/zoom*Math.sin(yrot)*Math.sin(xrot)
             ];
-            const target =  [0,0,0];
+            const target =  [
+                1/zoom*Math.cos(yrot)*Math.sin(xrot)*0.2,
+                0,
+                1/zoom*Math.sin(yrot)*Math.sin(xrot)*0.2
+            ];
             const up = [0,1,0];
             const view = mat4.lookAt(eye, target, up);
             const inverseView = mat4.inverse(mat4.multiply(perspective, view));
             device.queue.writeBuffer(uniforms.view, 0, view as Float32Array);
             device.queue.writeBuffer(uniforms.inverseView, 0, inverseView as Float32Array);
             device.queue.writeBuffer(uniforms.eye, 0, new Float32Array(eye));
-            device.queue.writeBuffer(uniforms.time, 0, new Float32Array(t * 0.01));
+            device.queue.writeBuffer(uniforms.time, 0, new Float32Array([t * 0.01]));
         }
     }
 }

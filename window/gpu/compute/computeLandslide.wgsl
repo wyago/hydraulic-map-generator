@@ -45,7 +45,7 @@ fn totalDownhill(center: i32) -> i32 {
     return downhill;
 }
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(256)
 fn main(
   @builtin(global_invocation_id)
   global_id : vec3u
@@ -61,7 +61,7 @@ fn main(
     var d = totalDownhill(sourceI);
     targetIndices[sourceI] = d;
 
-    tiles[sourceI].hard += clamp(source.original - 0.02, 0, 1)*0.000002;
+    tiles[sourceI].hard += clamp(source.original - 0.02, 0, 1)*0.000005;
 
     const siltAngle = 0.01;
     const rockAngle = 0.02;

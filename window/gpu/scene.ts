@@ -127,6 +127,7 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
             indices.push(i, adjacents[j], adjacents[next]);
         }
     }
+    console.log(indices.length/3);
     const indexBuffer = device.createBuffer({
         size: indices.length * Int32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST

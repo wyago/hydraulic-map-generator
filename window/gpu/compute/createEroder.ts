@@ -27,7 +27,9 @@ export function createEroder(device: GPUDevice, buffers: Buffers) {
         buffers.tileAdjacents,
         buffers.tileAdjacentIndices,
         buffers.normals
-    ], fixWaterCode);
+    ], fixWaterCode, [
+        buffers.rain
+    ]);
     const aquifer = genericComputePass(device, buffers.instanceCount, [
         buffers.tiles,
         buffers.tileAdjacents,

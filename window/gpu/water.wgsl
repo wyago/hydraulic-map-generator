@@ -117,7 +117,7 @@ fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     let farDist = length(far - eye);
     let nearDist = length(near - eye);
     var waterDepth = max((farDist - nearDist)*0.5, 0);
-    var specular = pow(clamp(dot(normalize(fragData.reflection), fragData.light), 0, 1), 50)*0.5;
+    var specular = pow(clamp(dot(fragData.reflection, fragData.light), 0, 1), 20)*0.5;
 
     var reflected = 0.7;
     if (waterDepth < 0.05) {

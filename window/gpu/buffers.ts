@@ -46,11 +46,17 @@ export type Buffers = {
     targetIndices: GPUBuffer,
     tileAdjacents: GPUBuffer,
     albedo: GPUBuffer,
+    rain: GPUBuffer,
     adjacents: number[][]
 };
 
 export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
     const count = initial.count;
+
+    const rain = device.createBuffer({
+        size: (1)*Float32Array.BYTES_PER_ELEMENT,
+        usage: GPUBufferUsage.STORAGE  | GPUBufferUsage.COPY_DST
+    });
 
     const positions = device.createBuffer({
         size: (count * 2)*Float32Array.BYTES_PER_ELEMENT,
@@ -112,6 +118,7 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
     device.queue.writeBuffer(tileAdjacents, 0, flattened);
     device.queue.writeBuffer(tileAdjacentIndices, 0, indices);
     device.queue.writeBuffer(positions, 0, initial.xys);
+    device.queue.writeBuffer(rain, 0, new Float32Array([1]));
 
     return {
         instanceCount: count,
@@ -123,6 +130,7 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
         tileBuffer,
         tileAdjacentIndices,
         tileAdjacents,
+        rain,
         targetIndices,
         adjacents
     };

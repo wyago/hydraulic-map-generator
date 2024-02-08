@@ -22,7 +22,7 @@ var<storage, read_write> adjacents: array<i32>;
 @group(0) @binding(4)
 var<storage, read_write> adjacent_indices: array<AdjacentIndex>;
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(256)
 fn main(
   @builtin(global_invocation_id)
   global_id : vec3u

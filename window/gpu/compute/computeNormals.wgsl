@@ -49,7 +49,7 @@ fn albedo(hard: f32, soft: f32, aquifer: f32, water: f32) -> vec3f {
     result.y = mix(rock_albedo.g, silt_albedo.g, siltPortion);
     result.z = mix(rock_albedo.b, silt_albedo.b, siltPortion);
 
-    let factor = clamp(min(vegetation, softness + 0.5) - water*100, 0, 1);
+    let factor = clamp(min(vegetation, softness + 0.5), 0, 1);
     result.x = mix(result.x, vegetation_albedo.r, factor);
     result.y = mix(result.y, vegetation_albedo.g, factor);
     result.z = mix(result.z, vegetation_albedo.b, factor);
@@ -63,7 +63,7 @@ fn elevation(i: u32) -> f32 {
     return (tiles[i].hard + tiles[i].soft + tiles[i].water)*450.0;
 }
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(256)
 fn main(
   @builtin(global_invocation_id)
   global_id : vec3u
