@@ -41,7 +41,7 @@ fn vertex_main(
     @location(7) aquifer: f32,
 ) -> VertexOut {
     var output: VertexOut;
-    var vertex = vec3f(position.x, (hard + soft + water-0.0006)*450, position.y);
+    var vertex = vec3f(position.x, (hard + soft + water-0.0007)*450, position.y);
     var recoverWaterNormal = vec3f(waternormal.x, -sqrt(1 - waternormal.x*waternormal.x + waternormal.y*waternormal.y), waternormal.y);
 
     output.position = perspective * view * vec4f(vertex, 1);

@@ -61,10 +61,10 @@ fn main(
     var d = totalDownhill(sourceI);
     targetIndices[sourceI] = d;
 
-    tiles[sourceI].hard += clamp(source.original - 0.02, 0, 1)*0.00002;
+    tiles[sourceI].hard += clamp(source.original - 0.02, 0, 1)*0.000015;
 
     const siltAngle = 0.01;
-    const rockAngle = 0.02;
+    const rockAngle = 0.025;
     var delta = rockElevation(source) - rockElevation(tiles[d]);
     if (delta > rockAngle) {
         var transfer = min((delta - rockAngle) * 0.4, source.hard);

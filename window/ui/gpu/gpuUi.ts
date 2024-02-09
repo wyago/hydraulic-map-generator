@@ -41,10 +41,16 @@ export function createGpuUi() {
     const generateButton = createButton({ text: "New Terrain", onclick: () => generate() });
     const erode = createBooleanInput({ name: "Erode" });
     const rendering = createBooleanInput({ name: "Render", start: true });
+    const controls = createPanel({
+        title: "Controls",
+        defaultOpen: true,
+        children: [generateButton, erode, rendering]
+    });
+
     const options = createPanel({
         title: "Options",
         defaultOpen: true,
-        children: [generateButton, rain, erode, rendering]
+        children: [rain]
     })
 
     async function setupCanvas(element: HTMLCanvasElement) {
@@ -137,7 +143,8 @@ export function createGpuUi() {
             return h("body", [
                 h("canvas", properties),
                 h("div#ui", [
-                    options.realize()
+                    controls.realize(),
+                    options.realize(),
                 ])
             ]);
         }

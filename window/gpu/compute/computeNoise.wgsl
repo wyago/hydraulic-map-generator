@@ -243,7 +243,7 @@ fn main(
     var pos = positions[source];
     var x = pos.x;
     var y = pos.y;
-    pos *= 0.0003;
+    pos *= 0.0005;
     pos.x += 0.5;
     pos.y += 0.5;
    

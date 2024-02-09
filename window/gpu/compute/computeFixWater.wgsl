@@ -55,6 +55,6 @@ fn main(
         tiles[i].aquifer = 0.8*tile.soft;
     } else {
         tiles[i].water *= 0.995;
-        tiles[i].aquifer *= 0.999;
+        tiles[i].aquifer *= 0.9995;
     }
 }
