@@ -26,10 +26,10 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
                     shaderLocation: 4,
                     offset: 1*4,
                     format: "float32" as const 
-                }, {
-                    shaderLocation: 5,
-                    offset: 2*4,
-                    format: "float32" as const 
+                //}, {
+                    //shaderLocation: 5,
+                    //offset: 2*4,
+                    //format: "float32" as const 
                 }, {
                     shaderLocation: 7,
                     offset: 3*4,
@@ -61,6 +61,14 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
                 }],
                 stepMode: "vertex" as const,
                 arrayStride: 4*2
+            }, {
+                attributes: [{
+                    shaderLocation: 5,
+                    offset: 0,
+                    format: "float32" as const 
+                }],
+                stepMode: "vertex" as const,
+                arrayStride: 4
             }],
         },
         fragment: {
@@ -215,6 +223,7 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
             landPass.setVertexBuffer(2, buffers.normals);
             landPass.setVertexBuffer(3, buffers.albedo);
             landPass.setVertexBuffer(4, buffers.waternormals);
+            landPass.setVertexBuffer(5, buffers.wateraverages);
             landPass.setBindGroup(0, camera.bindGroup);
             landPass.setBindGroup(1, group);
 
@@ -243,6 +252,7 @@ export function scene(device: GPUDevice, context: GPUCanvasContext, camera: Came
             waterPass.setVertexBuffer(2, buffers.normals);
             waterPass.setVertexBuffer(3, buffers.albedo);
             waterPass.setVertexBuffer(4, buffers.waternormals);
+            waterPass.setVertexBuffer(5, buffers.wateraverages);
             waterPass.setBindGroup(0, camera.bindGroup);
             waterPass.setBindGroup(1, group);
             waterPass.setBindGroup(2, device.createBindGroup({

@@ -77,7 +77,7 @@ fn soak(source: Tile, i: i32) -> Tile {
     var tile = source;
     var aquifer_space = aquiferSpace(tile);
     if (aquifer_space > 0 && tiles[i].water > 0) {
-        var soak = min(tile.water*0.1, min(aquifer_space, tile.aquifer*0.005 + 0.0000000001));
+        var soak = min(tile.water*0.1, min(aquifer_space, tile.aquifer*0.006 + 0.0000000001));
         tiles[i].aquifer += soak;
         tiles[i].water -= soak;
         tile.aquifer += soak;

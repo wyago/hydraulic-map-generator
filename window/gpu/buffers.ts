@@ -39,10 +39,11 @@ export type Buffers = {
     instanceCount: number,
     positions: GPUBuffer,
     normals: GPUBuffer,
-    wateraverage: GPUBuffer,
     waternormals: GPUBuffer,
+    wateraverages: GPUBuffer,
     tiles: GPUBuffer,
     tileBuffer: GPUBuffer,
+    streams: GPUBuffer,
     tileAdjacentIndices: GPUBuffer,
     targetIndices: GPUBuffer,
     tileAdjacents: GPUBuffer,
@@ -79,7 +80,7 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
     
-    const wateraverage = device.createBuffer({
+    const wateraverages = device.createBuffer({
         size: count * Float32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
@@ -121,6 +122,11 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
         usage: GPUBufferUsage.STORAGE  | GPUBufferUsage.COPY_DST
     });
 
+    const streams = device.createBuffer({
+        size: flattened.length * Float32Array.BYTES_PER_ELEMENT,
+        usage: GPUBufferUsage.STORAGE
+    });
+
     device.queue.writeBuffer(tileAdjacents, 0, flattened);
     device.queue.writeBuffer(tileAdjacentIndices, 0, indices);
     device.queue.writeBuffer(positions, 0, initial.xys);
@@ -131,7 +137,8 @@ export function createBuffers(device: GPUDevice, initial: Graph): Buffers {
         positions,
         normals,
         waternormals,
-        wateraverage,
+        streams,
+        wateraverages,
         albedo,
         tiles,
         tileBuffer,

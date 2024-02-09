@@ -31,6 +31,8 @@ var<storage, read_write> positions: array<vec2f>;
 var<storage, read_write> albedos: array<vec3f>;
 @group(0) @binding(6)
 var<storage, read_write> waternormals: array<vec2f>;
+@group(0) @binding(7)
+var<storage, read_write> wateraverages: array<f32>;
 
 
 fn albedo(hard: f32, soft: f32, aquifer: f32, water: f32) -> vec3f {
@@ -101,10 +103,12 @@ fn main(
         waternormal += cross(wfirstr, wsecondr);
     }
 
+
     rocknormal /= f32(adjacent_count);
     waternormal /= f32(adjacent_count);
     normals[center]= normalize(rocknormal).xz;
     waternormals[center]= normalize(waternormal).xz;
     let tile = tiles[center];
     albedos[center] = albedo(tile.hard, tile.soft, tile.aquifer, tile.water);
+    wateraverages[center] = wateraverages[center]*0.9 + tile.water*0.1;
 }

@@ -58,7 +58,7 @@ export function createGpuUi() {
             alphaMode: "premultiplied"
         });
 
-        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 5000*5000);
+        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 3000*3000);
         while (gen.step());
     
         const vs = gen.vertices();
@@ -83,7 +83,7 @@ export function createGpuUi() {
         }
         generate();
 
-        let iterations = 1;
+        let iterations = 3;
         let xrot = 1;
         let yrot = 0;
         let zoom = -10;
