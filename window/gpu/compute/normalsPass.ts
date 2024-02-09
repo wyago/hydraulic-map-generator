@@ -56,6 +56,9 @@ export function normalsPass(device: GPUDevice, buffers: Buffers) {
         }, {
             binding: 6,
             resource: { buffer: buffers.waternormals }
+        }, {
+            binding: 7,
+            resource: { buffer: buffers.wateraverage }
         }]
     });
 

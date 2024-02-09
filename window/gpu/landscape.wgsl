@@ -3,12 +3,11 @@ struct VertexOut {
     @location(0) rocknormal : vec3f,
     @location(1) albedo : vec3f,
     @location(2) water : f32,
-    @location(3) waternormal : vec3f,
-    @location(4) reflection : vec3f,
-    @location(5) reflectivity : f32,
-    @location(6) dirt : f32,
-    @location(7) view : vec3f,
-    @location(8) light : vec3f,
+    @location(3) reflection : vec3f,
+    @location(4) reflectivity : f32,
+    @location(5) dirt : f32,
+    @location(6) view : vec3f,
+    @location(7) light : vec3f,
 }
 
 @group(0) @binding(0)
@@ -33,7 +32,6 @@ fn color(rocknormal: vec3f, rawwater: f32, albedo: vec3f, reflection: vec3f, ref
 
     var water = clamp(rawwater, 0, 1);
     var depth = water * 20.0;
-    
 
     var reflect = 0.8;
     if (water < 0.001) {
@@ -48,25 +46,26 @@ fn color(rocknormal: vec3f, rawwater: f32, albedo: vec3f, reflection: vec3f, ref
 @vertex
 fn vertex_main(
     @location(0) position: vec2f,
-    @location(1) rocknormal: vec3f,
+    @location(1) rocknormal: vec2f,
     @location(2) albedo: vec3f,
     @location(3) hard: f32,
     @location(4) soft: f32,
     @location(5) water: f32,
-    @location(6) waternormal: vec3f,
     @location(7) aquifer: f32,
 ) -> VertexOut {
     var output: VertexOut;
     var vertex = vec3f(position.x, (hard + soft)*450, position.y);
     output.position = perspective * view * vec4f(vertex, 1);
-    output.reflection = reflect(normalize(rocknormal), normalize(vertex - eye));
+
+    var recoverRockNormal = vec3f(rocknormal.x, -sqrt(1 - rocknormal.x*rocknormal.x - rocknormal.y*rocknormal.y), rocknormal.y);
+
+    output.reflection = reflect(recoverRockNormal, normalize(vertex - eye));
     output.view = normalize(vertex - eye);
 
     var softness = clamp((soft / (hard + soft)) * 10, 0, 1);
     var vegetation = clamp(aquifer*1.01/(soft+0.01), 0, 1);
     output.dirt =clamp(min(vegetation, softness + 0.5), 0, 1);
-    output.rocknormal = rocknormal;
-    output.waternormal = waternormal;
+    output.rocknormal = recoverRockNormal;
     output.albedo = albedo;
     output.water = water;
     output.light = normalize(light);

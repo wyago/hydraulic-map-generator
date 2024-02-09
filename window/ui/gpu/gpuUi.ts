@@ -58,7 +58,7 @@ export function createGpuUi() {
             alphaMode: "premultiplied"
         });
 
-        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 6000*6000);
+        const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 5000*5000);
         while (gen.step());
     
         const vs = gen.vertices();
@@ -108,7 +108,7 @@ export function createGpuUi() {
 
         function frame() {
             i += 1;
-            if (rendering.get() && (i % 20 ===0 || !erode.get())) {
+            if (rendering.get() && (i % 5 === 0 || !erode.get())) {
                 device.queue.submit([normals()]);
                 device.queue.writeBuffer(buffers.rain, 0, new Float32Array([rain.get()]))
                 camera.update(Math.pow(2, zoom), xrot, yrot);

@@ -224,7 +224,7 @@ fn fbm_simplex_3d(pos: vec3<f32>, octaves: i32, lacunarity: f32, gain: f32) -> f
 override seed: f32 = 1;
 
 fn noise(pos: vec2<f32>) -> f32 {
-    var p = pos + fbm_simplex_2d_seeded(pos*0.2, 8, 2, 0.5, seed)*0.5;
+    var p = pos + fbm_simplex_2d_seeded(pos*0.2, 8, 2, 0.5, seed)*0.2;
     return fbm_simplex_2d_seeded(p, 20, 2, 0.5, seed * 2) * 0.5 + 0.5;
 }
 
@@ -243,16 +243,16 @@ fn main(
     var pos = positions[source];
     var x = pos.x;
     var y = pos.y;
-    pos *= 0.0004;
+    pos *= 0.0003;
     pos.x += 0.5;
     pos.y += 0.5;
    
-    var plateau = clamp(sqrt(x*x + y*y)/8200, 0, 1);
+    var plateau = clamp(sqrt(x*x + y*y)/5000, 0, 1);
     var elevation = clamp(clamp((noise(pos) - plateau*2 + 1)/2, 0.01, 1) + noise(pos)*0.05, 0.01, 1);//clamp(noise(pos)*0.2 + plateau*0.5 + noise(pos)*0.05 + 0.01, 0, 1); 
-    tiles[source].hard = elevation*0.5;
+    tiles[source].hard = elevation*0.3;
     tiles[source].soft = 0;
     tiles[source].original = elevation;
-    tiles[source].water = clamp(0.2 - elevation*0.5, 0, 1);
+    tiles[source].water = clamp(0.2 - elevation*0.3, 0, 1);
     tiles[source].aquifer = 0;
     tiles[source].silt = 0;
 }

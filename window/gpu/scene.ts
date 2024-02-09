@@ -41,10 +41,10 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
                 attributes: [{
                     shaderLocation: 1,
                     offset: 0,
-                    format: "float32x3" as const 
+                    format: "float32x2" as const 
                 }],
                 stepMode: "vertex" as const,
-                arrayStride: 4*4
+                arrayStride: 4*2
             }, {
                 attributes: [{
                     shaderLocation: 2,
@@ -57,10 +57,10 @@ function makePipeline(device: GPUDevice, shader: GPUShaderModule, bindGroupLayou
                 attributes: [{
                     shaderLocation: 6,
                     offset: 0,
-                    format: "float32x3" as const 
+                    format: "float32x2" as const 
                 }],
                 stepMode: "vertex" as const,
-                arrayStride: 4*4
+                arrayStride: 4*2
             }],
         },
         fragment: {

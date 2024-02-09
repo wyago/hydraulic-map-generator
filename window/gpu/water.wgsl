@@ -1,6 +1,5 @@
 struct VertexOut {
     @builtin(position) position : vec4f,
-    @location(0) rocknormal : vec3f,
     @location(1) albedo : vec3f,
     @location(2) water : f32,
     @location(3) waternormal : vec3f,
@@ -33,22 +32,23 @@ var gLand: texture_2d<f32>;
 @vertex
 fn vertex_main(
     @location(0) position: vec2f,
-    @location(1) rocknormal: vec3f,
+    @location(1) rocknormal: vec2f,
     @location(2) albedo: vec3f,
     @location(3) hard: f32,
     @location(4) soft: f32,
     @location(5) water: f32,
-    @location(6) waternormal: vec3f,
+    @location(6) waternormal: vec2f,
     @location(7) aquifer: f32,
 ) -> VertexOut {
     var output: VertexOut;
-    var vertex = vec3f(position.x, (hard + soft + water-0.003)*450, position.y);
+    var vertex = vec3f(position.x, (hard + soft + water-0.0006)*450, position.y);
+    var recoverWaterNormal = vec3f(waternormal.x, -sqrt(1 - waternormal.x*waternormal.x + waternormal.y*waternormal.y), waternormal.y);
+
     output.position = perspective * view * vec4f(vertex, 1);
-    output.reflection = reflect(normalize(waternormal), normalize(vertex - eye));
+    output.reflection = reflect(normalize(recoverWaterNormal), normalize(vertex - eye));
     output.view = normalize(vertex - eye);
     output.vertex = vertex;
-    output.rocknormal = rocknormal;
-    output.waternormal = waternormal;
+    output.waternormal = normalize(recoverWaterNormal);
     output.albedo = albedo;
     output.water = water;
     output.light = normalize(light);
@@ -117,11 +117,11 @@ fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     let farDist = length(far - eye);
     let nearDist = length(near - eye);
     var waterDepth = max((farDist - nearDist)*0.5, 0);
-    var specular = pow(clamp(dot(fragData.reflection, fragData.light), 0, 1), 20)*0.5;
+    var specular = pow(clamp(dot(fragData.reflection, fragData.light), 0, 1), 128)*0.5;
 
     var reflected = 0.7;
-    if (waterDepth < 0.05) {
-        reflected = mix(0.0, 0.7, waterDepth/0.05);
+    if (waterDepth < 0.2) {
+        reflected = mix(0.0, 0.7, waterDepth/0.2);
     }
 
     let extinctionColor = vec3f(0.3, 0.09, 0.08);

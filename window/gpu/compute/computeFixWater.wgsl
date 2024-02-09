@@ -19,7 +19,7 @@ var<storage, read_write> adjacents: array<i32>;
 @group(0) @binding(2)
 var<storage, read_write> adjacent_indices: array<AdjacentIndex>;
 @group(0) @binding(3)
-var<storage, read_write> normals: array<vec3f>;
+var<storage, read_write> normals: array<vec2f>;
 @group(1) @binding(0)
 var<storage, read_write> rain: f32;
 
@@ -40,19 +40,21 @@ fn main(
     let capacity = tile.soft - tile.aquifer;
 
     var mul: f32 = 1;
-    if (dot(normals[i], vec3f(1,0,0)) > 0.05) {
+    if (dot(normals[i], vec2f(1,0)) > 0.05) {
         mul = 0.000;
     }
-    var add =  0.000006*mul*rain;
+
+    var add =  0.00002*mul*rain;
     //let aquifer = clamp(add, 0, capacity);
     //let rest = add - aquifer;
     //tiles[i].aquifer += aquifer;
     //tiles[i].water += rest;
     tiles[i].water += add;
-    tiles[i].water *= 0.995;
-    tiles[i].aquifer *= 0.9999999;
     if (rock_elevation < 0.2) {
         tiles[i].water = tiles[i].water * 0.9 +clamp(0.2 - rock_elevation, 0, 1)*0.1;
         tiles[i].aquifer = 0.8*tile.soft;
+    } else {
+        tiles[i].water *= 0.995;
+        tiles[i].aquifer *= 0.999;
     }
 }
