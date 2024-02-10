@@ -117,12 +117,13 @@ fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     let farDist = length(far - eye);
     let nearDist = length(near - eye);
     var waterDepth = max((farDist - nearDist)*0.5, 0);
-    var specular = pow(clamp(dot(fragData.reflection, fragData.light), 0, 1), 128)*0.5;
 
     var reflected = 0.7;
     if (waterDepth < 0.2) {
         reflected = mix(0.0, 0.7, waterDepth/0.2);
     }
+
+    var specular = pow(clamp(dot(fragData.reflection, fragData.light), 0, 1), 128)*0.5*reflected;
 
     let extinctionColor = vec3f(0.3, 0.09, 0.08);
     var transmittance = exp(-waterDepth * extinctionColor);
@@ -130,7 +131,7 @@ fn fragment_main(fragData: VertexOut) -> FragmentOutput {
     let scattering = (1 - transmittance)*waterColor * (vec3f(0.1, 0.1, 0.2) + clamp(-fragData.light.y, 0, 1)*sunlight);
 
     //output.color = vec4f(gamma(mix(land.rgb, waterColor, waterDepth) + specular), 1);
-    let linearColor = (land.rgb*1.2*transmittance + scattering)*(1 - reflected) + specular*reflected;
+    let linearColor = (land.rgb*1.2*transmittance + scattering)*(1 - reflected) + specular;
     output.color = vec4f(ACESFilm(linearColor*3), 1);
     return output;
 }

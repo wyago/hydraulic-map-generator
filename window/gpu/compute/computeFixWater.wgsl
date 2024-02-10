@@ -44,7 +44,7 @@ fn main(
         mul = 0.000;
     }
 
-    var add =  0.00002*mul*rain;
+    var add =  0.000015*mul*rain;
     //let aquifer = clamp(add, 0, capacity);
     //let rest = add - aquifer;
     //tiles[i].aquifer += aquifer;
@@ -54,7 +54,7 @@ fn main(
         tiles[i].water = tiles[i].water * 0.9 +clamp(0.2 - rock_elevation, 0, 1)*0.1;
         tiles[i].aquifer = 0.8*tile.soft;
     } else {
-        tiles[i].water *= 0.995;
-        tiles[i].aquifer *= 0.9995;
+        tiles[i].water *= 0.997;
+        tiles[i].aquifer *= 0.9997;
     }
 }

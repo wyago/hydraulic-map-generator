@@ -12,7 +12,6 @@
     "author": "Wyatt Goodin",
     "license": "MIT",
     "devDependencies": {
-        "@tsconfig/recommended": "^1.0.3",
         "@types/delaunator": "^5.0.0",
         "@types/rbush": "^3.0.0",
         "@types/three": "^0.154.0",
@@ -22,16 +21,10 @@
         "typescript": "5.2.2"
     },
     "dependencies": {
-        "@jgtools/shg": "^1.0.4",
         "delaunator": "^5.0.0",
         "kdbush": "^4.0.2",
         "maquette": "3.6.0",
         "rbush": "^3.0.1",
-        "save": "^2.9.0",
-        "three": "^0.154.0",
-        "three.meshline": "^1.4.0",
-        "ts-perlin-simplex": "^0.0.3",
-        "uuid": "9.0.1",
         "wgpu-matrix": "^2.5.1"
     }
 }

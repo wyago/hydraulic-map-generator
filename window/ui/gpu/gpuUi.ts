@@ -7,14 +7,38 @@ import { noisePass } from "../../gpu/compute/noisePass";
 import { normalsPass } from "../../gpu/compute/normalsPass";
 import { getDevice } from "../../gpu/globalDevice";
 import { scene } from "../../gpu/scene";
-import { setupInputs } from "../../render/inputs";
 import { createDiscSampler } from "../../terrain/discSampler";
 import { createBooleanInput } from "../booleanInput";
 import { createButton } from "../button";
 import { createDropdown } from "../dropdown";
+import { setupInputs } from "../inputs";
 import { createPanel } from "../panel";
 import { createSliderInput } from "../sliderInput";
 import "../ui.css";
+
+
+const downloadBlob = function(data, fileName, mimeType) {
+    var blob, url;
+    blob = new Blob([data], {
+      type: mimeType
+    });
+    url = window.URL.createObjectURL(blob);
+    downloadURL(url, fileName);
+    setTimeout(function() {
+      return window.URL.revokeObjectURL(url);
+    }, 1000);
+  };
+  
+  const downloadURL = function(data, fileName) {
+    var a;
+    a = document.createElement('a');
+    a.href = data;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.style = 'display: none';
+    a.click();
+    a.remove();
+  };
 
 export function createGpuUi() {
     const mode = createDropdown({
@@ -66,7 +90,7 @@ export function createGpuUi() {
 
         const gen = createDiscSampler(() => 8, (x, y) => x*x + y*y < 3000*3000);
         while (gen.step());
-    
+
         const vs = gen.vertices();
         const buffers = createBuffers(device, vs);
 

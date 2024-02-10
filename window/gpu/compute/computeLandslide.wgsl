@@ -64,7 +64,7 @@ fn main(
     tiles[sourceI].hard += clamp(source.original - 0.02, 0, 1)*0.000015;
 
     const siltAngle = 0.01;
-    const rockAngle = 0.025;
+    const rockAngle = 0.02;
     var delta = rockElevation(source) - rockElevation(tiles[d]);
     if (delta > rockAngle) {
         var transfer = min((delta - rockAngle) * 0.4, source.hard);

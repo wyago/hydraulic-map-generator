@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { PointLike } from "../PointLike";
 
 export type InputOptions = {
@@ -68,12 +67,11 @@ export function setupTouch(element: HTMLElement, options: InputOptions) {
             }
             options.move(next);
         } else if (touches.length === 2) {
-            const left = new THREE.Vector2(touches[0].clientX, touches[0].clientY);
-            const right = new THREE.Vector2(touches[1].clientX, touches[1].clientY);
-            right.sub(left);
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
             state = {
                 state: "zooming",
-                lastDistance: right.length()
+                lastDistance: Math.sqrt(dx*dx + dy*dy)
             }
         }
     });
@@ -93,10 +91,9 @@ export function setupTouch(element: HTMLElement, options: InputOptions) {
             });
             state.last = next;
         } else if (touches.length === 2 && state.state === "zooming") {
-            const left = new THREE.Vector2(touches[0].clientX, touches[0].clientY);
-            const right = new THREE.Vector2(touches[1].clientX, touches[1].clientY);
-            right.sub(left);
-            const distance = right.length();
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            const distance = Math.sqrt(dx*dx + dy*dy);
             options.zoom(state.lastDistance / distance);
             state.lastDistance = distance;
         } else {

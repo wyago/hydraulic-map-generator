@@ -45,10 +45,10 @@ fn extractPacket(source: Tile, i: i32, delta: f32, rockDelta: f32) -> Packet {
     var tile = source;
     var transfer = min(delta * 0.2, tile.water);
     let factor = (transfer / 0.02) * (transfer / 0.02);
-    simpleErode(tile, i, factor*0.4);
+    simpleErode(tile, i, factor*1.8);
     var silt = tile.silt;
     if (rockDelta > 0) {
-        var erosion = clamp(factor*0.6, 0, min(tile.soft, rockDelta));
+        var erosion = clamp(factor*5.8*tile.soft, 0, min(tile.soft, rockDelta));
         tiles[i].soft -= erosion;
         tiles[i].silt += erosion;
         silt += erosion;
@@ -114,8 +114,8 @@ fn main(
     var dtile = tiles[down];
     var delta = elevation(source) - elevation(dtile);
 
-    let factor = delta/0.02;
-    var release = source.silt*mix(0.1, 0.8, 1 - clamp(factor*factor, 0, 1));//clamp((source.silt - source.water*0.1), -source.soft, source.silt);
+    let factor = delta/0.01;
+    var release = source.silt*mix(0.001, 0.8, 1 - clamp(factor*factor*5, 0, 1));//clamp((source.silt - source.water*0.1), -source.soft, source.silt);
     tiles[sourceI].soft += release;
     tiles[sourceI].silt -= release;
     if (delta < 0) {

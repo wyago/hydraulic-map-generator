@@ -56,11 +56,11 @@ fn spreadAquifer(source: i32, tile: Tile) {
     
     targetIndices[source] = down;
 
-    var transfer = min(delta * 0.05, tile.aquifer);
+    var transfer = min(delta * 0.1, tile.aquifer);
     tiles[source].aquifer -= transfer;
     buffer[source].aquifer += transfer;
 
-    var erosion = min(transfer*transfer*25, tile.soft);
+    var erosion = min(transfer*transfer*15, tile.soft);
     tiles[source].soft -= erosion;
     buffer[source].soft += erosion;
 }
