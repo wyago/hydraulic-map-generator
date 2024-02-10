@@ -61,25 +61,16 @@ fn main(
     var d = totalDownhill(sourceI);
     targetIndices[sourceI] = d;
 
-    tiles[sourceI].hard += clamp(source.original - 0.02, 0, 1)*0.000015;
+    tiles[sourceI].hard += clamp(source.original - 0.02, 0, 1)*0.00001;
 
-    const siltAngle = 0.01;
-    const rockAngle = 0.02;
-    var delta = rockElevation(source) - rockElevation(tiles[d]);
-    if (delta > rockAngle) {
-        var transfer = min((delta - rockAngle) * 0.4, source.hard);
+    const goal = 0.015;
+    let delta = rockElevation(source) - rockElevation(tiles[d]);
+    let change = clamp(delta - goal, 0, 1);
+    let softTransfer = min(change, source.soft);
+    let hardTransfer = min(change - softTransfer, source.hard);
 
-        tiles[sourceI].hard -= transfer;
-        buffer[sourceI].hard += transfer;
-    } else {
-        d = totalDownhill(sourceI);
-        targetIndices[sourceI] = d;
-        delta = rockElevation(source) - rockElevation(tiles[d]);
-        if (delta > siltAngle) {
-            var transfer = min((delta - siltAngle) * 0.4, source.soft);
-
-            tiles[sourceI].soft -= transfer;
-            buffer[sourceI].soft += transfer;
-        }
-    } 
+    tiles[sourceI].hard -= hardTransfer;
+    buffer[sourceI].hard += hardTransfer;
+    tiles[sourceI].soft -= softTransfer;
+    buffer[sourceI].soft += softTransfer;
 }
